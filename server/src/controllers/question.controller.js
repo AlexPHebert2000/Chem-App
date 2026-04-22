@@ -64,7 +64,6 @@ function buildChoices(type, choices) {
     }));
   }
 
-  // FILL_IN_BLANK — track position per blank independently
   const positionPerBlank = {};
   return choices.map(c => {
     const pos = positionPerBlank[c.blankIndex] ?? 0;
@@ -115,4 +114,96 @@ async function createQuestion(req, res) {
   res.status(201).json(question);
 }
 
-module.exports = { createQuestion };
+async function attemptQuestion(req, res) {
+  const { questionId } = req.params;
+  const { sessionId, choiceIds } = req.body;
+  const studentId = req.user.sub;
+
+  if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
+  if (!Array.isArray(choiceIds) || choiceIds.length === 0) {
+    return res.status(400).json({ error: 'choiceIds must be a non-empty array' });
+  }
+
+  const question = await prisma.question.findUnique({
+    where: { id: questionId },
+    include: { choices: true },
+  });
+  if (!question) return res.status(404).json({ error: 'Question not found' });
+
+  const session = await prisma.session.findUnique({ where: { id: sessionId } });
+  if (!session || session.studentId !== studentId) return res.status(404).json({ error: 'Session not found' });
+  if (session.endedAt) return res.status(409).json({ error: 'Session has already ended' });
+
+  // Verify the question belongs to the session's course
+  const section = await prisma.section.findUnique({ where: { id: question.sectionId } });
+  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
+  if (chapter.courseId !== session.courseId) {
+    return res.status(403).json({ error: 'Question does not belong to the session course' });
+  }
+
+  const enrollment = await prisma.studentCourse.findUnique({
+    where: { studentId_courseId: { studentId, courseId: session.courseId } },
+  });
+  if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
+
+  // Validate all submitted choices belong to this question
+  const choiceMap = new Map(question.choices.map(c => [c.id, c]));
+  for (const choiceId of choiceIds) {
+    if (!choiceMap.has(choiceId)) {
+      return res.status(400).json({ error: `Choice ${choiceId} does not belong to this question` });
+    }
+  }
+
+  // Type-specific submission validation
+  if (question.type === 'MULTIPLE_CHOICE') {
+    if (choiceIds.length !== 1) {
+      return res.status(400).json({ error: 'Multiple choice questions require exactly one choice' });
+    }
+  } else if (question.type === 'FILL_IN_BLANK') {
+    const totalBlanks = new Set(question.choices.map(c => c.blankIndex)).size;
+    const submittedChoices = choiceIds.map(id => choiceMap.get(id));
+    const blankCounts = {};
+    for (const c of submittedChoices) {
+      blankCounts[c.blankIndex] = (blankCounts[c.blankIndex] || 0) + 1;
+    }
+    const submittedBlanks = Object.keys(blankCounts).length;
+    if (submittedBlanks !== totalBlanks) {
+      return res.status(400).json({ error: `Must submit one answer for each of the ${totalBlanks} blanks` });
+    }
+    for (const [blankIndex, count] of Object.entries(blankCounts)) {
+      if (count > 1) {
+        return res.status(400).json({ error: `Only one answer allowed per blank (duplicate for blank ${blankIndex})` });
+      }
+    }
+  }
+
+  // Score: count of correct submitted choices
+  const selectedChoices = choiceIds.map(id => choiceMap.get(id));
+  const score = selectedChoices.filter(c => c.isCorrect).length;
+
+  const attempt = await prisma.questionAttempt.create({
+    data: {
+      studentId,
+      questionId,
+      sessionId,
+      attemptedAt: new Date(),
+      score,
+      answers: {
+        create: selectedChoices.map(c => ({
+          choiceId: c.id,
+          isCorrect: c.isCorrect,
+        })),
+      },
+    },
+    include: { answers: true },
+  });
+
+  await prisma.session.update({
+    where: { id: sessionId },
+    data: { questionsAnswered: { increment: 1 } },
+  });
+
+  res.status(201).json(attempt);
+}
+
+module.exports = { createQuestion, attemptQuestion };
