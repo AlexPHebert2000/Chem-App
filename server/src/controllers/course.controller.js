@@ -62,4 +62,21 @@ async function approveJoin(req, res) {
   res.status(201).json(enrollment);
 }
 
-module.exports = { createCourse, requestJoin, approveJoin };
+async function getPendingJoinRequests(req, res) {
+  const { courseId } = req.params;
+  const teacherId = req.user.sub;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== teacherId) return res.status(403).json({ error: 'You do not own this course' });
+
+  const requests = await prisma.joinRequest.findMany({
+    where: { courseId, status: 'PENDING' },
+    include: { student: { omit: { password: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  res.json(requests);
+}
+
+module.exports = { createCourse, requestJoin, approveJoin, getPendingJoinRequests };

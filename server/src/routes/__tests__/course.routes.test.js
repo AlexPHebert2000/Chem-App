@@ -5,7 +5,7 @@ const app = require('../../app');
 jest.mock('../../lib/prisma', () => ({
   course: { create: jest.fn(), findUnique: jest.fn() },
   studentCourse: { create: jest.fn(), findUnique: jest.fn() },
-  joinRequest: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  joinRequest: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
 }));
 
 const prisma = require('../../lib/prisma');
@@ -199,5 +199,67 @@ describe('POST /api/courses/:courseId/join-requests/:requestId/approve', () => {
     expect(prisma.studentCourse.create).toHaveBeenCalledWith({
       data: { studentId: STUDENT_ID, courseId: COURSE.id },
     });
+  });
+});
+
+// ─── Get pending join requests ────────────────────────────────────────────────
+
+describe('GET /api/courses/:courseId/join-requests', () => {
+  const url = `/api/courses/${COURSE.id}/join-requests`;
+  const STUDENT = { id: STUDENT_ID, name: 'Test Student', email: 'student@test.com' };
+  const requestWithStudent = { ...JOIN_REQUEST, student: STUDENT };
+
+  test('401 if no token', async () => {
+    const res = await request(app).get(url);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if requester is a STUDENT', async () => {
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('404 if course not found', async () => {
+    prisma.course.findUnique.mockResolvedValue(null);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Course not found/);
+  });
+
+  test('403 if teacher does not own the course', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', OTHER_TEACHER_ID)}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('200 with list of pending requests including student info', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.joinRequest.findMany.mockResolvedValue([requestWithStudent]);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0]).toMatchObject({ status: 'PENDING', student: { id: STUDENT_ID } });
+    expect(prisma.joinRequest.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { courseId: COURSE.id, status: 'PENDING' },
+    }));
+  });
+
+  test('200 with empty list when no pending requests', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.joinRequest.findMany.mockResolvedValue([]);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 });
