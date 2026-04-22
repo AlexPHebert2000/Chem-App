@@ -1,15 +1,198 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
+}
+
+// ─── Content Hierarchy ────────────────────────────────────────────────────────
+
+model Teacher {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  email    String   @unique
+  name     String
+  password String
+  courses  Course[]
+}
+
+model Course {
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  teacherId String          @db.ObjectId
+  name      String
+  teacher   Teacher         @relation(fields: [teacherId], references: [id])
+  chapters  Chapter[]
+  rewards   Reward[]
+  sessions  Session[]
+  students  StudentCourse[]
+}
+
+model Chapter {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  courseId    String    @db.ObjectId
+  name        String
+  description String
+  orderIndex  Int
+  course      Course    @relation(fields: [courseId], references: [id])
+  sections    Section[]
+}
+
+model Section {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  chapterId       String           @db.ObjectId
+  name            String
+  description     String
+  orderIndex      Int
+  chapter         Chapter          @relation(fields: [chapterId], references: [id])
+  questions       Question[]
+  studentSections StudentSection[]
+  currentFor      StudentCourse[]  @relation("CurrentSection")
+}
+
+model Question {
+  id                  String            @id @default(auto()) @map("_id") @db.ObjectId
+  sectionId           String            @db.ObjectId
+  content             String
+  type                String
+  solutionExplanation String
+  orderIndex          Int
+  difficulty          Int
+  section             Section           @relation(fields: [sectionId], references: [id])
+  choices             Choice[]
+  attempts            QuestionAttempt[]
+}
+
+model Choice {
+  id         String          @id @default(auto()) @map("_id") @db.ObjectId
+  questionId String          @db.ObjectId
+  content    String
+  position   Int
+  blankIndex Int
+  isCorrect  Boolean
+  question   Question        @relation(fields: [questionId], references: [id])
+  answers    AttemptAnswer[]
+}
+
+// ─── Attempts & Answers ───────────────────────────────────────────────────────
+
+model QuestionAttempt {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String          @db.ObjectId
+  questionId  String          @db.ObjectId
+  sessionId   String          @db.ObjectId
+  attemptedAt DateTime
+  score       Int
+  student     Student         @relation(fields: [studentId], references: [id])
+  question    Question        @relation(fields: [questionId], references: [id])
+  session     Session         @relation(fields: [sessionId], references: [id])
+  answers     AttemptAnswer[]
+}
+
+model AttemptAnswer {
+  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  attemptId String          @db.ObjectId
+  choiceId  String          @db.ObjectId
+  isCorrect Boolean
+  attempt   QuestionAttempt @relation(fields: [attemptId], references: [id])
+  choice    Choice          @relation(fields: [choiceId], references: [id])
+}
+
+// ─── Student & Enrollment ─────────────────────────────────────────────────────
+
+model Student {
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  email         String            @unique
+  name          String
+  password      String
+  profileImage  String?
+  courses       StudentCourse[]
+  sessions      Session[]
+  sections      StudentSection[]
+  badges        StudentBadge[]
+  rewards       StudentReward[]
+  attempts      QuestionAttempt[]
+}
+
+model StudentCourse {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId        String   @db.ObjectId
+  courseId         String   @db.ObjectId
+  currentPoints    Int      @default(0)
+  lifetimePoints   Int      @default(0)
+  streak           Int      @default(0)
+  currentSectionId String?  @db.ObjectId
+  student          Student  @relation(fields: [studentId], references: [id])
+  course           Course   @relation(fields: [courseId], references: [id])
+  currentSection   Section? @relation("CurrentSection", fields: [currentSectionId], references: [id])
+
+  @@unique([studentId, courseId])
+}
+
+model Session {
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  studentId         String            @db.ObjectId
+  courseId          String            @db.ObjectId
+  startedAt         DateTime
+  endedAt           DateTime?
+  questionsAnswered Int               @default(0)
+  student           Student           @relation(fields: [studentId], references: [id])
+  course            Course            @relation(fields: [courseId], references: [id])
+  attempts          QuestionAttempt[]
+}
+
+model StudentSection {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String    @db.ObjectId
+  sectionId   String    @db.ObjectId
+  completedAt DateTime?
+  score       Int
+  student     Student   @relation(fields: [studentId], references: [id])
+  section     Section   @relation(fields: [sectionId], references: [id])
+
+  @@unique([studentId, sectionId])
+}
+
+// ─── Gamification ─────────────────────────────────────────────────────────────
+
+model Badge {
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  color          String
+  criteriaType   String
+  criteriaAmount Int
+  students       StudentBadge[]
+}
+
+model StudentBadge {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  studentId    String    @db.ObjectId
+  badgeId      String    @db.ObjectId
+  dateAchieved DateTime?
+  progress     Int       @default(0)
+  student      Student   @relation(fields: [studentId], references: [id])
+  badge        Badge     @relation(fields: [badgeId], references: [id])
+
+  @@unique([studentId, badgeId])
+}
+
+model Reward {
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  courseId        String          @db.ObjectId
+  name            String
+  redemptionLimit Int
+  course          Course          @relation(fields: [courseId], references: [id])
+  students        StudentReward[]
+}
+
+model StudentReward {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  studentId           String    @db.ObjectId
+  rewardId            String    @db.ObjectId
+  teacherConfirmation Boolean   @default(false)
+  redeemedAt          DateTime?
+  student             Student   @relation(fields: [studentId], references: [id])
+  reward              Reward    @relation(fields: [rewardId], references: [id])
+
+  @@unique([studentId, rewardId])
 }
