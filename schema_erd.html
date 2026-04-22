@@ -1,0 +1,325 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gen Chem App — Full Database Schema</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: sans-serif;
+      background: #ffffff;
+      color: #000000;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: #000000;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #444444;
+      margin-bottom: 2rem;
+    }
+
+    .group {
+      margin-bottom: 2.5rem;
+    }
+
+    .group-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #000000;
+      border-bottom: 2px solid #000000;
+      padding-bottom: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .tables {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      border: 2px solid #000000;
+      min-width: 260px;
+      font-size: 13px;
+    }
+
+    thead tr {
+      background: #000000;
+      color: #ffffff;
+    }
+
+    thead th {
+      padding: 7px 12px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      color: #ffffff;
+    }
+
+    .col-headers th {
+      background: #555555;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 12px;
+      text-align: left;
+    }
+
+    tbody tr:nth-child(odd)  { background: #f5f5f5; }
+    tbody tr:nth-child(even) { background: #ffffff; }
+
+    tbody td {
+      padding: 5px 12px;
+      border-bottom: 1px solid #cccccc;
+      color: #000000;
+      white-space: nowrap;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .col-type  { color: #333333; font-style: italic; }
+    .col-key   { font-weight: 700; color: #000000; text-align: center; }
+
+    .pk { color: #000000; }
+    .fk { color: #555555; }
+  </style>
+</head>
+<body>
+
+  <h1>Gen Chem I App — Database Schema</h1>
+  <p class="subtitle">All tables grouped by domain. PK = primary key &nbsp;|&nbsp; FK = foreign key</p>
+
+  <div class="group">
+    <div class="group-title">Content hierarchy</div>
+    <div class="tables">
+
+      <table>
+        <thead><tr><th colspan="3">Teacher</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>email</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>name</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Course</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>teacher_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>name</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Chapter</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>course_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>name</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>description</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>order_index</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Section</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>chapter_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>name</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>description</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>order_index</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Question</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>section_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>content</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>type</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>solution_explanation</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>order_index</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+          <tr><td>difficulty</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Choice</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>question_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>content</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>position</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+          <tr><td>blank_index</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+          <tr><td>is_correct</td><td class="col-type">boolean</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-title">Attempts &amp; answers</div>
+    <div class="tables">
+
+      <table>
+        <thead><tr><th colspan="3">Question_Attempt</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>student_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>question_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>session_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>attempted_at</td><td class="col-type">timestamp</td><td class="col-key"></td></tr>
+          <tr><td>score</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Attempt_Answer</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>attempt_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>choice_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>is_correct</td><td class="col-type">boolean</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-title">Student &amp; enrollment</div>
+    <div class="tables">
+
+      <table>
+        <thead><tr><th colspan="3">Student</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>name</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>password</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>profile_image</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Student_Course</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>student_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>course_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>current_points</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+          <tr><td>lifetime_points</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+          <tr><td>streak</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+          <tr><td>current_section_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Session</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>student_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>course_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>started_at</td><td class="col-type">timestamp</td><td class="col-key"></td></tr>
+          <tr><td>ended_at</td><td class="col-type">timestamp</td><td class="col-key"></td></tr>
+          <tr><td>questions_answered</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Student_Section</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>student_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>section_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>completed_at</td><td class="col-type">timestamp</td><td class="col-key"></td></tr>
+          <tr><td>score</td><td class="col-type">smallint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-title">Gamification</div>
+    <div class="tables">
+
+      <table>
+        <thead><tr><th colspan="3">Badge</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>name</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>color</td><td class="col-type">char(6)</td><td class="col-key"></td></tr>
+          <tr><td>criteria_type</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>criteria_amount</td><td class="col-type">bigint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Student_Badge</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>student_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>badge_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>date_achieved</td><td class="col-type">timestamp</td><td class="col-key"></td></tr>
+          <tr><td>progress</td><td class="col-type">smallint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Reward</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td class="col-type">varchar</td><td class="col-key pk">PK</td></tr>
+          <tr><td>course_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>name</td><td class="col-type">varchar</td><td class="col-key"></td></tr>
+          <tr><td>redemption_limit</td><td class="col-type">smallint</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead><tr><th colspan="3">Student_Reward</th></tr>
+        <tr class="col-headers"><th>Column</th><th>Type</th><th>Key</th></tr></thead>
+        <tbody>
+          <tr><td>student_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>reward_id</td><td class="col-type">varchar</td><td class="col-key fk">FK</td></tr>
+          <tr><td>teacher_confirmation</td><td class="col-type">boolean</td><td class="col-key"></td></tr>
+          <tr><td>redeemed_at</td><td class="col-type">timestamp</td><td class="col-key"></td></tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+</body>
+</html>
