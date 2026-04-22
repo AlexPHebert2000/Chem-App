@@ -18,14 +18,33 @@ model Teacher {
 }
 
 model Course {
-  id        String          @id @default(auto()) @map("_id") @db.ObjectId
-  teacherId String          @db.ObjectId
-  name      String
-  teacher   Teacher         @relation(fields: [teacherId], references: [id])
-  chapters  Chapter[]
-  rewards   Reward[]
-  sessions  Session[]
-  students  StudentCourse[]
+  id           String          @id @default(auto()) @map("_id") @db.ObjectId
+  teacherId    String          @db.ObjectId
+  name         String
+  teacher      Teacher         @relation(fields: [teacherId], references: [id])
+  chapters     Chapter[]
+  rewards      Reward[]
+  sessions     Session[]
+  students     StudentCourse[]
+  joinRequests JoinRequest[]
+}
+
+model JoinRequest {
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  studentId String            @db.ObjectId
+  courseId  String            @db.ObjectId
+  status    JoinRequestStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  student   Student           @relation(fields: [studentId], references: [id])
+  course    Course            @relation(fields: [courseId], references: [id])
+
+  @@unique([studentId, courseId])
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Chapter {
@@ -112,6 +131,7 @@ model Student {
   badges        StudentBadge[]
   rewards       StudentReward[]
   attempts      QuestionAttempt[]
+  joinRequests  JoinRequest[]
 }
 
 model StudentCourse {
