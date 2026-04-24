@@ -7,6 +7,7 @@ import ChapterScreen from '../screens/teacher/ChapterScreen';
 import SectionScreen from '../screens/teacher/SectionScreen';
 import CreateQuestionScreen from '../screens/teacher/CreateQuestionScreen';
 import QuestionDetailScreen from '../screens/teacher/QuestionDetailScreen';
+import QuestionPreviewScreen from '../screens/teacher/QuestionPreviewScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,6 +24,7 @@ export default function MainNavigator() {
           <Stack.Screen name="Section" component={SectionScreen} />
           <Stack.Screen name="CreateQuestion" component={CreateQuestionScreen} />
           <Stack.Screen name="QuestionDetail" component={QuestionDetailScreen} />
+          <Stack.Screen name="QuestionPreview" component={QuestionPreviewScreen} />
         </>
       ) : (
         <Stack.Screen name="Home" component={HomeScreen} />

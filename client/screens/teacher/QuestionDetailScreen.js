@@ -1,5 +1,5 @@
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
@@ -7,6 +7,7 @@ const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★
 const TYPE_LABEL = { MULTIPLE_CHOICE: 'Multiple Choice', FILL_IN_BLANK: 'Fill in Blank' };
 
 export default function QuestionDetailScreen() {
+  const navigation = useNavigation();
   const { question, index } = useRoute().params;
   const isFIB = question.type === 'FILL_IN_BLANK';
 
@@ -22,6 +23,17 @@ export default function QuestionDetailScreen() {
       <ScreenHeader title={`Question ${index + 1}`} subtitle={TYPE_LABEL[question.type]} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Preview button */}
+        <View style={styles.previewShadow}>
+          <TouchableOpacity
+            style={styles.previewBtn}
+            onPress={() => navigation.navigate('QuestionPreview', { question, index })}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.previewText}>▶  Preview as Student</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Meta row */}
         <View style={styles.metaRow}>
           <View style={styles.typePill}>
@@ -90,6 +102,16 @@ function ChoiceRow({ choice, letter }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral50 },
   scroll: { paddingHorizontal: screenPadding.horizontal, paddingBottom: 48 },
+
+  previewShadow: {
+    backgroundColor: colors.purple800, borderRadius: radius.full,
+    transform: [{ translateY: 4 }], marginBottom: spacing[5],
+  },
+  previewBtn: {
+    backgroundColor: colors.purple400, borderRadius: radius.full,
+    paddingVertical: 14, alignItems: 'center', transform: [{ translateY: -4 }],
+  },
+  previewText: { ...typeScale.button, color: colors.neutral900 },
 
   metaRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
