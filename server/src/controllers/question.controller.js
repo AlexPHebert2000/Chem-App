@@ -77,15 +77,27 @@ function buildChoices(type, choices) {
   });
 }
 
+async function getSectionQuestions(req, res) {
+  const { sectionId } = req.params;
+  const { error, status } = await ownedSection(sectionId, req.user.sub);
+  if (error) return res.status(status).json({ error });
+
+  const questions = await prisma.question.findMany({
+    where: { sectionId },
+    orderBy: { orderIndex: 'asc' },
+    include: { choices: { orderBy: { position: 'asc' } } },
+  });
+  res.json(questions);
+}
+
 async function createQuestion(req, res) {
   const { sectionId } = req.params;
-  const { type, content, solutionExplanation, orderIndex, difficulty, choices } = req.body;
+  const { type, content, solutionExplanation, difficulty, choices } = req.body;
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
   if (!content || !content.trim()) errors.push('content is required');
   if (!solutionExplanation || !solutionExplanation.trim()) errors.push('solutionExplanation is required');
-  if (orderIndex === undefined || !Number.isInteger(orderIndex) || orderIndex < 0) errors.push('orderIndex must be a non-negative integer');
   if (difficulty === undefined || !Number.isInteger(difficulty) || difficulty < 1 || difficulty > 5) errors.push('difficulty must be an integer between 1 and 5');
 
   if (errors.length) return res.status(400).json({ error: errors.join('; ') });
@@ -97,6 +109,8 @@ async function createQuestion(req, res) {
 
   const { error, status } = await ownedSection(sectionId, req.user.sub);
   if (error) return res.status(status).json({ error });
+
+  const orderIndex = await prisma.question.count({ where: { sectionId } });
 
   const question = await prisma.question.create({
     data: {
@@ -206,4 +220,4 @@ async function attemptQuestion(req, res) {
   res.status(201).json(attempt);
 }
 
-module.exports = { createQuestion, attemptQuestion };
+module.exports = { getSectionQuestions, createQuestion, attemptQuestion };

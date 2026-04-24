@@ -3,11 +3,13 @@ import {
   View, Text, FlatList, TouchableOpacity, Modal,
   TextInput, StyleSheet, ActivityIndicator, Alert, Platform,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 export default function DashboardScreen() {
+  const navigation = useNavigation();
   const { user, token, logout } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,11 @@ export default function DashboardScreen() {
 
   function renderCourse({ item }) {
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('Class', { courseId: item.id, courseName: item.name })}
+        activeOpacity={0.8}
+      >
         <Text style={styles.courseName}>{item.name}</Text>
         <TouchableOpacity style={styles.codeRow} onPress={() => copyCode(item.code)} activeOpacity={0.7}>
           <Text style={styles.codeLabel}>Class code</Text>
@@ -60,7 +66,7 @@ export default function DashboardScreen() {
             <Text style={styles.codeText}>{item.code}</Text>
           </View>
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     );
   }
 
