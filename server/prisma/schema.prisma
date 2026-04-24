@@ -21,6 +21,7 @@ model Course {
   id           String          @id @default(auto()) @map("_id") @db.ObjectId
   teacherId    String          @db.ObjectId
   name         String
+  code         String          @unique
   teacher      Teacher         @relation(fields: [teacherId], references: [id])
   chapters     Chapter[]
   rewards      Reward[]

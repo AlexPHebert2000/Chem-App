@@ -1,4 +1,17 @@
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
+
+function generateCode() {
+  return crypto.randomBytes(4).toString('hex').toUpperCase();
+}
+
+async function getTeacherCourses(req, res) {
+  const courses = await prisma.course.findMany({
+    where: { teacherId: req.user.sub },
+    orderBy: { name: 'asc' },
+  });
+  res.json(courses);
+}
 
 async function createCourse(req, res) {
   const { name } = req.body;
@@ -7,8 +20,16 @@ async function createCourse(req, res) {
     return res.status(400).json({ error: 'name is required' });
   }
 
+  let code;
+  for (let i = 0; i < 10; i++) {
+    const candidate = generateCode();
+    const existing = await prisma.course.findUnique({ where: { code: candidate } });
+    if (!existing) { code = candidate; break; }
+  }
+  if (!code) return res.status(500).json({ error: 'Could not generate unique course code' });
+
   const course = await prisma.course.create({
-    data: { name: name.trim(), teacherId: req.user.sub },
+    data: { name: name.trim(), teacherId: req.user.sub, code },
   });
 
   res.status(201).json(course);
@@ -79,4 +100,4 @@ async function getPendingJoinRequests(req, res) {
   res.json(requests);
 }
 
-module.exports = { createCourse, requestJoin, approveJoin, getPendingJoinRequests };
+module.exports = { getTeacherCourses, createCourse, requestJoin, approveJoin, getPendingJoinRequests };

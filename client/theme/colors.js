@@ -40,6 +40,7 @@ export const colors = {
   neutral50: '#F8F7FF',
   neutral100: '#EEECF8',
   neutral200: '#D9D5EE',
+  neutral400: '#A9A3C8',
   neutral600: '#6B6491',
   neutral800: '#2D2453',
   neutral900: '#120B35',
