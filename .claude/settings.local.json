@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-expo-app@latest:*)"
+      "Bash(npx create-expo-app@latest:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
