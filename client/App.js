@@ -1,5 +1,4 @@
 import { StatusBar } from 'expo-status-bar';
-import { Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   Nunito_400Regular,
@@ -14,7 +13,8 @@ import {
   Outfit_600SemiBold,
   Outfit_700Bold,
 } from '@expo-google-fonts/outfit';
-import { colors, typeScale } from './theme';
+import { AuthProvider } from './context/AuthContext';
+import AppNavigator from './navigation/AppNavigator';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -32,9 +32,9 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.neutral50, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={typeScale.h1}>Chem App</Text>
+    <AuthProvider>
+      <AppNavigator />
       <StatusBar style="auto" />
-    </View>
+    </AuthProvider>
   );
 }
