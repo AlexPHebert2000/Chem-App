@@ -39,7 +39,7 @@ Edit `server/.env` and set:
 | Variable | Description |
 |---|---|
 | `PORT` | Port the API server listens on (default `3000`) |
-| `DATABASE_URL` | MongoDB connection string — keep `?directConnection=true` for the local replica set |
+| `DATABASE_URL` | MongoDB connection string — must use `127.0.0.1` (not `localhost`) and include `?replicaSet=rs0&directConnection=true` on Windows |
 | `JWT_SECRET` | Long random string used to sign auth tokens |
 | `JWT_EXPIRES_IN` | Token expiry, e.g. `15m`, `7d` |
 
