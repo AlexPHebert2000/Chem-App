@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import { getItem, setItem, deleteItem } from '../lib/storage';
 import { api } from '../lib/api';
 
 const TOKEN_KEY = 'auth_token';
@@ -17,19 +17,19 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
+        const storedToken = await getItem(TOKEN_KEY);
         if (!storedToken) return;
 
         const userData = await api.get('/auth/me', storedToken);
         setToken(storedToken);
         setUser(userData);
 
-        const storedSession = await SecureStore.getItemAsync(SESSION_KEY);
+        const storedSession = await getItem(SESSION_KEY);
         if (storedSession) setSessionId(storedSession);
       } catch {
         // Token expired or invalid — clear storage
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
-        await SecureStore.deleteItemAsync(SESSION_KEY);
+        await deleteItem(TOKEN_KEY);
+        await deleteItem(SESSION_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -42,8 +42,8 @@ export function AuthProvider({ children }) {
 
     const data = await api.post('/auth/login', body);
 
-    await SecureStore.setItemAsync(TOKEN_KEY, data.token);
-    if (data.sessionId) await SecureStore.setItemAsync(SESSION_KEY, data.sessionId);
+    await setItem(TOKEN_KEY, data.token);
+    if (data.sessionId) await setItem(SESSION_KEY, data.sessionId);
 
     setToken(data.token);
     setUser(data.user);
@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
   async function signup(role, name, email, password) {
     const data = await api.post('/auth/signup', { role, name, email, password });
 
-    await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+    await setItem(TOKEN_KEY, data.token);
 
     setToken(data.token);
     setUser(data.user);
@@ -68,8 +68,8 @@ export function AuthProvider({ children }) {
     } catch {
       // Proceed with local logout even if server call fails
     } finally {
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-      await SecureStore.deleteItemAsync(SESSION_KEY);
+      await deleteItem(TOKEN_KEY);
+      await deleteItem(SESSION_KEY);
       setToken(null);
       setUser(null);
       setSessionId(null);
