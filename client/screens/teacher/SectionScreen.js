@@ -39,7 +39,11 @@ export default function SectionScreen() {
 
   function renderQuestion({ item, index }) {
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('QuestionDetail', { question: item, index })}
+        activeOpacity={0.8}
+      >
         <View style={styles.cardTop}>
           <View style={styles.typePill}>
             <Text style={styles.typeText}>{TYPE_LABEL[item.type]}</Text>
@@ -48,7 +52,7 @@ export default function SectionScreen() {
         </View>
         <Text style={styles.content}>{index + 1}. {item.content}</Text>
         <Text style={styles.choiceCount}>{item.choices.length} choices</Text>
-      </View>
+      </TouchableOpacity>
     );
   }
 
