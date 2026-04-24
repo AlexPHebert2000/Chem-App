@@ -250,11 +250,11 @@ function DraggableChip({ choice, onDragStart, onDragEnd }) {
       { translateY: translateY.value },
       { scale: scale.value },
     ],
-    zIndex:       elev.value > 0 ? 999 : 1,
-    elevation:    elev.value,
+    zIndex:        elev.value > 0 ? 999 : 1,
+    elevation:     elev.value,
     shadowOpacity: elev.value > 0 ? 0.35 : 0,
     shadowRadius:  elev.value > 0 ? 8 : 0,
-  }));
+  }), []);
 
   return (
     <GestureDetector gesture={pan}>
