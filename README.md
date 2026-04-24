@@ -68,8 +68,15 @@ The API will be available at `http://localhost:3000`.
 ```bash
 cd client
 npm install
+cp .env.example .env
 npm start
 ```
+
+Edit `client/.env` if your server runs on a different port:
+
+| Variable | Description |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | Base URL of the API server (default `http://localhost:3000`) |
 
 This opens the Expo dev server. From there:
 
