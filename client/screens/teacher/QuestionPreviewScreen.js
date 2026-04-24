@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRoute } from '@react-navigation/native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue, useAnimatedStyle,
+  withSpring, runOnJS,
+} from 'react-native-reanimated';
 import ScreenHeader from '../../components/ScreenHeader';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
@@ -12,16 +17,14 @@ export default function QuestionPreviewScreen() {
   const { question, index } = useRoute().params;
   const isFIB = question.type === 'FILL_IN_BLANK';
 
-  // MC state
-  const [mcSelected, setMcSelected] = useState(null);
+  const [mcSelected, setMcSelected]   = useState(null);
+  const [placed, setPlaced]           = useState({}); // { blankIndex: choiceId }
+  const [submitted, setSubmitted]     = useState(false);
+  const [isDragging, setIsDragging]   = useState(false);
 
-  // FIB state
-  const [placed, setPlaced]     = useState({});  // { blankIndex: choiceId }
-  const [pickedUp, setPickedUp] = useState(null); // choiceId currently held
+  const blankRefs     = useRef({});
+  const blankMeasures = useRef({});
 
-  const [submitted, setSubmitted] = useState(false);
-
-  // Derived
   const blankIndices = isFIB
     ? [...new Set(question.choices.map(c => c.blankIndex))].sort((a, b) => a - b)
     : [];
@@ -30,28 +33,53 @@ export default function QuestionPreviewScreen() {
     ? question.choices.filter(c => !Object.values(placed).includes(c.id))
     : [];
 
-  // ── Interaction ────────────────────────────────────────────────────────────
+  // ── Blank ref registration ─────────────────────────────────────────────────
 
-  function tapPoolChip(choiceId) {
-    if (submitted) return;
-    setPickedUp(prev => (prev === choiceId ? null : choiceId));
+  const registerBlankRef = useCallback((blankIndex, ref) => {
+    blankRefs.current[blankIndex] = ref;
+  }, []);
+
+  const measureBlanks = useCallback(() => {
+    Object.entries(blankRefs.current).forEach(([idx, ref]) => {
+      ref?.measureInWindow((x, y, w, h) => {
+        blankMeasures.current[idx] = { x, y, w, h };
+      });
+    });
+  }, []);
+
+  function findBlankAt(absX, absY) {
+    for (const [idx, m] of Object.entries(blankMeasures.current)) {
+      if (m && absX >= m.x && absX <= m.x + m.w && absY >= m.y && absY <= m.y + m.h) {
+        return Number(idx);
+      }
+    }
+    return null;
   }
 
-  function tapBlank(blankIndex) {
-    if (submitted) return;
-    const current = placed[blankIndex]; // choiceId already in blank, or undefined
+  // ── Drag callbacks ─────────────────────────────────────────────────────────
 
-    if (pickedUp) {
-      // Drop picked-up chip into this blank; if blank was filled, return old chip to pool
-      setPlaced(prev => ({ ...prev, [blankIndex]: pickedUp }));
-      // old chip automatically re-enters pool (filter above handles it)
-      setPickedUp(current ?? null); // hold the evicted chip if there was one
-    } else if (current) {
-      // Pick up the chip that's in the blank
-      setPlaced(prev => { const n = { ...prev }; delete n[blankIndex]; return n; });
-      setPickedUp(current);
+  function handleDragStart() {
+    setIsDragging(true);
+    measureBlanks();
+  }
+
+  function handleDragEnd(choiceId, absX, absY) {
+    setIsDragging(false);
+    const target = findBlankAt(absX, absY);
+    if (target !== null) {
+      setPlaced(prev => ({ ...prev, [target]: choiceId }));
     }
   }
+
+  // Tap a filled blank to return chip to pool
+  function tapBlank(blankIndex) {
+    if (submitted || isDragging) return;
+    if (placed[blankIndex]) {
+      setPlaced(prev => { const n = { ...prev }; delete n[blankIndex]; return n; });
+    }
+  }
+
+  // ── Submit / result ────────────────────────────────────────────────────────
 
   function canSubmit() {
     if (submitted) return false;
@@ -72,8 +100,8 @@ export default function QuestionPreviewScreen() {
   function reset() {
     setMcSelected(null);
     setPlaced({});
-    setPickedUp(null);
     setSubmitted(false);
+    setIsDragging(false);
   }
 
   const correct = submitted && isCorrect();
@@ -83,7 +111,7 @@ export default function QuestionPreviewScreen() {
   function mcChoiceState(choice) {
     if (!submitted) return mcSelected === choice.id ? 'selected' : 'idle';
     const sel = mcSelected === choice.id;
-    if (sel && choice.isCorrect) return 'correct';
+    if (sel && choice.isCorrect)  return 'correct';
     if (sel && !choice.isCorrect) return 'wrong';
     if (!sel && choice.isCorrect) return 'reveal';
     return 'idle';
@@ -93,51 +121,48 @@ export default function QuestionPreviewScreen() {
     <View style={styles.container}>
       <ScreenHeader title={`Question ${index + 1}`} subtitle="Student Preview" />
 
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={!isDragging}
+      >
         <View style={styles.metaRow}>
           <Text style={styles.previewBadge}>PREVIEW MODE</Text>
           <Text style={styles.difficulty}>{DIFFICULTY_LABEL[question.difficulty]}</Text>
         </View>
 
-        {/* ── Fill in Blank ── */}
         {isFIB ? (
           <>
             <FIBQuestion
               content={question.content}
               blankIndices={blankIndices}
               placed={placed}
-              pickedUp={pickedUp}
               submitted={submitted}
               choices={question.choices}
               onBlankPress={tapBlank}
+              registerBlankRef={registerBlankRef}
             />
 
-            {/* Choice pool */}
             {!submitted && (
               <View style={styles.poolSection}>
-                <Text style={styles.poolLabel}>Choice Pool</Text>
+                <Text style={styles.poolLabel}>Drag an answer into a blank</Text>
                 <View style={styles.pool}>
                   {pool.map(c => (
-                    <TouchableOpacity
+                    <DraggableChip
                       key={c.id}
-                      style={[styles.chip, pickedUp === c.id && styles.chipPickedUp]}
-                      onPress={() => tapPoolChip(c.id)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[styles.chipText, pickedUp === c.id && styles.chipTextPickedUp]}>
-                        {c.content}
-                      </Text>
-                    </TouchableOpacity>
+                      choice={c}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    />
                   ))}
                   {pool.length === 0 && (
-                    <Text style={styles.poolEmpty}>All choices placed</Text>
+                    <Text style={styles.poolEmpty}>All choices placed — tap a blank to return it</Text>
                   )}
                 </View>
               </View>
             )}
           </>
         ) : (
-          /* ── Multiple Choice ── */
           <>
             <View style={styles.questionCard}>
               <Text style={styles.questionText}>{question.content}</Text>
@@ -155,7 +180,6 @@ export default function QuestionPreviewScreen() {
           </>
         )}
 
-        {/* Submit / result */}
         {!submitted ? (
           <View style={[styles.submitShadow, !canSubmit() && styles.submitShadowDisabled]}>
             <TouchableOpacity
@@ -191,29 +215,75 @@ export default function QuestionPreviewScreen() {
   );
 }
 
+// ─── Draggable chip ───────────────────────────────────────────────────────────
+
+function DraggableChip({ choice, onDragStart, onDragEnd }) {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const scale      = useSharedValue(1);
+  const elev       = useSharedValue(0);
+
+  const pan = Gesture.Pan()
+    .minDistance(6)
+    .onStart(() => {
+      scale.value = withSpring(1.1, { damping: 15, stiffness: 300 });
+      elev.value  = 8;
+      runOnJS(onDragStart)();
+    })
+    .onUpdate((e) => {
+      translateX.value = e.translationX;
+      translateY.value = e.translationY;
+    })
+    .onEnd((e) => {
+      runOnJS(onDragEnd)(choice.id, e.absoluteX, e.absoluteY);
+    })
+    .onFinalize(() => {
+      translateX.value = withSpring(0, { damping: 20, stiffness: 300 });
+      translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+      scale.value      = withSpring(1, { damping: 15, stiffness: 300 });
+      elev.value       = 0;
+    });
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+    zIndex:       elev.value > 0 ? 999 : 1,
+    elevation:    elev.value,
+    shadowOpacity: elev.value > 0 ? 0.35 : 0,
+    shadowRadius:  elev.value > 0 ? 8 : 0,
+  }));
+
+  return (
+    <GestureDetector gesture={pan}>
+      <Animated.View style={[styles.chip, animStyle]}>
+        <Text style={styles.chipText}>{choice.content}</Text>
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
 // ─── FIB question with inline blank slots ────────────────────────────────────
 
-function FIBQuestion({ content, blankIndices, placed, pickedUp, submitted, choices, onBlankPress }) {
+function FIBQuestion({ content, blankIndices, placed, submitted, choices, onBlankPress, registerBlankRef }) {
   const parts = content.split('___');
 
   return (
     <View style={styles.questionCard}>
       <View style={styles.inlineRow}>
         {parts.map((part, i) => {
-          // Split text into words so they wrap naturally alongside blank chips
-          const words = part.split(/\s+/).filter(Boolean);
-          const blankIndex = blankIndices[i] ?? i;
+          const words        = part.split(/\s+/).filter(Boolean);
+          const blankIndex   = blankIndices[i] ?? i;
           const placedChoice = placed[blankIndex] != null
             ? choices.find(c => c.id === placed[blankIndex])
             : null;
 
-          // After submit: determine blank correctness
           let blankState = 'empty';
           if (placedChoice) {
             if (!submitted) blankState = 'filled';
             else blankState = placedChoice.isCorrect ? 'correct' : 'wrong';
-          } else if (!submitted && pickedUp) {
-            blankState = 'target'; // visual hint that this blank can accept a drop
           }
 
           return (
@@ -223,10 +293,10 @@ function FIBQuestion({ content, blankIndices, placed, pickedUp, submitted, choic
               ))}
               {i < parts.length - 1 && (
                 <TouchableOpacity
+                  ref={r => registerBlankRef(blankIndex, r)}
                   style={[
                     styles.inlineBlank,
                     blankState === 'filled'  && styles.inlineBlankFilled,
-                    blankState === 'target'  && styles.inlineBlankTarget,
                     blankState === 'correct' && styles.inlineBlankCorrect,
                     blankState === 'wrong'   && styles.inlineBlankWrong,
                   ]}
@@ -238,7 +308,7 @@ function FIBQuestion({ content, blankIndices, placed, pickedUp, submitted, choic
                     blankState === 'correct' && styles.inlineBlankTextCorrect,
                     blankState === 'wrong'   && styles.inlineBlankTextWrong,
                   ]}>
-                    {placedChoice ? placedChoice.content : (blankState === 'target' ? '  drop  ' : '  ?  ')}
+                    {placedChoice ? placedChoice.content : '  ?  '}
                   </Text>
                   {blankState === 'correct' && <Text style={styles.blankCheck}>✓</Text>}
                   {blankState === 'wrong'   && <Text style={styles.blankX}>✗</Text>}
@@ -282,9 +352,9 @@ function ChoiceButton({ choice, state, onPress }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral50 },
-  scroll: { paddingHorizontal: screenPadding.horizontal, paddingBottom: 48 },
+  scroll:    { paddingHorizontal: screenPadding.horizontal, paddingBottom: 48 },
 
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] },
+  metaRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[4] },
   previewBadge: {
     ...typeScale.label, color: colors.purple400,
     backgroundColor: colors.purple50, paddingHorizontal: spacing[3], paddingVertical: spacing[1],
@@ -298,8 +368,8 @@ const styles = StyleSheet.create({
   },
 
   // FIB inline rendering
-  inlineRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  inlineSegment: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  inlineRow:       { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+  inlineSegment:   { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
   questionWordText: { fontFamily: 'Nunito_700Bold', fontSize: 17, lineHeight: 26, color: '#fff' },
 
   inlineBlank: {
@@ -312,10 +382,6 @@ const styles = StyleSheet.create({
     borderStyle: 'solid', borderColor: colors.gold400,
     backgroundColor: 'rgba(255,193,7,0.15)',
   },
-  inlineBlankTarget: {
-    borderStyle: 'solid', borderColor: 'rgba(255,255,255,0.7)',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
   inlineBlankCorrect: {
     borderStyle: 'solid', borderColor: colors.teal400,
     backgroundColor: 'rgba(38,198,176,0.2)',
@@ -324,33 +390,26 @@ const styles = StyleSheet.create({
     borderStyle: 'solid', borderColor: colors.coral400,
     backgroundColor: 'rgba(255,110,80,0.2)',
   },
-  inlineBlankText: { fontFamily: 'Nunito_700Bold', fontSize: 15, color: colors.gold200 },
+  inlineBlankText:        { fontFamily: 'Nunito_700Bold', fontSize: 15, color: colors.gold200 },
   inlineBlankTextCorrect: { color: colors.teal400 },
-  inlineBlankTextWrong: { color: colors.coral400 },
-  blankCheck: { color: colors.teal400, fontSize: 14, marginLeft: 4, fontFamily: 'Nunito_800ExtraBold' },
+  inlineBlankTextWrong:   { color: colors.coral400 },
+  blankCheck: { color: colors.teal400,  fontSize: 14, marginLeft: 4, fontFamily: 'Nunito_800ExtraBold' },
   blankX:     { color: colors.coral400, fontSize: 14, marginLeft: 4, fontFamily: 'Nunito_800ExtraBold' },
 
   // Choice pool
   poolSection: { marginBottom: spacing[5] },
-  poolLabel: { ...typeScale.label, color: colors.neutral600, marginBottom: spacing[3] },
-  pool: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  poolEmpty: { ...typeScale.body, color: colors.neutral400, fontStyle: 'italic' },
+  poolLabel:   { ...typeScale.label, color: colors.neutral600, marginBottom: spacing[3] },
+  pool:        { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  poolEmpty:   { ...typeScale.body, color: colors.neutral400, fontStyle: 'italic' },
 
   chip: {
     borderWidth: 1.5, borderColor: colors.purple200, borderRadius: radius.full,
     backgroundColor: '#fff', paddingHorizontal: spacing[4], paddingVertical: 10,
-  },
-  chipPickedUp: {
-    backgroundColor: colors.purple400, borderColor: colors.purple400,
-    transform: [{ translateY: -2 }],
     shadowColor: colors.purple800, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 4, elevation: 6,
   },
-  chipText: { ...typeScale.body, color: colors.purple800 },
-  chipTextPickedUp: { color: '#fff' },
 
   // MC
-  choiceList: { gap: spacing[3], marginBottom: spacing[2] },
+  choiceList:   { gap: spacing[3], marginBottom: spacing[2] },
   choiceShadow: { borderRadius: radius.lg, transform: [{ translateY: 4 }], marginBottom: spacing[3] },
   choiceBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -358,25 +417,25 @@ const styles = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: spacing[4], transform: [{ translateY: -4 }],
   },
   choiceText: { ...typeScale.body, flex: 1 },
-  indicator: { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', marginLeft: spacing[2] },
+  indicator:  { fontSize: 18, fontFamily: 'Nunito_800ExtraBold', marginLeft: spacing[2] },
 
   // Submit
-  submitShadow: { marginTop: spacing[2], backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }] },
+  submitShadow:         { marginTop: spacing[2], backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }] },
   submitShadowDisabled: { backgroundColor: colors.purple200 },
-  submitBtn: { backgroundColor: colors.purple400, borderRadius: radius.full, paddingVertical: 16, alignItems: 'center', transform: [{ translateY: -4 }] },
-  submitBtnDisabled: { backgroundColor: colors.purple100 },
-  submitText: { ...typeScale.button, color: colors.neutral900 },
+  submitBtn:            { backgroundColor: colors.purple400, borderRadius: radius.full, paddingVertical: 16, alignItems: 'center', transform: [{ translateY: -4 }] },
+  submitBtnDisabled:    { backgroundColor: colors.purple100 },
+  submitText:           { ...typeScale.button, color: colors.neutral900 },
 
-  resultBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], borderRadius: radius.lg, padding: spacing[4], marginTop: spacing[4] },
-  resultCorrect: { backgroundColor: colors.teal50, borderWidth: 1, borderColor: colors.teal400 },
-  resultWrong: { backgroundColor: colors.coral50, borderWidth: 1, borderColor: colors.coral400 },
-  resultEmoji: { fontSize: 24 },
-  resultText: { ...typeScale.h2, color: colors.purple800 },
+  resultBanner:  { flexDirection: 'row', alignItems: 'center', gap: spacing[3], borderRadius: radius.lg, padding: spacing[4], marginTop: spacing[4] },
+  resultCorrect: { backgroundColor: colors.teal50,  borderWidth: 1, borderColor: colors.teal400  },
+  resultWrong:   { backgroundColor: colors.coral50, borderWidth: 1, borderColor: colors.coral400 },
+  resultEmoji:   { fontSize: 24 },
+  resultText:    { ...typeScale.h2, color: colors.purple800 },
 
-  explanationBox: { backgroundColor: colors.gold50, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.gold200, padding: spacing[4], marginTop: spacing[4] },
+  explanationBox:   { backgroundColor: colors.gold50, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.gold200, padding: spacing[4], marginTop: spacing[4] },
   explanationLabel: { ...typeScale.label, color: colors.gold800, marginBottom: spacing[2] },
-  explanationText: { ...typeScale.body, color: colors.gold800, lineHeight: 22 },
+  explanationText:  { ...typeScale.body,  color: colors.gold800, lineHeight: 22 },
 
-  retryBtn: { alignSelf: 'center', marginTop: spacing[4], padding: spacing[3] },
+  retryBtn:  { alignSelf: 'center', marginTop: spacing[4], padding: spacing[3] },
   retryText: { ...typeScale.label, color: colors.purple400 },
 });
