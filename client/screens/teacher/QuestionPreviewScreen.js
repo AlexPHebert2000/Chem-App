@@ -204,7 +204,7 @@ export default function QuestionPreviewScreen() {
               {correct ? 'Why you got it right' : 'What to review'}
             </Text>
             <Text style={[styles.explanationText, correct ? styles.explanationTextCorrect : styles.explanationTextIncorrect]}>
-              {correct ? question.correctExplanation : question.incorrectExplanation}
+              {correct ? (question.correctExplanation ?? '—') : (question.incorrectExplanation ?? '—')}
             </Text>
           </View>
         )}

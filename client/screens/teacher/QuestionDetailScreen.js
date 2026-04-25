@@ -87,14 +87,14 @@ export default function QuestionDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Correct Answer Explanation</Text>
           <View style={styles.explanationBoxCorrect}>
-            <Text style={styles.explanationTextCorrect}>{question.correctExplanation}</Text>
+            <Text style={styles.explanationTextCorrect}>{question.correctExplanation ?? '—'}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Incorrect Answer Explanation</Text>
           <View style={styles.explanationBoxIncorrect}>
-            <Text style={styles.explanationTextIncorrect}>{question.incorrectExplanation}</Text>
+            <Text style={styles.explanationTextIncorrect}>{question.incorrectExplanation ?? '—'}</Text>
           </View>
         </View>
       </ScrollView>

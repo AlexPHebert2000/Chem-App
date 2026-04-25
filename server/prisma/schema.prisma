@@ -75,8 +75,8 @@ model Question {
   sectionId            String            @db.ObjectId
   content              String
   type                 String
-  correctExplanation   String
-  incorrectExplanation String
+  correctExplanation   String?
+  incorrectExplanation String?
   difficulty           Int
   section              Section           @relation(fields: [sectionId], references: [id])
   choices              Choice[]
