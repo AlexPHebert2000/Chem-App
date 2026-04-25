@@ -73,8 +73,8 @@ export default function CreateQuestionScreen() {
       };
 
       if (isEditing) {
-        await api.patch(`/sections/${sectionId}/questions/${existing.id}`, payload, token);
-        navigation.goBack();
+        const updated = await api.patch(`/sections/${sectionId}/questions/${existing.id}`, payload, token);
+        navigation.navigate('QuestionDetail', { question: updated, sectionId });
       } else {
         await api.post(`/sections/${sectionId}/questions`, payload, token);
         navigation.goBack();
