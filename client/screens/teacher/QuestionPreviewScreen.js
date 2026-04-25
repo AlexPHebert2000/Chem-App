@@ -14,7 +14,7 @@ const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function QuestionPreviewScreen() {
-  const { question, index } = useRoute().params;
+  const { question } = useRoute().params;
   const isFIB = question.type === 'FILL_IN_BLANK';
 
   const [mcSelected, setMcSelected]   = useState(null);
@@ -119,7 +119,7 @@ export default function QuestionPreviewScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={`Question ${index + 1}`} subtitle="Student Preview" />
+      <ScreenHeader title="Question" subtitle="Student Preview" />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -199,9 +199,13 @@ export default function QuestionPreviewScreen() {
         )}
 
         {submitted && (
-          <View style={styles.explanationBox}>
-            <Text style={styles.explanationLabel}>Explanation</Text>
-            <Text style={styles.explanationText}>{question.solutionExplanation}</Text>
+          <View style={[styles.explanationBox, correct ? styles.explanationBoxCorrect : styles.explanationBoxIncorrect]}>
+            <Text style={[styles.explanationLabel, correct ? styles.explanationLabelCorrect : styles.explanationLabelIncorrect]}>
+              {correct ? 'Why you got it right' : 'What to review'}
+            </Text>
+            <Text style={[styles.explanationText, correct ? styles.explanationTextCorrect : styles.explanationTextIncorrect]}>
+              {correct ? question.correctExplanation : question.incorrectExplanation}
+            </Text>
           </View>
         )}
 
@@ -432,9 +436,15 @@ const styles = StyleSheet.create({
   resultEmoji:   { fontSize: 24 },
   resultText:    { ...typeScale.h2, color: colors.purple800 },
 
-  explanationBox:   { backgroundColor: colors.gold50, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.gold200, padding: spacing[4], marginTop: spacing[4] },
-  explanationLabel: { ...typeScale.label, color: colors.gold800, marginBottom: spacing[2] },
-  explanationText:  { ...typeScale.body,  color: colors.gold800, lineHeight: 22 },
+  explanationBox:              { borderRadius: radius.lg, borderWidth: 1, padding: spacing[4], marginTop: spacing[4] },
+  explanationBoxCorrect:       { backgroundColor: colors.teal50,  borderColor: colors.teal400  },
+  explanationBoxIncorrect:     { backgroundColor: colors.coral50, borderColor: colors.coral400 },
+  explanationLabel:            { ...typeScale.label, marginBottom: spacing[2] },
+  explanationLabelCorrect:     { color: colors.teal600  },
+  explanationLabelIncorrect:   { color: colors.coral600 },
+  explanationText:             { ...typeScale.body, lineHeight: 22 },
+  explanationTextCorrect:      { color: colors.teal600  },
+  explanationTextIncorrect:    { color: colors.coral600 },
 
   retryBtn:  { alignSelf: 'center', marginTop: spacing[4], padding: spacing[3] },
   retryText: { ...typeScale.label, color: colors.purple400 },

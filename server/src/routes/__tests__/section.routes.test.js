@@ -41,8 +41,8 @@ const FIB_CHOICES = [
 const MC_BODY = {
   type: 'MULTIPLE_CHOICE',
   content: 'What is the atomic number of Carbon?',
-  solutionExplanation: 'Carbon has 6 protons.',
-  orderIndex: 0,
+  correctExplanation: 'Carbon has 6 protons.',
+  incorrectExplanation: 'Review the periodic table — atomic number = number of protons.',
   difficulty: 2,
   choices: MC_CHOICES,
 };
@@ -50,8 +50,8 @@ const MC_BODY = {
 const FIB_BODY = {
   type: 'FILL_IN_BLANK',
   content: 'Carbon has atomic number ___ and symbol ___.',
-  solutionExplanation: 'Carbon: atomic number 6, symbol C.',
-  orderIndex: 1,
+  correctExplanation: 'Carbon: atomic number 6, symbol C.',
+  incorrectExplanation: 'Look up Carbon on the periodic table.',
   difficulty: 3,
   choices: FIB_CHOICES,
 };
@@ -105,24 +105,18 @@ describe('POST /api/sections/:sectionId/questions — field validation', () => {
     expect(res.body.error).toMatch(/content/);
   });
 
-  test('400 if solutionExplanation is missing', async () => {
-    const { solutionExplanation: _, ...body } = MC_BODY;
+  test('400 if correctExplanation is missing', async () => {
+    const { correctExplanation: _, ...body } = MC_BODY;
     const res = await request(app).post(url).set(auth()).send(body);
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/solutionExplanation/);
+    expect(res.body.error).toMatch(/correctExplanation/);
   });
 
-  test('400 if orderIndex is missing', async () => {
-    const { orderIndex: _, ...body } = MC_BODY;
+  test('400 if incorrectExplanation is missing', async () => {
+    const { incorrectExplanation: _, ...body } = MC_BODY;
     const res = await request(app).post(url).set(auth()).send(body);
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/orderIndex/);
-  });
-
-  test('400 if orderIndex is negative', async () => {
-    const res = await request(app).post(url).set(auth()).send({ ...MC_BODY, orderIndex: -1 });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/orderIndex/);
+    expect(res.body.error).toMatch(/incorrectExplanation/);
   });
 
   test('400 if difficulty is missing', async () => {

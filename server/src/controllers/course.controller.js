@@ -100,4 +100,79 @@ async function getPendingJoinRequests(req, res) {
   res.json(requests);
 }
 
-module.exports = { getTeacherCourses, createCourse, requestJoin, approveJoin, getPendingJoinRequests };
+async function cloneCourse(req, res) {
+  const { courseId } = req.params;
+  const teacherId = req.user.sub;
+
+  const original = await prisma.course.findUnique({
+    where: { id: courseId },
+    include: {
+      chapters: {
+        orderBy: { orderIndex: 'asc' },
+        include: {
+          sections: {
+            orderBy: { orderIndex: 'asc' },
+            include: {
+              questions: {
+                include: { choices: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!original) return res.status(404).json({ error: 'Course not found' });
+  if (original.teacherId !== teacherId) return res.status(403).json({ error: 'You do not own this course' });
+
+  let code;
+  for (let i = 0; i < 10; i++) {
+    const candidate = generateCode();
+    const existing = await prisma.course.findUnique({ where: { code: candidate } });
+    if (!existing) { code = candidate; break; }
+  }
+  if (!code) return res.status(500).json({ error: 'Could not generate unique course code' });
+
+  const clone = await prisma.course.create({
+    data: {
+      teacherId,
+      name: `${original.name} (Copy)`,
+      code,
+      chapters: {
+        create: original.chapters.map(ch => ({
+          name: ch.name,
+          description: ch.description,
+          orderIndex: ch.orderIndex,
+          sections: {
+            create: ch.sections.map(sec => ({
+              name: sec.name,
+              description: sec.description,
+              orderIndex: sec.orderIndex,
+              questions: {
+                create: sec.questions.map(q => ({
+                  type: q.type,
+                  content: q.content,
+                  correctExplanation: q.correctExplanation,
+                  incorrectExplanation: q.incorrectExplanation,
+                  difficulty: q.difficulty,
+                  choices: {
+                    create: q.choices.map(c => ({
+                      content: c.content,
+                      isCorrect: c.isCorrect,
+                      blankIndex: c.blankIndex,
+                    })),
+                  },
+                })),
+              },
+            })),
+          },
+        })),
+      },
+    },
+  });
+
+  res.status(201).json(clone);
+}
+
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests };

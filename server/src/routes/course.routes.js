@@ -1,12 +1,13 @@
 const { Router } = require('express');
 const { authenticate, requireRole } = require('../middleware/auth.middleware');
-const { getTeacherCourses, createCourse, requestJoin, approveJoin, getPendingJoinRequests } = require('../controllers/course.controller');
+const { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests } = require('../controllers/course.controller');
 const { getCourseChapters, createChapter, swapChapters } = require('../controllers/chapter.controller');
 
 const router = Router();
 
 router.get('/', authenticate, requireRole('TEACHER'), getTeacherCourses);
 router.post('/', authenticate, requireRole('TEACHER'), createCourse);
+router.post('/:courseId/clone', authenticate, requireRole('TEACHER'), cloneCourse);
 router.post('/:courseId/join-requests', authenticate, requireRole('STUDENT'), requestJoin);
 router.get('/:courseId/join-requests', authenticate, requireRole('TEACHER'), getPendingJoinRequests);
 router.get('/:courseId/chapters', authenticate, requireRole('TEACHER'), getCourseChapters);

@@ -12,19 +12,24 @@ import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 const DIFFICULTIES = [1, 2, 3, 4, 5];
 
 function newChoice() {
-  return { content: '', isCorrect: false };
+  return { content: '', isCorrect: false, blankIndex: 0 };
 }
 
 export default function CreateQuestionScreen() {
   const { token } = useAuth();
   const navigation = useNavigation();
-  const { sectionId, onCreated } = useRoute().params;
+  const { sectionId, question: existing } = useRoute().params;
+  const isEditing = !!existing;
 
-  const [type, setType] = useState('MULTIPLE_CHOICE');
-  const [content, setContent] = useState('');
-  const [explanation, setExplanation] = useState('');
-  const [difficulty, setDifficulty] = useState(1);
-  const [choices, setChoices] = useState([newChoice(), newChoice(), newChoice(), newChoice()]);
+  const [type, setType] = useState(existing?.type ?? 'MULTIPLE_CHOICE');
+  const [content, setContent] = useState(existing?.content ?? '');
+  const [correctExplanation, setCorrectExplanation] = useState(existing?.correctExplanation ?? '');
+  const [incorrectExplanation, setIncorrectExplanation] = useState(existing?.incorrectExplanation ?? '');
+  const [difficulty, setDifficulty] = useState(existing?.difficulty ?? 1);
+  const [choices, setChoices] = useState(
+    existing?.choices?.map(c => ({ content: c.content, isCorrect: c.isCorrect, blankIndex: c.blankIndex }))
+    ?? [newChoice(), newChoice(), newChoice(), newChoice()]
+  );
   const [saving, setSaving] = useState(false);
 
   function setChoiceContent(index, text) {
@@ -46,7 +51,7 @@ export default function CreateQuestionScreen() {
   }
 
   function isValid() {
-    if (!content.trim() || !explanation.trim()) return false;
+    if (!content.trim() || !correctExplanation.trim() || !incorrectExplanation.trim()) return false;
     const filled = choices.filter(c => c.content.trim());
     if (filled.length < 2) return false;
     return filled.some(c => c.isCorrect);
@@ -59,15 +64,21 @@ export default function CreateQuestionScreen() {
       const payload = {
         type,
         content: content.trim(),
-        solutionExplanation: explanation.trim(),
+        correctExplanation: correctExplanation.trim(),
+        incorrectExplanation: incorrectExplanation.trim(),
         difficulty,
         choices: choices
           .filter(c => c.content.trim())
-          .map(c => ({ content: c.content.trim(), isCorrect: c.isCorrect, blankIndex: 0 })),
+          .map(c => ({ content: c.content.trim(), isCorrect: c.isCorrect, blankIndex: c.blankIndex })),
       };
-      const question = await api.post(`/sections/${sectionId}/questions`, payload, token);
-      onCreated?.(question);
-      navigation.goBack();
+
+      if (isEditing) {
+        await api.patch(`/sections/${sectionId}/questions/${existing.id}`, payload, token);
+        navigation.goBack();
+      } else {
+        await api.post(`/sections/${sectionId}/questions`, payload, token);
+        navigation.goBack();
+      }
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not save question.');
     } finally {
@@ -78,7 +89,7 @@ export default function CreateQuestionScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
-        <ScreenHeader title="New Question" />
+        <ScreenHeader title={isEditing ? 'Edit Question' : 'New Question'} />
 
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           {/* Type toggle */}
@@ -137,14 +148,26 @@ export default function CreateQuestionScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Explanation */}
-          <Text style={styles.label}>Solution Explanation</Text>
+          {/* Correct Explanation */}
+          <Text style={styles.label}>Correct Answer Explanation</Text>
           <TextInput
-            style={[styles.input, styles.inputMulti]}
-            placeholder="Explain why the correct answer is correct"
+            style={[styles.input, styles.inputMulti, styles.inputCorrect]}
+            placeholder="Explain why the correct answer is right"
             placeholderTextColor={colors.neutral400}
-            value={explanation}
-            onChangeText={setExplanation}
+            value={correctExplanation}
+            onChangeText={setCorrectExplanation}
+            multiline
+            numberOfLines={3}
+          />
+
+          {/* Incorrect Explanation */}
+          <Text style={styles.label}>Incorrect Answer Explanation</Text>
+          <TextInput
+            style={[styles.input, styles.inputMulti, styles.inputIncorrect]}
+            placeholder="Explain what to review if the answer is wrong"
+            placeholderTextColor={colors.neutral400}
+            value={incorrectExplanation}
+            onChangeText={setIncorrectExplanation}
             multiline
             numberOfLines={3}
           />
@@ -172,7 +195,7 @@ export default function CreateQuestionScreen() {
               activeOpacity={0.85}
               disabled={!isValid() || saving}
             >
-              <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save Question'}</Text>
+              <Text style={styles.saveText}>{saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Save Question'}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -203,6 +226,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4], paddingVertical: 12,
   },
   inputMulti: { height: 88, textAlignVertical: 'top', marginBottom: 0 },
+  inputCorrect: { borderColor: colors.teal400 },
+  inputIncorrect: { borderColor: colors.coral400 },
 
   choiceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginBottom: spacing[2] },
   radio: {

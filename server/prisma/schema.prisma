@@ -71,23 +71,22 @@ model Section {
 }
 
 model Question {
-  id                  String            @id @default(auto()) @map("_id") @db.ObjectId
-  sectionId           String            @db.ObjectId
-  content             String
-  type                String
-  solutionExplanation String
-  orderIndex          Int
-  difficulty          Int
-  section             Section           @relation(fields: [sectionId], references: [id])
-  choices             Choice[]
-  attempts            QuestionAttempt[]
+  id                   String            @id @default(auto()) @map("_id") @db.ObjectId
+  sectionId            String            @db.ObjectId
+  content              String
+  type                 String
+  correctExplanation   String
+  incorrectExplanation String
+  difficulty           Int
+  section              Section           @relation(fields: [sectionId], references: [id])
+  choices              Choice[]
+  attempts             QuestionAttempt[]
 }
 
 model Choice {
   id         String          @id @default(auto()) @map("_id") @db.ObjectId
   questionId String          @db.ObjectId
   content    String
-  position   Int
   blankIndex Int
   isCorrect  Boolean
   question   Question        @relation(fields: [questionId], references: [id])

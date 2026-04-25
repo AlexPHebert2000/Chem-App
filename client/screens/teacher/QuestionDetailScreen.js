@@ -8,7 +8,7 @@ const TYPE_LABEL = { MULTIPLE_CHOICE: 'Multiple Choice', FILL_IN_BLANK: 'Fill in
 
 export default function QuestionDetailScreen() {
   const navigation = useNavigation();
-  const { question, index } = useRoute().params;
+  const { question, sectionId } = useRoute().params;
   const isFIB = question.type === 'FILL_IN_BLANK';
 
   const choicesByBlank = isFIB
@@ -20,18 +20,29 @@ export default function QuestionDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={`Question ${index + 1}`} subtitle={TYPE_LABEL[question.type]} />
+      <ScreenHeader title="Question" subtitle={TYPE_LABEL[question.type]} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Preview button */}
-        <View style={styles.previewShadow}>
-          <TouchableOpacity
-            style={styles.previewBtn}
-            onPress={() => navigation.navigate('QuestionPreview', { question, index })}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.previewText}>▶  Preview as Student</Text>
-          </TouchableOpacity>
+        {/* Action buttons */}
+        <View style={styles.actionRow}>
+          <View style={styles.previewShadow}>
+            <TouchableOpacity
+              style={styles.previewBtn}
+              onPress={() => navigation.navigate('QuestionPreview', { question })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.previewText}>▶  Preview</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.editShadow}>
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => navigation.navigate('CreateQuestion', { sectionId, question })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.editText}>✎  Edit</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Meta row */}
@@ -72,11 +83,18 @@ export default function QuestionDetailScreen() {
           )}
         </View>
 
-        {/* Explanation */}
+        {/* Explanations */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Solution Explanation</Text>
-          <View style={styles.explanationBox}>
-            <Text style={styles.explanationText}>{question.solutionExplanation}</Text>
+          <Text style={styles.sectionLabel}>Correct Answer Explanation</Text>
+          <View style={styles.explanationBoxCorrect}>
+            <Text style={styles.explanationTextCorrect}>{question.correctExplanation}</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Incorrect Answer Explanation</Text>
+          <View style={styles.explanationBoxIncorrect}>
+            <Text style={styles.explanationTextIncorrect}>{question.incorrectExplanation}</Text>
           </View>
         </View>
       </ScrollView>
@@ -103,15 +121,27 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral50 },
   scroll: { paddingHorizontal: screenPadding.horizontal, paddingBottom: 48 },
 
+  actionRow: { flexDirection: 'row', gap: spacing[3], marginBottom: spacing[5] },
+
   previewShadow: {
-    backgroundColor: colors.purple800, borderRadius: radius.full,
-    transform: [{ translateY: 4 }], marginBottom: spacing[5],
+    flex: 1,
+    backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }],
   },
   previewBtn: {
     backgroundColor: colors.purple400, borderRadius: radius.full,
     paddingVertical: 14, alignItems: 'center', transform: [{ translateY: -4 }],
   },
   previewText: { ...typeScale.button, color: colors.neutral900 },
+
+  editShadow: {
+    flex: 1,
+    backgroundColor: colors.gold600, borderRadius: radius.full, transform: [{ translateY: 4 }],
+  },
+  editBtn: {
+    backgroundColor: colors.gold300, borderRadius: radius.full,
+    paddingVertical: 14, alignItems: 'center', transform: [{ translateY: -4 }],
+  },
+  editText: { ...typeScale.button, color: colors.neutral900 },
 
   metaRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -159,10 +189,17 @@ const styles = StyleSheet.create({
   blankGroup: { marginBottom: spacing[4] },
   blankLabel: { ...typeScale.label, color: colors.purple400, marginBottom: spacing[2] },
 
-  explanationBox: {
-    backgroundColor: colors.gold50, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.gold200,
+  explanationBoxCorrect: {
+    backgroundColor: colors.teal50, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.teal400,
     padding: spacing[4],
   },
-  explanationText: { ...typeScale.body, color: colors.gold800, lineHeight: 22 },
+  explanationTextCorrect: { ...typeScale.body, color: colors.teal600, lineHeight: 22 },
+
+  explanationBoxIncorrect: {
+    backgroundColor: colors.coral50, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.coral400,
+    padding: spacing[4],
+  },
+  explanationTextIncorrect: { ...typeScale.body, color: colors.coral600, lineHeight: 22 },
 });

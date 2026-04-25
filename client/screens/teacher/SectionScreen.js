@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert,
@@ -31,17 +32,13 @@ export default function SectionScreen() {
     }
   }, [sectionId, token]);
 
-  useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
-
-  function onQuestionCreated(question) {
-    setQuestions(prev => [...prev, question]);
-  }
+  useFocusEffect(fetchQuestions);
 
   function renderQuestion({ item, index }) {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => navigation.navigate('QuestionDetail', { question: item, index })}
+        onPress={() => navigation.navigate('QuestionDetail', { question: item, sectionId })}
         activeOpacity={0.8}
       >
         <View style={styles.cardTop}>
@@ -75,7 +72,7 @@ export default function SectionScreen() {
       <View style={styles.fabShadow}>
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => navigation.navigate('CreateQuestion', { sectionId, onCreated: onQuestionCreated })}
+          onPress={() => navigation.navigate('CreateQuestion', { sectionId })}
           activeOpacity={0.85}
         >
           <Text style={styles.fabText}>+ Add Question</Text>

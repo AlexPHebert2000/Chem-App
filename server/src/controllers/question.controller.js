@@ -56,25 +56,18 @@ function validateFillInBlank(choices) {
 
 function buildChoices(type, choices) {
   if (type === 'MULTIPLE_CHOICE') {
-    return choices.map((c, i) => ({
+    return choices.map(c => ({
       content: c.content.trim(),
-      position: i,
       isCorrect: c.isCorrect === true,
       blankIndex: 0,
     }));
   }
 
-  const positionPerBlank = {};
-  return choices.map(c => {
-    const pos = positionPerBlank[c.blankIndex] ?? 0;
-    positionPerBlank[c.blankIndex] = pos + 1;
-    return {
-      content: c.content.trim(),
-      position: pos,
-      isCorrect: c.isCorrect === true,
-      blankIndex: c.blankIndex,
-    };
-  });
+  return choices.map(c => ({
+    content: c.content.trim(),
+    isCorrect: c.isCorrect === true,
+    blankIndex: c.blankIndex,
+  }));
 }
 
 async function getSectionQuestions(req, res) {
@@ -84,20 +77,20 @@ async function getSectionQuestions(req, res) {
 
   const questions = await prisma.question.findMany({
     where: { sectionId },
-    orderBy: { orderIndex: 'asc' },
-    include: { choices: { orderBy: { position: 'asc' } } },
+    include: { choices: true },
   });
   res.json(questions);
 }
 
 async function createQuestion(req, res) {
   const { sectionId } = req.params;
-  const { type, content, solutionExplanation, difficulty, choices } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices } = req.body;
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
   if (!content || !content.trim()) errors.push('content is required');
-  if (!solutionExplanation || !solutionExplanation.trim()) errors.push('solutionExplanation is required');
+  if (!correctExplanation || !correctExplanation.trim()) errors.push('correctExplanation is required');
+  if (!incorrectExplanation || !incorrectExplanation.trim()) errors.push('incorrectExplanation is required');
   if (difficulty === undefined || !Number.isInteger(difficulty) || difficulty < 1 || difficulty > 5) errors.push('difficulty must be an integer between 1 and 5');
 
   if (errors.length) return res.status(400).json({ error: errors.join('; ') });
@@ -110,15 +103,13 @@ async function createQuestion(req, res) {
   const { error, status } = await ownedSection(sectionId, req.user.sub);
   if (error) return res.status(status).json({ error });
 
-  const orderIndex = await prisma.question.count({ where: { sectionId } });
-
   const question = await prisma.question.create({
     data: {
       sectionId,
       type,
       content: content.trim(),
-      solutionExplanation: solutionExplanation.trim(),
-      orderIndex,
+      correctExplanation: correctExplanation.trim(),
+      incorrectExplanation: incorrectExplanation.trim(),
       difficulty,
       choices: { create: buildChoices(type, choices) },
     },
@@ -126,6 +117,48 @@ async function createQuestion(req, res) {
   });
 
   res.status(201).json(question);
+}
+
+async function updateQuestion(req, res) {
+  const { sectionId, questionId } = req.params;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices } = req.body;
+  const errors = [];
+
+  if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
+  if (!content || !content.trim()) errors.push('content is required');
+  if (!correctExplanation || !correctExplanation.trim()) errors.push('correctExplanation is required');
+  if (!incorrectExplanation || !incorrectExplanation.trim()) errors.push('incorrectExplanation is required');
+  if (difficulty === undefined || !Number.isInteger(difficulty) || difficulty < 1 || difficulty > 5) errors.push('difficulty must be an integer between 1 and 5');
+
+  if (errors.length) return res.status(400).json({ error: errors.join('; ') });
+
+  const choiceError = type === 'FILL_IN_BLANK'
+    ? validateFillInBlank(choices)
+    : validateMultipleChoice(choices);
+  if (choiceError) return res.status(400).json({ error: choiceError });
+
+  const { error, status } = await ownedSection(sectionId, req.user.sub);
+  if (error) return res.status(status).json({ error });
+
+  const existing = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!existing || existing.sectionId !== sectionId) return res.status(404).json({ error: 'Question not found' });
+
+  await prisma.choice.deleteMany({ where: { questionId } });
+
+  const question = await prisma.question.update({
+    where: { id: questionId },
+    data: {
+      type,
+      content: content.trim(),
+      correctExplanation: correctExplanation.trim(),
+      incorrectExplanation: incorrectExplanation.trim(),
+      difficulty,
+      choices: { create: buildChoices(type, choices) },
+    },
+    include: { choices: true },
+  });
+
+  res.json(question);
 }
 
 async function attemptQuestion(req, res) {
@@ -220,4 +253,4 @@ async function attemptQuestion(req, res) {
   res.status(201).json(attempt);
 }
 
-module.exports = { getSectionQuestions, createQuestion, attemptQuestion };
+module.exports = { getSectionQuestions, createQuestion, updateQuestion, attemptQuestion };
