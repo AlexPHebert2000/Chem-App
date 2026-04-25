@@ -143,22 +143,36 @@ async function updateQuestion(req, res) {
   const existing = await prisma.question.findUnique({ where: { id: questionId } });
   if (!existing || existing.sectionId !== sectionId) return res.status(404).json({ error: 'Question not found' });
 
-  await prisma.choice.deleteMany({ where: { questionId } });
+  try {
+    await prisma.choice.deleteMany({ where: { questionId } });
 
-  const question = await prisma.question.update({
-    where: { id: questionId },
-    data: {
-      type,
-      content: content.trim(),
-      correctExplanation: correctExplanation.trim(),
-      incorrectExplanation: incorrectExplanation.trim(),
-      difficulty,
-      choices: { create: buildChoices(type, choices) },
-    },
-    include: { choices: true },
-  });
+    const builtChoices = buildChoices(type, choices);
 
-  res.json(question);
+    await prisma.question.update({
+      where: { id: questionId },
+      data: {
+        type,
+        content: content.trim(),
+        correctExplanation: correctExplanation.trim(),
+        incorrectExplanation: incorrectExplanation.trim(),
+        difficulty,
+      },
+    });
+
+    await Promise.all(
+      builtChoices.map(c => prisma.choice.create({ data: { ...c, questionId } }))
+    );
+
+    const question = await prisma.question.findUnique({
+      where: { id: questionId },
+      include: { choices: true },
+    });
+
+    res.json(question);
+  } catch (e) {
+    console.error('updateQuestion error:', e);
+    res.status(500).json({ error: 'Could not update question' });
+  }
 }
 
 async function attemptQuestion(req, res) {
