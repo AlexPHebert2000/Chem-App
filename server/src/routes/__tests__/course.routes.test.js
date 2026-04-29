@@ -59,7 +59,18 @@ describe('POST /api/courses', () => {
     expect(res.body.error).toMatch(/name/);
   });
 
+  test('500 if no unique course code can be generated after 10 attempts', async () => {
+    prisma.course.findUnique.mockResolvedValue({ id: 'existing', code: 'TAKEN001' });
+    const res = await request(app)
+      .post('/api/courses')
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`)
+      .send({ name: 'General Chemistry I' });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toMatch(/unique course code/);
+  });
+
   test('201 with created course on success', async () => {
+    prisma.course.findUnique.mockResolvedValue(null);
     prisma.course.create.mockResolvedValue(COURSE);
     const res = await request(app)
       .post('/api/courses')
@@ -181,6 +192,16 @@ describe('POST /api/courses/:courseId/join-requests/:requestId/approve', () => {
       .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/already approved/);
+  });
+
+  test('409 if join request is already rejected', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.joinRequest.findUnique.mockResolvedValue({ ...JOIN_REQUEST, status: 'REJECTED' });
+    const res = await request(app)
+      .post(url)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/already rejected/);
   });
 
   test('201 with enrollment on success', async () => {
