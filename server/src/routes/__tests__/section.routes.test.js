@@ -6,7 +6,7 @@ jest.mock('../../lib/prisma', () => ({
   section: { findUnique: jest.fn() },
   chapter: { findUnique: jest.fn() },
   course: { findUnique: jest.fn() },
-  question: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  question: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
   choice: { deleteMany: jest.fn(), create: jest.fn() },
 }));
 
@@ -475,5 +475,57 @@ describe('PATCH /api/sections/:sectionId/questions/:questionId — error path', 
     const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
     expect(res.status).toBe(500);
     expect(res.body.error).toMatch(/Could not update question/);
+  });
+});
+
+// ─── Get section questions ────────────────────────────────────────────────────
+
+describe('GET /api/sections/:sectionId/questions', () => {
+  const getUrl = `/api/sections/${SECTION.id}/questions`;
+  const QUESTION_WITH_CHOICES = { id: 'question-id-1', sectionId: SECTION.id, type: 'MULTIPLE_CHOICE', choices: MC_CHOICES };
+
+  test('401 if no token', async () => {
+    const res = await request(app).get(getUrl);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if requester is a STUDENT', async () => {
+    const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('404 if section not found', async () => {
+    prisma.section.findUnique.mockResolvedValue(null);
+    const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Section not found/);
+  });
+
+  test('403 if teacher does not own the course', async () => {
+    mockOwnership();
+    const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('TEACHER', OTHER_TEACHER_ID)}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('200 with questions including choices', async () => {
+    mockOwnership();
+    prisma.question.findMany.mockResolvedValue([QUESTION_WITH_CHOICES]);
+    const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0]).toMatchObject({ type: 'MULTIPLE_CHOICE', sectionId: SECTION.id });
+    expect(prisma.question.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { sectionId: SECTION.id },
+      include: { choices: true },
+    }));
+  });
+
+  test('200 with empty array when section has no questions', async () => {
+    mockOwnership();
+    prisma.question.findMany.mockResolvedValue([]);
+    const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 });

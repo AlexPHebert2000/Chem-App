@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
-  course: { create: jest.fn(), findUnique: jest.fn() },
+  course: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn() },
+  chapter: { findMany: jest.fn() },
   studentCourse: { create: jest.fn(), findUnique: jest.fn() },
   joinRequest: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
 }));
@@ -412,5 +413,104 @@ describe('POST /api/courses/:courseId/clone', () => {
     const createCall = prisma.course.create.mock.calls[0][0].data;
     const clonedQuestion = createCall.chapters.create[0].sections.create[0].questions.create[0];
     expect(clonedQuestion.id).toBeUndefined();
+  });
+});
+
+// ─── Get teacher courses ──────────────────────────────────────────────────────
+
+describe('GET /api/courses', () => {
+  test('401 if no token', async () => {
+    const res = await request(app).get('/api/courses');
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if requester is a STUDENT', async () => {
+    const res = await request(app)
+      .get('/api/courses')
+      .set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('200 with array of courses owned by the teacher', async () => {
+    prisma.course.findMany.mockResolvedValue([COURSE]);
+    const res = await request(app)
+      .get('/api/courses')
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0]).toMatchObject({ id: COURSE.id, teacherId: TEACHER_ID });
+    expect(prisma.course.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { teacherId: TEACHER_ID },
+    }));
+  });
+
+  test('200 with empty array when teacher has no courses', async () => {
+    prisma.course.findMany.mockResolvedValue([]);
+    const res = await request(app)
+      .get('/api/courses')
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+});
+
+// ─── Get course chapters ──────────────────────────────────────────────────────
+
+describe('GET /api/courses/:courseId/chapters', () => {
+  const url = `/api/courses/${COURSE.id}/chapters`;
+  const CHAPTER_WITH_COUNT = { ...ORIGINAL.chapters?.[0], _count: { sections: 2 } };
+
+  test('401 if no token', async () => {
+    const res = await request(app).get(url);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if requester is a STUDENT', async () => {
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('404 if course not found', async () => {
+    prisma.course.findUnique.mockResolvedValue(null);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Course not found/);
+  });
+
+  test('403 if teacher does not own the course', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', OTHER_TEACHER_ID)}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('200 with chapters list ordered by orderIndex', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.chapter.findMany.mockResolvedValue([CHAPTER_WITH_COUNT]);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(prisma.chapter.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { courseId: COURSE.id },
+      orderBy: { orderIndex: 'asc' },
+    }));
+  });
+
+  test('200 with empty array when course has no chapters', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.chapter.findMany.mockResolvedValue([]);
+    const res = await request(app)
+      .get(url)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 });

@@ -4,8 +4,8 @@ const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
   course: { findUnique: jest.fn() },
-  chapter: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-  section: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  chapter: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
+  section: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn(), count: jest.fn() },
 }));
 
 const prisma = require('../../lib/prisma');
@@ -277,5 +277,59 @@ describe('PATCH /api/chapters/:chapterId/sections/swap', () => {
     const res = await request(app).patch(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send(validBody);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ sectionIdA: SECTION_A.id, orderIndexA: SECTION_B.orderIndex, sectionIdB: SECTION_B.id, orderIndexB: SECTION_A.orderIndex });
+  });
+});
+
+// ─── Get chapter sections ─────────────────────────────────────────────────────
+
+describe('GET /api/chapters/:chapterId/sections', () => {
+  const url = `/api/chapters/${CHAPTER_A.id}/sections`;
+  const SECTION_WITH_COUNT = { ...SECTION_A, _count: { questions: 3 } };
+
+  test('401 if no token', async () => {
+    const res = await request(app).get(url);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if requester is a STUDENT', async () => {
+    const res = await request(app).get(url).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('404 if chapter not found', async () => {
+    prisma.chapter.findUnique.mockResolvedValue(null);
+    const res = await request(app).get(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Chapter not found/);
+  });
+
+  test('403 if teacher does not own the course', async () => {
+    prisma.chapter.findUnique.mockResolvedValue(CHAPTER_A);
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    const res = await request(app).get(url).set('Authorization', `Bearer ${token('TEACHER', OTHER_TEACHER_ID)}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('200 with sections list including question count', async () => {
+    prisma.chapter.findUnique.mockResolvedValue(CHAPTER_A);
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.section.findMany.mockResolvedValue([SECTION_WITH_COUNT]);
+    const res = await request(app).get(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(prisma.section.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { chapterId: CHAPTER_A.id },
+      orderBy: { orderIndex: 'asc' },
+    }));
+  });
+
+  test('200 with empty array when chapter has no sections', async () => {
+    prisma.chapter.findUnique.mockResolvedValue(CHAPTER_A);
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.section.findMany.mockResolvedValue([]);
+    const res = await request(app).get(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 });
