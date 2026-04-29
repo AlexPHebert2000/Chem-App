@@ -263,3 +263,154 @@ describe('GET /api/courses/:courseId/join-requests', () => {
     expect(res.body).toEqual([]);
   });
 });
+
+// ─── Clone course ─────────────────────────────────────────────────────────────
+
+const ORIGINAL = {
+  id: 'course-id-1',
+  name: 'Gen Chem I',
+  code: 'ORIG0001',
+  teacherId: TEACHER_ID,
+  chapters: [],
+};
+
+const RICH_ORIGINAL = {
+  ...ORIGINAL,
+  chapters: [{
+    id: 'chapter-id-1',
+    name: 'Atomic Structure',
+    description: 'Intro to atoms',
+    orderIndex: 0,
+    sections: [{
+      id: 'section-id-1',
+      name: 'The Nucleus',
+      description: 'Protons and neutrons',
+      orderIndex: 0,
+      questions: [{
+        id: 'question-id-1',
+        type: 'MULTIPLE_CHOICE',
+        content: 'What is the atomic number of Carbon?',
+        correctExplanation: 'Carbon has 6 protons.',
+        incorrectExplanation: 'Review the periodic table.',
+        difficulty: 2,
+        choices: [
+          { id: 'choice-id-1', content: '6',  isCorrect: true,  blankIndex: 0 },
+          { id: 'choice-id-2', content: '12', isCorrect: false, blankIndex: 0 },
+        ],
+      }],
+    }],
+  }],
+};
+
+const CLONE = { id: 'clone-id-1', name: 'Gen Chem I (Copy)', teacherId: TEACHER_ID, code: 'NEW10001' };
+
+function mockClone(original = ORIGINAL) {
+  prisma.course.findUnique.mockImplementation(({ where }) => {
+    if (where.id) return Promise.resolve(original);
+    if (where.code) return Promise.resolve(null); // code is available
+    return Promise.resolve(null);
+  });
+  prisma.course.create.mockResolvedValue(CLONE);
+}
+
+describe('POST /api/courses/:courseId/clone', () => {
+  const cloneUrl = `/api/courses/${ORIGINAL.id}/clone`;
+
+  test('401 if no token', async () => {
+    const res = await request(app).post(cloneUrl);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if requester is a STUDENT', async () => {
+    const res = await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('404 if course not found', async () => {
+    prisma.course.findUnique.mockResolvedValue(null);
+    const res = await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Course not found/);
+  });
+
+  test('403 if teacher does not own the course', async () => {
+    prisma.course.findUnique.mockResolvedValue(ORIGINAL);
+    const res = await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('TEACHER', OTHER_TEACHER_ID)}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('500 if no unique code can be generated after 10 attempts', async () => {
+    prisma.course.findUnique.mockImplementation(({ where }) => {
+      if (where.id) return Promise.resolve(ORIGINAL);
+      if (where.code) return Promise.resolve({ id: 'existing', code: where.code });
+      return Promise.resolve(null);
+    });
+    const res = await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(500);
+    expect(res.body.error).toMatch(/unique course code/);
+  });
+
+  test('201 with cloned course name suffixed with (Copy)', async () => {
+    mockClone();
+    const res = await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(201);
+    expect(prisma.course.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ name: `${ORIGINAL.name} (Copy)`, teacherId: TEACHER_ID }),
+    }));
+  });
+
+  test('201 with empty chapters array for a course with no chapters', async () => {
+    mockClone();
+    const res = await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ id: CLONE.id, name: CLONE.name });
+    expect(prisma.course.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ chapters: { create: [] } }),
+    }));
+  });
+
+  test('201 and passes full nested chapter→section→question→choice structure to create', async () => {
+    mockClone(RICH_ORIGINAL);
+    const res = await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    expect(res.status).toBe(201);
+
+    const createCall = prisma.course.create.mock.calls[0][0].data;
+    const clonedChapter = createCall.chapters.create[0];
+    expect(clonedChapter).toMatchObject({ name: 'Atomic Structure', orderIndex: 0 });
+    expect(clonedChapter.sections.create[0]).toMatchObject({ name: 'The Nucleus', orderIndex: 0 });
+
+    const clonedQuestion = clonedChapter.sections.create[0].questions.create[0];
+    expect(clonedQuestion).toMatchObject({
+      type: 'MULTIPLE_CHOICE',
+      content: 'What is the atomic number of Carbon?',
+      difficulty: 2,
+    });
+    expect(clonedQuestion.choices.create).toHaveLength(2);
+    expect(clonedQuestion.choices.create[0]).toEqual({ content: '6', isCorrect: true, blankIndex: 0 });
+  });
+
+  test('cloned question does not carry over the original question id', async () => {
+    mockClone(RICH_ORIGINAL);
+    await request(app)
+      .post(cloneUrl)
+      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
+    const createCall = prisma.course.create.mock.calls[0][0].data;
+    const clonedQuestion = createCall.chapters.create[0].sections.create[0].questions.create[0];
+    expect(clonedQuestion.id).toBeUndefined();
+  });
+});
