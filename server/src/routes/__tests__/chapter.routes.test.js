@@ -30,7 +30,7 @@ const SECTION_B = { id: 'section-id-2', chapterId: CHAPTER_A.id, name: 'Electron
 
 describe('POST /api/courses/:courseId/chapters', () => {
   const url = `/api/courses/${COURSE.id}/chapters`;
-  const validBody = { name: 'Atomic Structure', description: 'Intro to atoms', orderIndex: 0 };
+  const validBody = { name: 'Atomic Structure', description: 'Intro to atoms' };
 
   test('401 if no token', async () => {
     const res = await request(app).post(url).send(validBody);
@@ -43,27 +43,15 @@ describe('POST /api/courses/:courseId/chapters', () => {
   });
 
   test('400 if name is missing', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ description: 'desc', orderIndex: 0 });
+    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ description: 'desc' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/name/);
   });
 
   test('400 if description is missing', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ name: 'Chapter', orderIndex: 0 });
+    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ name: 'Chapter' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/description/);
-  });
-
-  test('400 if orderIndex is missing', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ name: 'Chapter', description: 'desc' });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/orderIndex/);
-  });
-
-  test('400 if orderIndex is negative', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ ...validBody, orderIndex: -1 });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/orderIndex/);
   });
 
   test('404 if course not found', async () => {
@@ -80,12 +68,16 @@ describe('POST /api/courses/:courseId/chapters', () => {
     expect(res.body.error).toMatch(/do not own/);
   });
 
-  test('201 with created chapter on success', async () => {
+  test('201 with created chapter; orderIndex is auto-computed from existing count', async () => {
     prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.chapter.count.mockResolvedValue(0);
     prisma.chapter.create.mockResolvedValue(CHAPTER_A);
     const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send(validBody);
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ name: CHAPTER_A.name, courseId: COURSE.id, orderIndex: 0 });
+    expect(prisma.chapter.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ orderIndex: 0 }),
+    }));
   });
 });
 
@@ -157,7 +149,7 @@ describe('PATCH /api/courses/:courseId/chapters/swap', () => {
 
 describe('POST /api/chapters/:chapterId/sections', () => {
   const url = `/api/chapters/${CHAPTER_A.id}/sections`;
-  const validBody = { name: 'The Nucleus', description: 'Protons and neutrons', orderIndex: 0 };
+  const validBody = { name: 'The Nucleus', description: 'Protons and neutrons' };
 
   test('401 if no token', async () => {
     const res = await request(app).post(url).send(validBody);
@@ -170,21 +162,15 @@ describe('POST /api/chapters/:chapterId/sections', () => {
   });
 
   test('400 if name is missing', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ description: 'desc', orderIndex: 0 });
+    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ description: 'desc' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/name/);
   });
 
   test('400 if description is missing', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ name: 'Section', orderIndex: 0 });
+    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ name: 'Section' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/description/);
-  });
-
-  test('400 if orderIndex is missing', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send({ name: 'Section', description: 'desc' });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/orderIndex/);
   });
 
   test('404 if chapter not found', async () => {
@@ -201,13 +187,17 @@ describe('POST /api/chapters/:chapterId/sections', () => {
     expect(res.status).toBe(403);
   });
 
-  test('201 with created section on success', async () => {
+  test('201 with created section; orderIndex is auto-computed from existing count', async () => {
     prisma.chapter.findUnique.mockResolvedValue(CHAPTER_A);
     prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.section.count.mockResolvedValue(0);
     prisma.section.create.mockResolvedValue(SECTION_A);
     const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send(validBody);
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ name: SECTION_A.name, chapterId: CHAPTER_A.id, orderIndex: 0 });
+    expect(prisma.section.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ orderIndex: 0 }),
+    }));
   });
 });
 
