@@ -8,6 +8,8 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const { user, token, logout } = useAuth();
@@ -16,6 +18,7 @@ export default function DashboardScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [className, setClassName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -42,6 +45,31 @@ export default function DashboardScreen() {
       Alert.alert('Error', 'Could not create class. Please try again.');
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleExportCsv() {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Not available', 'CSV export is only available on the web app.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/courses/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `student-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      Alert.alert('Error', 'Could not download the report. Is the server running?');
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -77,9 +105,14 @@ export default function DashboardScreen() {
           <Text style={styles.greeting}>Hello, {user?.name}</Text>
           <Text style={styles.subtitle}>Your classes</Text>
         </View>
-        <TouchableOpacity onPress={logout} activeOpacity={0.7}>
-          <Text style={styles.signOut}>Sign out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleExportCsv} disabled={exporting} activeOpacity={0.7}>
+            <Text style={styles.exportBtn}>{exporting ? 'Exporting…' : 'Export CSV'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} activeOpacity={0.7}>
+            <Text style={styles.signOut}>Sign out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -151,7 +184,9 @@ const styles = StyleSheet.create({
   },
   greeting: { ...typeScale.h1, color: colors.purple800 },
   subtitle: { ...typeScale.body, color: colors.neutral600, marginTop: spacing[1] },
-  signOut: { ...typeScale.label, color: colors.purple400, marginTop: 6 },
+  headerActions: { alignItems: 'flex-end', gap: spacing[2] },
+  exportBtn: { ...typeScale.label, color: colors.teal400 },
+  signOut: { ...typeScale.label, color: colors.purple400 },
 
   card: {
     backgroundColor: colors.purple50,
