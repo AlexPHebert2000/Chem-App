@@ -2,9 +2,11 @@ const { Router } = require('express');
 const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests } = require('../controllers/course.controller');
 const { getCourseChapters, createChapter, swapChapters } = require('../controllers/chapter.controller');
+const { exportStudentsCsv } = require('../controllers/export.controller');
 
 const router = Router();
 
+router.get('/export', authenticate, requireRole('TEACHER'), exportStudentsCsv);
 router.get('/', authenticate, requireRole('TEACHER'), getTeacherCourses);
 router.post('/', authenticate, requireRole('TEACHER'), createCourse);
 router.post('/:courseId/clone', authenticate, requireRole('TEACHER'), cloneCourse);
