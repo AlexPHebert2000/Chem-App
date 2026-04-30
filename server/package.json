@@ -5,7 +5,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "seed": "node prisma/seed.js",
+    "seed:reset": "node prisma/seed.js --reset"
   },
   "jest": {
     "testEnvironment": "node",
