@@ -149,13 +149,25 @@ model StudentCourse {
   @@unique([studentId, courseId])
 }
 
+model AuthSession {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  token      String   @unique
+  userId     String   @db.ObjectId
+  userRole   String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+}
+
 model Session {
   id                String            @id @default(auto()) @map("_id") @db.ObjectId
   studentId         String            @db.ObjectId
   courseId          String            @db.ObjectId
   startedAt         DateTime
   endedAt           DateTime?
+  lastActivityAt    DateTime?
   questionsAnswered Int               @default(0)
+  pointsEarned      Int               @default(0)
   student           Student           @relation(fields: [studentId], references: [id])
   course            Course            @relation(fields: [courseId], references: [id])
   attempts          QuestionAttempt[]

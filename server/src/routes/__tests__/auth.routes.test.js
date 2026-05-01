@@ -5,7 +5,13 @@ jest.mock('../../lib/prisma', () => ({
   teacher: { findUnique: jest.fn(), create: jest.fn() },
   student: { findUnique: jest.fn(), create: jest.fn() },
   studentCourse: { findUnique: jest.fn() },
-  session: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  authSession: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    deleteMany: jest.fn(),
+  },
 }));
 
 jest.mock('bcryptjs', () => ({
@@ -13,16 +19,26 @@ jest.mock('bcryptjs', () => ({
   compare: jest.fn(),
 }));
 
+// Mock crypto so we can predict the generated session token
+jest.mock('crypto', () => {
+  const actual = jest.requireActual('crypto');
+  return {
+    ...actual,
+    randomBytes: jest.fn(() => Buffer.from('a'.repeat(32))),
+  };
+});
+
 const prisma = require('../../lib/prisma');
 const bcrypt = require('bcryptjs');
 
-// Stable JWT secret for tests
 process.env.JWT_SECRET = 'test_secret';
 process.env.JWT_EXPIRES_IN = '15m';
 
 const STUDENT = { id: 'student-id-1', email: 'student@test.com', name: 'Test Student', password: 'hashed_password' };
 const TEACHER = { id: 'teacher-id-1', email: 'teacher@test.com', name: 'Test Teacher', password: 'hashed_password' };
-const SESSION = { id: 'session-id-1', studentId: STUDENT.id, courseId: 'course-id-1', startedAt: new Date(), endedAt: null };
+
+const FUTURE = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+const AUTH_SESSION = { id: 'auth-session-id-1', token: 'hashed_token', userId: STUDENT.id, userRole: 'STUDENT', expiresAt: FUTURE };
 
 // ─── Signup ───────────────────────────────────────────────────────────────────
 
@@ -123,27 +139,106 @@ describe('POST /api/auth/login', () => {
     expect(res.body.error).toMatch(/not enrolled/);
   });
 
-  test('200 with token, user, and sessionId on successful STUDENT login', async () => {
+  test('200 without sessionToken when stayLoggedIn is false', async () => {
     prisma.student.findUnique.mockResolvedValue(STUDENT);
     bcrypt.compare.mockResolvedValue(true);
     prisma.studentCourse.findUnique.mockResolvedValue({ studentId: STUDENT.id, courseId: 'course-id-1' });
-    prisma.session.create.mockResolvedValue(SESSION);
-    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', courseId: 'course-id-1' });
+    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', courseId: 'course-id-1', stayLoggedIn: false });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
-    expect(res.body.user).toMatchObject({ email: STUDENT.email, role: 'STUDENT' });
-    expect(res.body.sessionId).toBe(SESSION.id);
+    expect(res.body.sessionToken).toBeUndefined();
+    expect(prisma.authSession.create).not.toHaveBeenCalled();
   });
 
-  test('200 with token and user on successful TEACHER login (no session)', async () => {
+  test('200 with sessionToken when stayLoggedIn is true (STUDENT)', async () => {
+    prisma.student.findUnique.mockResolvedValue(STUDENT);
+    bcrypt.compare.mockResolvedValue(true);
+    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: STUDENT.id, courseId: 'course-id-1' });
+    prisma.authSession.create.mockResolvedValue(AUTH_SESSION);
+    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', courseId: 'course-id-1', stayLoggedIn: true });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeDefined();
+    expect(res.body.sessionToken).toBeDefined();
+    expect(prisma.authSession.create).toHaveBeenCalled();
+  });
+
+  test('200 with sessionToken when stayLoggedIn is true (TEACHER)', async () => {
+    prisma.teacher.findUnique.mockResolvedValue(TEACHER);
+    bcrypt.compare.mockResolvedValue(true);
+    prisma.authSession.create.mockResolvedValue({ ...AUTH_SESSION, userId: TEACHER.id, userRole: 'TEACHER' });
+    const res = await request(app).post('/api/auth/login').send({ role: 'TEACHER', email: TEACHER.email, password: 'password123', stayLoggedIn: true });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeDefined();
+    expect(res.body.sessionToken).toBeDefined();
+    expect(prisma.authSession.create).toHaveBeenCalled();
+  });
+
+  test('200 without sessionToken when stayLoggedIn is omitted (TEACHER)', async () => {
     prisma.teacher.findUnique.mockResolvedValue(TEACHER);
     bcrypt.compare.mockResolvedValue(true);
     const res = await request(app).post('/api/auth/login').send({ role: 'TEACHER', email: TEACHER.email, password: 'password123' });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
+    expect(res.body.sessionToken).toBeUndefined();
+    expect(prisma.authSession.create).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Refresh ──────────────────────────────────────────────────────────────────
+
+describe('POST /api/auth/refresh', () => {
+  test('400 if sessionToken is missing', async () => {
+    const res = await request(app).post('/api/auth/refresh').send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/sessionToken/);
+  });
+
+  test('401 if auth session not found', async () => {
+    prisma.authSession.findUnique.mockResolvedValue(null);
+    const res = await request(app).post('/api/auth/refresh').send({ sessionToken: 'invalid_token' });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('SESSION_EXPIRED');
+  });
+
+  test('401 if auth session is expired', async () => {
+    prisma.authSession.findUnique.mockResolvedValue({ ...AUTH_SESSION, expiresAt: new Date(Date.now() - 1000) });
+    prisma.authSession.delete.mockResolvedValue({});
+    const res = await request(app).post('/api/auth/refresh').send({ sessionToken: 'expired_token' });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('SESSION_EXPIRED');
+  });
+
+  test('401 if user no longer exists', async () => {
+    prisma.authSession.findUnique.mockResolvedValue(AUTH_SESSION);
+    prisma.authSession.update.mockResolvedValue(AUTH_SESSION);
+    prisma.student.findUnique.mockResolvedValue(null);
+    const res = await request(app).post('/api/auth/refresh').send({ sessionToken: 'valid_token' });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('SESSION_EXPIRED');
+  });
+
+  test('200 returns new JWT and user for valid STUDENT session', async () => {
+    const { password: _, ...studentNoPass } = STUDENT;
+    prisma.authSession.findUnique.mockResolvedValue(AUTH_SESSION);
+    prisma.authSession.update.mockResolvedValue(AUTH_SESSION);
+    prisma.student.findUnique.mockResolvedValue(studentNoPass);
+    const res = await request(app).post('/api/auth/refresh').send({ sessionToken: 'valid_token' });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeDefined();
+    expect(res.body.user).toMatchObject({ email: STUDENT.email, role: 'STUDENT' });
+    expect(res.body.user.password).toBeUndefined();
+  });
+
+  test('200 returns new JWT and user for valid TEACHER session', async () => {
+    const { password: _, ...teacherNoPass } = TEACHER;
+    const teacherSession = { ...AUTH_SESSION, userId: TEACHER.id, userRole: 'TEACHER' };
+    prisma.authSession.findUnique.mockResolvedValue(teacherSession);
+    prisma.authSession.update.mockResolvedValue(teacherSession);
+    prisma.teacher.findUnique.mockResolvedValue(teacherNoPass);
+    const res = await request(app).post('/api/auth/refresh').send({ sessionToken: 'valid_teacher_token' });
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBeDefined();
     expect(res.body.user).toMatchObject({ email: TEACHER.email, role: 'TEACHER' });
-    expect(res.body.sessionId).toBeUndefined();
-    expect(prisma.session.create).not.toHaveBeenCalled();
   });
 });
 
@@ -160,44 +255,27 @@ describe('POST /api/auth/logout', () => {
     expect(res.status).toBe(401);
   });
 
-  test('400 if sessionId is missing for STUDENT', async () => {
-    const token = loginAs('STUDENT', STUDENT.id);
-    const res = await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).send({});
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/sessionId/);
-  });
-
-  test('404 if session not found', async () => {
-    prisma.session.findUnique.mockResolvedValue(null);
-    const token = loginAs('STUDENT', STUDENT.id);
-    const res = await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).send({ sessionId: 'bad-id' });
-    expect(res.status).toBe(404);
-  });
-
-  test('404 if session belongs to a different student', async () => {
-    prisma.session.findUnique.mockResolvedValue({ ...SESSION, studentId: 'other-student-id' });
-    const token = loginAs('STUDENT', STUDENT.id);
-    const res = await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).send({ sessionId: SESSION.id });
-    expect(res.status).toBe(404);
-  });
-
-  test('200 and sets endedAt on successful STUDENT logout', async () => {
-    prisma.session.findUnique.mockResolvedValue(SESSION);
-    prisma.session.update.mockResolvedValue({ ...SESSION, endedAt: new Date() });
-    const token = loginAs('STUDENT', STUDENT.id);
-    const res = await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).send({ sessionId: SESSION.id });
-    expect(res.status).toBe(200);
-    expect(prisma.session.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: SESSION.id },
-      data: expect.objectContaining({ endedAt: expect.any(Date) }),
-    }));
-  });
-
-  test('200 for TEACHER logout without session logic', async () => {
+  test('200 without sessionToken — JWT-only session logout', async () => {
     const token = loginAs('TEACHER', TEACHER.id);
     const res = await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).send({});
     expect(res.status).toBe(200);
-    expect(prisma.session.update).not.toHaveBeenCalled();
+    expect(prisma.authSession.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('200 and deletes auth session when sessionToken provided (TEACHER)', async () => {
+    prisma.authSession.deleteMany.mockResolvedValue({ count: 1 });
+    const token = loginAs('TEACHER', TEACHER.id);
+    const res = await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).send({ sessionToken: 'some_session_token' });
+    expect(res.status).toBe(200);
+    expect(prisma.authSession.deleteMany).toHaveBeenCalled();
+  });
+
+  test('200 and deletes auth session when sessionToken provided (STUDENT)', async () => {
+    prisma.authSession.deleteMany.mockResolvedValue({ count: 1 });
+    const token = loginAs('STUDENT', STUDENT.id);
+    const res = await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`).send({ sessionToken: 'some_session_token' });
+    expect(res.status).toBe(200);
+    expect(prisma.authSession.deleteMany).toHaveBeenCalled();
   });
 });
 

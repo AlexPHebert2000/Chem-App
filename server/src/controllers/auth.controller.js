@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const authSessionService = require('../services/authSession.service');
 
 function signToken(id, role) {
   return jwt.sign({ sub: id, role }, process.env.JWT_SECRET, {
@@ -38,7 +39,7 @@ async function signup(req, res) {
 }
 
 async function login(req, res) {
-  const { role, email, password, courseId } = req.body;
+  const { role, email, password, courseId, stayLoggedIn } = req.body;
   const errors = [];
 
   if (!role || !['TEACHER', 'STUDENT'].includes(role)) errors.push('role must be TEACHER or STUDENT');
@@ -54,42 +55,48 @@ async function login(req, res) {
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-  const token = signToken(user.id, role);
-  const responseBody = { token, user: { id: user.id, name: user.name, email: user.email, role } };
-
   if (role === 'STUDENT') {
     const enrollment = await prisma.studentCourse.findUnique({
       where: { studentId_courseId: { studentId: user.id, courseId } },
     });
     if (!enrollment) return res.status(403).json({ error: 'Student is not enrolled in this course' });
+  }
 
-    const session = await prisma.session.create({
-      data: { studentId: user.id, courseId, startedAt: new Date() },
-    });
-    responseBody.sessionId = session.id;
+  const token = signToken(user.id, role);
+  const responseBody = { token, user: { id: user.id, name: user.name, email: user.email, role } };
+
+  if (stayLoggedIn === true) {
+    responseBody.sessionToken = await authSessionService.createAuthSession(user.id, role);
   }
 
   res.json(responseBody);
 }
 
+async function refresh(req, res) {
+  const { sessionToken } = req.body;
+  if (!sessionToken) return res.status(400).json({ error: 'sessionToken is required' });
+
+  const session = await authSessionService.validateAuthSession(sessionToken);
+  if (!session) return res.status(401).json({ error: 'SESSION_EXPIRED' });
+
+  const model = getModel(session.userRole);
+  if (!model) return res.status(401).json({ error: 'SESSION_EXPIRED' });
+
+  const user = await model.findUnique({
+    where: { id: session.userId },
+    omit: { password: true },
+  });
+  if (!user) return res.status(401).json({ error: 'SESSION_EXPIRED' });
+
+  const token = signToken(user.id, session.userRole);
+  res.json({ token, user: { ...user, role: session.userRole } });
+}
+
 async function logout(req, res) {
-  const { role, sub: studentId } = req.user;
-
-  if (role === 'STUDENT') {
-    const { sessionId } = req.body;
-    if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
-
-    const session = await prisma.session.findUnique({ where: { id: sessionId } });
-    if (!session || session.studentId !== studentId) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    await prisma.session.update({
-      where: { id: sessionId },
-      data: { endedAt: new Date() },
-    });
+  const { sessionToken } = req.body;
+  if (sessionToken) {
+    await authSessionService.deleteAuthSession(sessionToken);
   }
-
   res.json({ message: 'Logged out successfully' });
 }
 
@@ -107,4 +114,4 @@ async function me(req, res) {
   res.json({ ...user, role });
 }
 
-module.exports = { signup, login, logout, me };
+module.exports = { signup, login, refresh, logout, me };
