@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { recordActivity } = require('../services/workSession.service');
 
 const QUESTION_TYPES = ['MULTIPLE_CHOICE', 'FILL_IN_BLANK'];
 
@@ -242,6 +243,12 @@ async function attemptQuestion(req, res) {
   const selectedChoices = choiceIds.map(id => choiceMap.get(id));
   const score = selectedChoices.filter(c => c.isCorrect).length;
 
+  const maxScore = question.type === 'MULTIPLE_CHOICE'
+    ? 1
+    : new Set(question.choices.map(c => c.blankIndex)).size;
+  const isCorrect = score === maxScore;
+  const xpDelta = isCorrect ? question.difficulty * 10 : 0;
+
   const attempt = await prisma.questionAttempt.create({
     data: {
       studentId,
@@ -259,12 +266,14 @@ async function attemptQuestion(req, res) {
     include: { answers: true },
   });
 
-  await prisma.session.update({
-    where: { id: sessionId },
-    data: { questionsAnswered: { increment: 1 } },
-  });
+  await recordActivity(sessionId, xpDelta);
 
-  res.status(201).json(attempt);
+  res.status(201).json({
+    attempt,
+    isCorrect,
+    explanation: isCorrect ? question.correctExplanation : question.incorrectExplanation,
+    xpDelta,
+  });
 }
 
 module.exports = { getSectionQuestions, createQuestion, updateQuestion, attemptQuestion };

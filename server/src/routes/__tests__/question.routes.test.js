@@ -41,8 +41,8 @@ const FIB_CHOICES = [
   { id: 'choice-id-4', content: 'Ca', isCorrect: false, blankIndex: 1 },
 ];
 
-const MC_QUESTION  = { id: 'question-id-1', sectionId: SECTION.id, type: 'MULTIPLE_CHOICE', choices: MC_CHOICES };
-const FIB_QUESTION = { id: 'question-id-2', sectionId: SECTION.id, type: 'FILL_IN_BLANK',   choices: FIB_CHOICES };
+const MC_QUESTION  = { id: 'question-id-1', sectionId: SECTION.id, type: 'MULTIPLE_CHOICE', difficulty: 3, correctExplanation: 'Carbon has 6 electrons.', incorrectExplanation: 'Review atomic numbers.', choices: MC_CHOICES };
+const FIB_QUESTION = { id: 'question-id-2', sectionId: SECTION.id, type: 'FILL_IN_BLANK',   difficulty: 2, correctExplanation: 'Both blanks correct!',   incorrectExplanation: 'Review the blanks.',    choices: FIB_CHOICES };
 
 const SESSION = { id: 'session-id-1', studentId: STUDENT_ID, courseId: COURSE.id, endedAt: null };
 const ENROLLMENT = { studentId: STUDENT_ID, courseId: COURSE.id };
@@ -195,13 +195,33 @@ describe('POST /api/questions/:questionId/attempt — MULTIPLE_CHOICE submission
     }));
   });
 
-  test('increments session questionsAnswered on success', async () => {
+  test('calls recordActivity with xpDelta on success', async () => {
     mockChain();
     await request(app).post(url()).set(auth()).send({ sessionId: SESSION.id, choiceIds: ['choice-id-1'] });
-    expect(prisma.session.update).toHaveBeenCalledWith({
+    expect(prisma.session.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: SESSION.id },
-      data: { questionsAnswered: { increment: 1 } },
-    });
+      data: expect.objectContaining({ questionsAnswered: { increment: 1 } }),
+    }));
+  });
+
+  test('returns enriched response with isCorrect, explanation, and xpDelta', async () => {
+    mockChain();
+    const res = await request(app).post(url()).set(auth()).send({ sessionId: SESSION.id, choiceIds: ['choice-id-1'] });
+    expect(res.status).toBe(201);
+    expect(res.body.isCorrect).toBe(true);
+    expect(res.body.explanation).toBe(MC_QUESTION.correctExplanation);
+    expect(res.body.xpDelta).toBe(MC_QUESTION.difficulty * 10);
+    expect(res.body.attempt).toBeDefined();
+  });
+
+  test('returns xpDelta 0 and incorrectExplanation for wrong answer', async () => {
+    mockChain();
+    prisma.questionAttempt.create.mockResolvedValue({ ...ATTEMPT, score: 0 });
+    const res = await request(app).post(url()).set(auth()).send({ sessionId: SESSION.id, choiceIds: ['choice-id-2'] });
+    expect(res.status).toBe(201);
+    expect(res.body.isCorrect).toBe(false);
+    expect(res.body.explanation).toBe(MC_QUESTION.incorrectExplanation);
+    expect(res.body.xpDelta).toBe(0);
   });
 });
 
