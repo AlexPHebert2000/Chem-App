@@ -13,6 +13,7 @@ export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [courseId, setCourseId] = useState('');
+  const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +21,7 @@ export default function LoginScreen({ navigation }) {
     setError('');
     setLoading(true);
     try {
-      await login(role, email.trim(), password, role === 'STUDENT' ? courseId.trim() : undefined);
+      await login(role, email.trim(), password, role === 'STUDENT' ? courseId.trim() : undefined, stayLoggedIn);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -81,6 +82,14 @@ export default function LoginScreen({ navigation }) {
             autoCapitalize="none"
           />
         )}
+
+        {/* Stay logged in */}
+        <TouchableOpacity style={styles.checkRow} onPress={() => setStayLoggedIn(v => !v)} activeOpacity={0.7}>
+          <View style={[styles.checkbox, stayLoggedIn && styles.checkboxChecked]}>
+            {stayLoggedIn && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+          <Text style={styles.checkLabel}>Stay logged in</Text>
+        </TouchableOpacity>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -156,6 +165,25 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -4 }],
   },
   btnText: { ...typeScale.button, color: colors.neutral900 },
+
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    borderColor: colors.purple400,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: { backgroundColor: colors.purple400 },
+  checkmark: { fontSize: 12, color: colors.neutral900, lineHeight: 16 },
+  checkLabel: { ...typeScale.small, color: colors.neutral700 },
 
   link: { alignItems: 'center', marginTop: spacing[2] },
   linkText: { ...typeScale.small, color: colors.neutral600 },

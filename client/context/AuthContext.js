@@ -1,83 +1,97 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { getItem, setItem, deleteItem } from '../lib/storage';
-import { api } from '../lib/api';
+import { api, setAuthCallbacks } from '../lib/api';
 
 const TOKEN_KEY = 'auth_token';
-const SESSION_KEY = 'auth_session_id';
+const SESSION_TOKEN_KEY = 'auth_session_token';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionToken, setSessionToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount, restore session from secure storage
   useEffect(() => {
+    // Wire up api.js callbacks before the first request fires
+    setAuthCallbacks({
+      onTokenRefreshed: (newToken, newUser) => {
+        setToken(newToken);
+        if (newUser) setUser(newUser);
+      },
+      onSessionExpired: async () => {
+        await deleteItem(TOKEN_KEY);
+        await deleteItem(SESSION_TOKEN_KEY);
+        setToken(null);
+        setUser(null);
+        setSessionToken(null);
+      },
+    });
+
     (async () => {
       try {
-        const storedToken = await getItem(TOKEN_KEY);
-        if (!storedToken) return;
+        const storedSessionToken = await getItem(SESSION_TOKEN_KEY);
+        if (!storedSessionToken) return;
 
-        const userData = await api.get('/auth/me', storedToken);
-        setToken(storedToken);
-        setUser(userData);
-
-        const storedSession = await getItem(SESSION_KEY);
-        if (storedSession) setSessionId(storedSession);
+        // Use the auth session to get a fresh JWT (bypasses the 401 interceptor)
+        const { token: freshToken, user: freshUser } = await api.post('/auth/refresh', { sessionToken: storedSessionToken });
+        await setItem(TOKEN_KEY, freshToken);
+        setToken(freshToken);
+        setUser(freshUser);
+        setSessionToken(storedSessionToken);
       } catch {
-        // Token expired or invalid — clear storage
+        // Auth session expired or invalid — require re-login
         await deleteItem(TOKEN_KEY);
-        await deleteItem(SESSION_KEY);
+        await deleteItem(SESSION_TOKEN_KEY);
       } finally {
         setIsLoading(false);
       }
     })();
   }, []);
 
-  async function login(role, email, password, courseId) {
-    const body = { role, email, password };
+  async function login(role, email, password, courseId, stayLoggedIn = false) {
+    const body = { role, email, password, stayLoggedIn };
     if (role === 'STUDENT') body.courseId = courseId;
 
     const data = await api.post('/auth/login', body);
 
     await setItem(TOKEN_KEY, data.token);
-    if (data.sessionId) await setItem(SESSION_KEY, data.sessionId);
+    if (data.sessionToken) {
+      await setItem(SESSION_TOKEN_KEY, data.sessionToken);
+      setSessionToken(data.sessionToken);
+    }
 
     setToken(data.token);
     setUser(data.user);
-    setSessionId(data.sessionId ?? null);
   }
 
   async function signup(role, name, email, password) {
     const data = await api.post('/auth/signup', { role, name, email, password });
 
     await setItem(TOKEN_KEY, data.token);
-
     setToken(data.token);
     setUser(data.user);
-    setSessionId(null);
   }
 
   async function logout() {
     try {
-      const body = {};
-      if (user?.role === 'STUDENT' && sessionId) body.sessionId = sessionId;
+      const storedSessionToken = await getItem(SESSION_TOKEN_KEY);
+      const body = storedSessionToken ? { sessionToken: storedSessionToken } : {};
       await api.post('/auth/logout', body, token);
     } catch {
       // Proceed with local logout even if server call fails
     } finally {
       await deleteItem(TOKEN_KEY);
-      await deleteItem(SESSION_KEY);
+      await deleteItem(SESSION_TOKEN_KEY);
       setToken(null);
       setUser(null);
-      setSessionId(null);
+      setSessionToken(null);
     }
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, sessionId, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, sessionToken, isLoading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
