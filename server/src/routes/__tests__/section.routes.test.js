@@ -8,6 +8,7 @@ jest.mock('../../lib/prisma', () => ({
   course: { findUnique: jest.fn() },
   question: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
   choice: { deleteMany: jest.fn(), create: jest.fn() },
+  studentCourse: { findUnique: jest.fn() },
 }));
 
 const prisma = require('../../lib/prisma');
@@ -489,9 +490,14 @@ describe('GET /api/sections/:sectionId/questions', () => {
     expect(res.status).toBe(401);
   });
 
-  test('403 if requester is a STUDENT', async () => {
+  test('200 for STUDENT with questions stripped of isCorrect', async () => {
+    mockOwnership();
+    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: STUDENT_ID, courseId: COURSE.id });
+    prisma.question.findMany.mockResolvedValue([QUESTION_WITH_CHOICES]);
     const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    res.body[0].choices.forEach(c => expect(c).not.toHaveProperty('isCorrect'));
   });
 
   test('404 if section not found', async () => {

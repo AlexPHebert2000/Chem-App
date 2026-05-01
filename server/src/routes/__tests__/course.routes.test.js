@@ -5,7 +5,8 @@ const app = require('../../app');
 jest.mock('../../lib/prisma', () => ({
   course: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn() },
   chapter: { findMany: jest.fn() },
-  studentCourse: { create: jest.fn(), findUnique: jest.fn() },
+  studentCourse: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn() },
+  studentSection: { findMany: jest.fn() },
   joinRequest: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
 }));
 
@@ -445,11 +446,13 @@ describe('GET /api/courses', () => {
     expect(res.status).toBe(401);
   });
 
-  test('403 if requester is a STUDENT', async () => {
+  test('200 with empty array for STUDENT with no enrollments', async () => {
+    prisma.studentCourse.findMany.mockResolvedValue([]);
     const res = await request(app)
       .get('/api/courses')
       .set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 
   test('200 with array of courses owned by the teacher', async () => {
@@ -486,11 +489,16 @@ describe('GET /api/courses/:courseId/chapters', () => {
     expect(res.status).toBe(401);
   });
 
-  test('403 if requester is a STUDENT', async () => {
+  test('200 with chapter list for enrolled STUDENT', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.chapter.findMany.mockResolvedValue([]);
+    prisma.studentSection.findMany.mockResolvedValue([]);
     const res = await request(app)
       .get(url)
       .set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
   });
 
   test('404 if course not found', async () => {
