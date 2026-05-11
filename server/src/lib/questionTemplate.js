@@ -118,32 +118,40 @@ function renderContent(content, resolutions) {
 // ─── Evaluate answer ──────────────────────────────────────────────────────────
 
 // Safe arithmetic evaluator — no eval().
-// Handles: integers, decimals, +, -, *, /
+// Handles: integers, decimals, +, -, *, /, ^ (exponentiation, right-associative)
 function safeArithmetic(expr) {
-  const tokens = expr.match(/[\d.]+|[+\-*/]/g);
+  const tokens = expr.match(/[\d.]+|[+\-*/^]/g);
   if (!tokens) return NaN;
 
-  // Parse with operator precedence: * and / before + and -
   const nums = [];
-  const ops = [];
+  const ops  = [];
 
   function applyOp() {
-    const b = nums.pop();
-    const a = nums.pop();
+    const b  = nums.pop();
+    const a  = nums.pop();
     const op = ops.pop();
-    if (op === '+') nums.push(a + b);
+    if      (op === '+') nums.push(a + b);
     else if (op === '-') nums.push(a - b);
     else if (op === '*') nums.push(a * b);
     else if (op === '/') nums.push(a / b);
+    else if (op === '^') nums.push(Math.pow(a, b));
   }
 
-  const precedence = { '+': 1, '-': 1, '*': 2, '/': 2 };
+  // ^ has higher precedence than * and /; it is right-associative so we use
+  // strict > (not >=) when deciding whether to pop a pending ^ before pushing.
+  const precedence   = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
+  const rightAssoc   = new Set(['^']);
 
   for (const tok of tokens) {
     if (/[\d.]/.test(tok)) {
       nums.push(parseFloat(tok));
     } else {
-      while (ops.length && precedence[ops[ops.length - 1]] >= precedence[tok]) {
+      while (
+        ops.length &&
+        (rightAssoc.has(tok)
+          ? precedence[ops[ops.length - 1]] > precedence[tok]
+          : precedence[ops[ops.length - 1]] >= precedence[tok])
+      ) {
         applyOp();
       }
       ops.push(tok);
@@ -168,7 +176,7 @@ function evaluateAnswer(expression, resolutions) {
   });
 
   // If no arithmetic operators remain, return the resolved string directly
-  if (!/[+\-*/]/.test(expr)) {
+  if (!/[+\-*/^]/.test(expr)) {
     // Handle bare slot numbers for num type (e.g. expression "1" with rawData = 42)
     expr = expr.replace(/\b(\d+)\b/g, (_, pos) => {
       const posNum = parseInt(pos, 10);
@@ -386,17 +394,21 @@ function validateTemplate(content, answerExpression) {
     return 'answerExpression is required';
   }
 
-  // Only allow: digits, dots, spaces, +, -, *, /, and word chars for property names
-  if (/[^0-9a-zA-Z\s+\-*/.()]/.test(answerExpression)) {
-    return 'answerExpression contains invalid characters. Only digits, property names, and +−*/ operators are allowed';
+  // Only allow: digits, dots, spaces, +, -, *, /, ^, and word chars for property names
+  if (/[^0-9a-zA-Z\s+\-*/^.()]/.test(answerExpression)) {
+    return 'answerExpression contains invalid characters. Only digits, property names, and +−*/^ operators are allowed';
   }
 
-  // All slot references must point to valid bracket positions
+  // Validate slot references in the answer expression.
+  // N.property is always a slot ref and must be in range.
+  // Bare N is a slot ref only when N <= maxPosition; larger numbers are literal
+  // constants (e.g. the "10" in "1 * 10 ^ 2" is the base, not slot 10).
   const maxPosition = brackets.length;
-  const slotRefs = [...answerExpression.matchAll(/(\d+)(?:\.\w+)?/g)];
-  for (const [, pos] of slotRefs) {
+  const slotRefs = [...answerExpression.matchAll(/(\d+)(\.\w+)?/g)];
+  for (const [, pos, prop] of slotRefs) {
     const posNum = parseInt(pos, 10);
-    if (posNum < 1 || posNum > maxPosition) {
+    const isSlotRef = prop ? true : posNum <= maxPosition;
+    if (isSlotRef && (posNum < 1 || posNum > maxPosition)) {
       return `answerExpression references slot ${posNum} but content only has ${maxPosition} bracket(s)`;
     }
   }

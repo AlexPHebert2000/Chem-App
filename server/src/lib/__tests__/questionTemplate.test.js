@@ -157,6 +157,32 @@ describe('evaluateAnswer', () => {
     expect(evaluateAnswer('1.number', carbonResolution)).toBe('6');
     expect(evaluateAnswer('1.number', carbonResolution)).not.toContain('.');
   });
+
+  test('^ computes exponentiation: 2^3 = 8', () => {
+    const res = [{ position: 1, displayValue: '2', rawData: 2 }, { position: 2, displayValue: '3', rawData: 3 }];
+    expect(evaluateAnswer('1 ^ 2', res)).toBe('8');
+  });
+
+  test('^ is right-associative: 2^3^2 = 2^9 = 512', () => {
+    const res = [
+      { position: 1, displayValue: '2', rawData: 2 },
+      { position: 2, displayValue: '3', rawData: 3 },
+      { position: 3, displayValue: '2', rawData: 2 },
+    ];
+    expect(evaluateAnswer('1 ^ 2 ^ 3', res)).toBe('512');
+  });
+
+  test('^ with * for scientific notation: coefficient * 10^exponent', () => {
+    const res = [{ position: 1, displayValue: '5', rawData: 5 }, { position: 2, displayValue: '3', rawData: 3 }];
+    expect(evaluateAnswer('1 * 10 ^ 2', res)).toBe('5000');
+  });
+
+  test('^ has higher precedence than *: coefficient * 10^exponent', () => {
+    // slot 1 = coefficient (3), slot 2 = exponent (4); "10" is a literal constant
+    const res = [{ position: 1, displayValue: '3', rawData: 3 }, { position: 2, displayValue: '4', rawData: 4 }];
+    // evaluates as 3 * (10^4) = 30000, not (3*10)^4
+    expect(evaluateAnswer('1 * 10 ^ 2', res)).toBe('30000');
+  });
 });
 
 // ─── generateDistractors ──────────────────────────────────────────────────────
@@ -295,5 +321,10 @@ describe('validateTemplate', () => {
 
   test('returns error for invalid characters in answerExpression', () => {
     expect(validateTemplate('[el(1,18).name]', '1.number; DROP TABLE')).toBeTruthy();
+  });
+
+  test('returns null for valid answerExpression using ^', () => {
+    // slot 1 = coefficient, slot 2 = exponent; "10" is a literal constant not a slot ref
+    expect(validateTemplate('[num(1,9)][num(1,6)]', '1 * 10 ^ 2')).toBeNull();
   });
 });
