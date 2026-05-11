@@ -6,7 +6,7 @@ const BRACKET_RE = /\[([^\]]+)\]/g;
 
 const EL_PROPS = ['name', 'symbol', 'number', 'mass'];
 const COMPOUND_PROPS = ['name', 'formula', 'molarMass'];
-const KNOWN_TYPES = ['el', 'num', 'compound', 'ref'];
+const KNOWN_TYPES = ['el', 'num', 'compound', 'ref', 'expr'];
 
 // ─── Parse ────────────────────────────────────────────────────────────────────
 
@@ -34,16 +34,33 @@ function parseBrackets(content) {
         });
       }
     } else if (inner.startsWith('num(')) {
-      // num(min,max)
-      const m = inner.match(/^num\((\d+),(\d+)\)$/);
-      if (!m) { descriptor.type = 'num'; descriptor.parseError = `Invalid num syntax: ${raw}`; }
-      else {
+      // num(min,max) — min may be negative e.g. num(-5,5)
+      const m = inner.match(/^num\((-?\d+),(-?\d+)\)$/);
+      if (m) {
         Object.assign(descriptor, {
           type: 'num',
           min: parseInt(m[1], 10),
           max: parseInt(m[2], 10),
           property: null,
         });
+      } else if (/[+\-*/^]/.test(inner)) {
+        // Complex expression starting with num(...), e.g. "num(1,5) + num(1,5)"
+        const numRanges = [];
+        const numRe2 = /num\((-?\d+),(-?\d+)\)/g;
+        let nm2;
+        while ((nm2 = numRe2.exec(inner)) !== null) {
+          numRanges.push({ token: nm2[0], min: parseInt(nm2[1], 10), max: parseInt(nm2[2], 10) });
+        }
+        const slotRefs2 = [];
+        const srRe2 = /(\d+)\.([a-zA-Z]+)/g;
+        let sr2;
+        while ((sr2 = srRe2.exec(inner)) !== null) {
+          slotRefs2.push({ token: sr2[0], refPosition: parseInt(sr2[1], 10), property: sr2[2] });
+        }
+        Object.assign(descriptor, { type: 'expr', expression: inner, numRanges: numRanges, slotRefs: slotRefs2 });
+      } else {
+        descriptor.type = 'num';
+        descriptor.parseError = `Invalid num syntax: ${raw}`;
       }
     } else if (inner.startsWith('compound(')) {
       // compound(category).property
@@ -64,6 +81,22 @@ function parseBrackets(content) {
         refPosition: parseInt(m[1], 10),
         property: m[2],
       });
+    } else if (/num\(-?\d+,-?\d+\)/.test(inner) || (/\d+\.\w+/.test(inner) && /[+\-*/^]/.test(inner))) {
+      // In-bracket arithmetic expression: [1.number + num(-2,2)]
+      // Resolves to a computed numeric display value.
+      const numRanges = [];
+      const numRe = /num\((-?\d+),(-?\d+)\)/g;
+      let nm;
+      while ((nm = numRe.exec(inner)) !== null) {
+        numRanges.push({ token: nm[0], min: parseInt(nm[1], 10), max: parseInt(nm[2], 10) });
+      }
+      const slotRefs = [];
+      const srRe = /(\d+)\.([a-zA-Z]+)/g;
+      let sr;
+      while ((sr = srRe.exec(inner)) !== null) {
+        slotRefs.push({ token: sr[0], refPosition: parseInt(sr[1], 10), property: sr[2] });
+      }
+      Object.assign(descriptor, { type: 'expr', expression: inner, numRanges, slotRefs });
     } else {
       descriptor.type = 'unknown';
       descriptor.parseError = `Unknown bracket type: ${raw}`;
@@ -83,7 +116,29 @@ function resolveAll(brackets) {
   for (const b of brackets) {
     let resolution;
 
-    if (b.type === 'ref') {
+    if (b.type === 'expr') {
+      let expr = b.expression;
+      // 1. Replace num(min,max) sub-ranges with random integers
+      expr = expr.replace(/num\((-?\d+),(-?\d+)\)/g, (_, minS, maxS) => {
+        const min = parseInt(minS, 10), max = parseInt(maxS, 10);
+        return String(Math.floor(Math.random() * (max - min + 1)) + min);
+      });
+      // 2. Replace slot refs with values from already-resolved slots
+      expr = expr.replace(/(\d+)\.([a-zA-Z]+)/g, (_, pos, prop) => {
+        const source = resolvedMap.get(parseInt(pos, 10));
+        const rd = source?.rawData ?? null;
+        const val = rd != null ? (typeof rd === 'object' ? rd[prop] : rd) : null;
+        return val != null ? String(val) : 'NaN';
+      });
+      // 3. Normalize double signs produced by negative num values: "6 + -1" → "6 - 1"
+      expr = expr.replace(/\+\s*-/g, '- ').replace(/-\s*-/g, '+ ');
+      const result = safeArithmetic(expr);
+      const numericResult = isNaN(result) ? null : result;
+      const displayValue = numericResult == null
+        ? '?'
+        : (Number.isInteger(numericResult) ? String(numericResult) : numericResult.toFixed(3));
+      resolution = { position: b.position, displayValue, rawData: numericResult };
+    } else if (b.type === 'ref') {
       const source = resolvedMap.get(b.refPosition);
       const rawData = source?.rawData ?? null;
       const val = rawData != null
@@ -254,7 +309,7 @@ function generateDistractors(correctValue, resolutions, brackets, answerExpressi
   const primaryBracket = getPrimarySlot(answerExpression, brackets);
   const isArithmetic = hasArithmetic(answerExpression);
 
-  if (isArithmetic || !primaryBracket) {
+  if (isArithmetic || !primaryBracket || primaryBracket.type === 'expr') {
     // Numeric variants: ±5%, ±10%, ±15%, ±20%, ±25%
     const correct = parseFloat(correctValue);
     if (!isNaN(correct)) {
@@ -394,6 +449,26 @@ function validateTemplate(content, answerExpression) {
   for (const b of brackets) {
     if (b.parseError) return b.parseError;
     if (!KNOWN_TYPES.includes(b.type)) return `Unknown bracket type: ${b.raw}`;
+
+    if (b.type === 'expr') {
+      for (const sr of b.slotRefs) {
+        if (sr.refPosition >= b.position) {
+          return `Expression [${b.expression}] references slot ${sr.refPosition} which must come before this bracket`;
+        }
+        const source = brackets.find(s => s.position === sr.refPosition);
+        if (!source) return `Expression [${b.expression}] references slot ${sr.refPosition} which does not exist`;
+        if (source.type === 'num') return `Cannot reference a num bracket property inside an expression bracket`;
+        if (source.type === 'el' && !EL_PROPS.includes(sr.property)) {
+          return `Invalid el property "${sr.property}" in expression. Valid: ${EL_PROPS.join(', ')}`;
+        }
+        if (source.type === 'compound' && !COMPOUND_PROPS.includes(sr.property)) {
+          return `Invalid compound property "${sr.property}" in expression. Valid: ${COMPOUND_PROPS.join(', ')}`;
+        }
+      }
+      for (const nr of b.numRanges) {
+        if (nr.min > nr.max) return `num range in expression must have min ≤ max: ${nr.token}`;
+      }
+    }
 
     if (b.type === 'ref') {
       if (b.refPosition >= b.position) {

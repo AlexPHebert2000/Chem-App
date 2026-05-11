@@ -55,6 +55,22 @@ describe('parseBrackets', () => {
     expect(result).toHaveLength(2);
     expect(result[1]).toMatchObject({ position: 2, type: 'ref', refPosition: 1, property: 'symbol' });
   });
+
+  test('parses expr bracket with slot ref + num range', () => {
+    const result = parseBrackets('[el(1,18).number] has [1.number + num(-2,2)] electrons.');
+    expect(result).toHaveLength(2);
+    expect(result[1]).toMatchObject({ position: 2, type: 'expr' });
+    expect(result[1].numRanges).toHaveLength(1);
+    expect(result[1].numRanges[0]).toMatchObject({ min: -2, max: 2 });
+    expect(result[1].slotRefs).toHaveLength(1);
+    expect(result[1].slotRefs[0]).toMatchObject({ refPosition: 1, property: 'number' });
+  });
+
+  test('parses standalone expr with only num ranges', () => {
+    const result = parseBrackets('The value is [num(1,5) + num(1,5)].');
+    expect(result[0]).toMatchObject({ type: 'expr' });
+    expect(result[0].numRanges).toHaveLength(2);
+  });
 });
 
 // ─── resolveAll ───────────────────────────────────────────────────────────────
@@ -109,6 +125,25 @@ describe('resolveAll', () => {
     const resolutions = resolveAll(brackets);
     // Both slots come from the same element
     expect(resolutions[0].rawData).toBe(resolutions[1].rawData);
+  });
+
+  test('expr bracket resolves to a numeric displayValue', () => {
+    const brackets = parseBrackets('[el(1,18).number] has [1.number + num(-2,2)] electrons.');
+    for (let i = 0; i < 20; i++) {
+      const resolutions = resolveAll(brackets);
+      const atomicNum = resolutions[0].rawData.number;
+      const electronCount = parseInt(resolutions[1].displayValue, 10);
+      // electron count must be atomic number ±2
+      expect(electronCount).toBeGreaterThanOrEqual(atomicNum - 2);
+      expect(electronCount).toBeLessThanOrEqual(atomicNum + 2);
+    }
+  });
+
+  test('expr bracket rawData is the numeric result', () => {
+    const brackets = parseBrackets('[el(1,18).number] and [1.number + num(0,0)]');
+    const resolutions = resolveAll(brackets);
+    // num(0,0) always gives 0, so expr = atomicNum + 0 = atomicNum
+    expect(resolutions[1].rawData).toBe(resolutions[0].rawData.number);
   });
 });
 
@@ -365,5 +400,29 @@ describe('validateTemplate', () => {
 
   test('returns error for ref bracket with invalid el property', () => {
     expect(validateTemplate('[el(1,18).name] and [1.color]', '1.number')).toMatch(/property/i);
+  });
+
+  test('returns null for valid expr bracket', () => {
+    expect(validateTemplate('[el(1,18).number] has [1.number + num(-2,2)] electrons.', '2')).toBeNull();
+  });
+
+  test('returns null for expr bracket with only num ranges', () => {
+    expect(validateTemplate('Add [num(1,5) + num(1,5)] grams.', '1')).toBeNull();
+  });
+
+  test('returns error for expr bracket referencing a forward slot', () => {
+    expect(validateTemplate('[2.number + num(-2,2)] and [el(1,18).number]', '1')).toBeTruthy();
+  });
+
+  test('returns error for expr bracket referencing a num bracket property', () => {
+    expect(validateTemplate('[num(1,10)] and [1.number + num(-1,1)]', '2')).toMatch(/num/i);
+  });
+
+  test('returns error for expr bracket with invalid el property', () => {
+    expect(validateTemplate('[el(1,18).number] and [1.color + num(-1,1)]', '2')).toMatch(/property/i);
+  });
+
+  test('returns error for expr num range with min > max', () => {
+    expect(validateTemplate('[el(1,18).number] has [1.number + num(2,-2)] electrons.', '2')).toBeTruthy();
   });
 });
