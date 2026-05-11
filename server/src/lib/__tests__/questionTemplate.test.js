@@ -49,6 +49,12 @@ describe('parseBrackets', () => {
     const result = parseBrackets('[ion(1,5).charge]');
     expect(result[0].type).toBe('unknown');
   });
+
+  test('parses ref bracket [1.symbol]', () => {
+    const result = parseBrackets('[el(1,18).name] and [1.symbol]');
+    expect(result).toHaveLength(2);
+    expect(result[1]).toMatchObject({ position: 2, type: 'ref', refPosition: 1, property: 'symbol' });
+  });
 });
 
 // ─── resolveAll ───────────────────────────────────────────────────────────────
@@ -86,6 +92,23 @@ describe('resolveAll', () => {
     const brackets = parseBrackets('[el(1,18).number]');
     const r = resolveAll(brackets)[0];
     expect(typeof r.displayValue).toBe('string');
+  });
+
+  test('ref bracket displays correct property of source bracket', () => {
+    const brackets = parseBrackets('[el(1,18).name] and [1.symbol]');
+    const resolutions = resolveAll(brackets);
+    expect(resolutions).toHaveLength(2);
+    // The ref resolution's displayValue must equal the source element's symbol
+    const sourceName = resolutions[0].displayValue;
+    const sourceSymbol = resolutions[0].rawData.symbol;
+    expect(resolutions[1].displayValue).toBe(String(sourceSymbol));
+  });
+
+  test('ref bracket shares rawData of source resolution', () => {
+    const brackets = parseBrackets('[el(1,18).name] and [1.symbol]');
+    const resolutions = resolveAll(brackets);
+    // Both slots come from the same element
+    expect(resolutions[0].rawData).toBe(resolutions[1].rawData);
   });
 });
 
@@ -326,5 +349,21 @@ describe('validateTemplate', () => {
   test('returns null for valid answerExpression using ^', () => {
     // slot 1 = coefficient, slot 2 = exponent; "10" is a literal constant not a slot ref
     expect(validateTemplate('[num(1,9)][num(1,6)]', '1 * 10 ^ 2')).toBeNull();
+  });
+
+  test('returns null for valid ref bracket', () => {
+    expect(validateTemplate('[el(1,18).name] and [1.symbol]', '1.number')).toBeNull();
+  });
+
+  test('returns error for forward ref bracket', () => {
+    expect(validateTemplate('[2.symbol] and [el(1,18).name]', '2.number')).toBeTruthy();
+  });
+
+  test('returns error for ref to num bracket', () => {
+    expect(validateTemplate('[num(1,10)] and [1.number]', '1')).toMatch(/num/i);
+  });
+
+  test('returns error for ref bracket with invalid el property', () => {
+    expect(validateTemplate('[el(1,18).name] and [1.color]', '1.number')).toMatch(/property/i);
   });
 });

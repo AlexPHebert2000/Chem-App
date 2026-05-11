@@ -166,6 +166,9 @@ export default function CreateQuestionScreen() {
                   <Text style={styles.syntaxCode}>Categories:</Text>  acids · bases · salts · oxides
                 </Text>
                 <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
+                  <Text style={styles.syntaxCode}>Cross-ref:</Text>  <Text style={styles.syntaxCode}>[1.symbol]</Text>  shows slot 1's symbol
+                </Text>
+                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
                   <Text style={styles.syntaxCode}>Answer ref:</Text>  <Text style={styles.syntaxCode}>1.number</Text>, <Text style={styles.syntaxCode}>1.mass</Text>, <Text style={styles.syntaxCode}>1+2</Text>, <Text style={styles.syntaxCode}>2*1.number</Text>
                 </Text>
               </View>

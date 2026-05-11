@@ -6,7 +6,7 @@ const BRACKET_RE = /\[([^\]]+)\]/g;
 
 const EL_PROPS = ['name', 'symbol', 'number', 'mass'];
 const COMPOUND_PROPS = ['name', 'formula', 'molarMass'];
-const KNOWN_TYPES = ['el', 'num', 'compound'];
+const KNOWN_TYPES = ['el', 'num', 'compound', 'ref'];
 
 // ─── Parse ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +56,14 @@ function parseBrackets(content) {
           property: m[2],
         });
       }
+    } else if (/^\d+\.\w+$/.test(inner)) {
+      // Cross-bracket ref: [1.symbol] → display a property of an earlier resolved slot
+      const m = inner.match(/^(\d+)\.(\w+)$/);
+      Object.assign(descriptor, {
+        type: 'ref',
+        refPosition: parseInt(m[1], 10),
+        property: m[2],
+      });
     } else {
       descriptor.type = 'unknown';
       descriptor.parseError = `Unknown bracket type: ${raw}`;
@@ -69,23 +77,39 @@ function parseBrackets(content) {
 // ─── Resolve ──────────────────────────────────────────────────────────────────
 
 function resolveAll(brackets) {
-  return brackets.map(b => {
-    if (b.type === 'el') {
+  const resolvedMap = new Map();
+  const results = [];
+
+  for (const b of brackets) {
+    let resolution;
+
+    if (b.type === 'ref') {
+      const source = resolvedMap.get(b.refPosition);
+      const rawData = source?.rawData ?? null;
+      const val = rawData != null
+        ? (typeof rawData === 'object' ? rawData[b.property] : rawData)
+        : null;
+      resolution = { position: b.position, displayValue: val != null ? String(val) : '?', rawData };
+    } else if (b.type === 'el') {
       const pool = periodicTable.filter(e => e.number >= b.min && e.number <= b.max);
       const el = pool[Math.floor(Math.random() * pool.length)];
-      return { position: b.position, displayValue: String(el[b.property]), rawData: el };
-    }
-    if (b.type === 'num') {
+      resolution = { position: b.position, displayValue: String(el[b.property]), rawData: el };
+    } else if (b.type === 'num') {
       const val = Math.floor(Math.random() * (b.max - b.min + 1)) + b.min;
-      return { position: b.position, displayValue: String(val), rawData: val };
-    }
-    if (b.type === 'compound') {
+      resolution = { position: b.position, displayValue: String(val), rawData: val };
+    } else if (b.type === 'compound') {
       const pool = compounds[b.category] || [];
       const compound = pool[Math.floor(Math.random() * pool.length)];
-      return { position: b.position, displayValue: String(compound[b.property]), rawData: compound };
+      resolution = { position: b.position, displayValue: String(compound[b.property]), rawData: compound };
+    } else {
+      resolution = { position: b.position, displayValue: '?', rawData: null };
     }
-    return { position: b.position, displayValue: '?', rawData: null };
-  });
+
+    resolvedMap.set(b.position, resolution);
+    results.push(resolution);
+  }
+
+  return results;
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -206,7 +230,12 @@ function getPrimarySlot(answerExpression, brackets) {
   const m = answerExpression.match(/^(\d+)/);
   if (!m) return null;
   const pos = parseInt(m[1], 10);
-  return brackets.find(b => b.position === pos) ?? null;
+  const bracket = brackets.find(b => b.position === pos) ?? null;
+  // Follow ref to the source so distractors use the real data pool
+  if (bracket?.type === 'ref') {
+    return brackets.find(b => b.position === bracket.refPosition) ?? null;
+  }
+  return bracket;
 }
 
 // Extract the answer property from a simple expression like "1.number" → "number".
@@ -365,6 +394,25 @@ function validateTemplate(content, answerExpression) {
   for (const b of brackets) {
     if (b.parseError) return b.parseError;
     if (!KNOWN_TYPES.includes(b.type)) return `Unknown bracket type: ${b.raw}`;
+
+    if (b.type === 'ref') {
+      if (b.refPosition >= b.position) {
+        return `[${b.refPosition}.${b.property}] must reference an earlier bracket position (forward refs are not allowed)`;
+      }
+      const source = brackets.find(s => s.position === b.refPosition);
+      if (!source) {
+        return `[${b.refPosition}.${b.property}] references slot ${b.refPosition} which does not exist`;
+      }
+      if (source.type === 'num') {
+        return `Cannot use a ref bracket to reference a num bracket`;
+      }
+      if (source.type === 'el' && !EL_PROPS.includes(b.property)) {
+        return `Invalid el property "${b.property}" in ref bracket. Valid: ${EL_PROPS.join(', ')}`;
+      }
+      if (source.type === 'compound' && !COMPOUND_PROPS.includes(b.property)) {
+        return `Invalid compound property "${b.property}" in ref bracket. Valid: ${COMPOUND_PROPS.join(', ')}`;
+      }
+    }
 
     if (b.type === 'el') {
       if (b.min < 1 || b.max > 118 || b.min > b.max) {
