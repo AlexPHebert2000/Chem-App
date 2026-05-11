@@ -1,6 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import HomeScreen from '../screens/HomeScreen';
 import DashboardScreen from '../screens/teacher/DashboardScreen';
 import ClassScreen from '../screens/teacher/ClassScreen';
 import ChapterScreen from '../screens/teacher/ChapterScreen';
@@ -8,6 +7,9 @@ import SectionScreen from '../screens/teacher/SectionScreen';
 import CreateQuestionScreen from '../screens/teacher/CreateQuestionScreen';
 import QuestionDetailScreen from '../screens/teacher/QuestionDetailScreen';
 import QuestionPreviewScreen from '../screens/teacher/QuestionPreviewScreen';
+import StudentDashboardScreen from '../screens/student/DashboardScreen';
+import StudentCourseScreen from '../screens/student/CourseScreen';
+import StudentSectionScreen from '../screens/student/SectionScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,7 +29,11 @@ export default function MainNavigator() {
           <Stack.Screen name="QuestionPreview" component={QuestionPreviewScreen} />
         </>
       ) : (
-        <Stack.Screen name="Home" component={HomeScreen} />
+        <>
+          <Stack.Screen name="StudentDashboard" component={StudentDashboardScreen} />
+          <Stack.Screen name="StudentCourse" component={StudentCourseScreen} />
+          <Stack.Screen name="StudentSection" component={StudentSectionScreen} />
+        </>
       )}
     </Stack.Navigator>
   );

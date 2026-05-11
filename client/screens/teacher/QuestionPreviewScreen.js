@@ -15,7 +15,8 @@ const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★
 
 export default function QuestionPreviewScreen() {
   const { question } = useRoute().params;
-  const isFIB = question.type === 'FILL_IN_BLANK';
+  const isFIB     = question.type === 'FILL_IN_BLANK';
+  const isDynamic = question.type === 'DYNAMIC';
 
   const [mcSelected, setMcSelected]   = useState(null);
   const [placed, setPlaced]           = useState({}); // { blankIndex: choiceId }
@@ -115,6 +116,39 @@ export default function QuestionPreviewScreen() {
     if (sel && !choice.isCorrect) return 'wrong';
     if (!sel && choice.isCorrect) return 'reveal';
     return 'idle';
+  }
+
+  // DYNAMIC questions can't be previewed without a real API resolve
+  if (isDynamic) {
+    return (
+      <View style={styles.container}>
+        <ScreenHeader title="Question" subtitle="Student Preview" />
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View style={styles.metaRow}>
+            <Text style={styles.previewBadge}>PREVIEW MODE</Text>
+            <Text style={styles.difficulty}>{DIFFICULTY_LABEL[question.difficulty]}</Text>
+          </View>
+          <View style={styles.questionCard}>
+            <Text style={styles.questionText}>{question.content}</Text>
+          </View>
+          <View style={styles.dynamicNotice}>
+            <Text style={styles.dynamicNoticeTitle}>⚡ Dynamic Question</Text>
+            <Text style={styles.dynamicNoticeBody}>
+              Bracket expressions are resolved randomly for each student when they load the section.
+              The content above shows the raw template.
+            </Text>
+            <View style={styles.dynamicExprRow}>
+              <Text style={styles.dynamicExprLabel}>Answer expression:</Text>
+              <Text style={styles.dynamicExprValue}>{question.answerExpression}</Text>
+            </View>
+            <View style={styles.dynamicExprRow}>
+              <Text style={styles.dynamicExprLabel}>Distractors per student:</Text>
+              <Text style={styles.dynamicExprValue}>{question.distractorCount ?? 3}</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
   }
 
   return (
@@ -448,4 +482,15 @@ const styles = StyleSheet.create({
 
   retryBtn:  { alignSelf: 'center', marginTop: spacing[4], padding: spacing[3] },
   retryText: { ...typeScale.label, color: colors.purple400 },
+
+  dynamicNotice: {
+    backgroundColor: colors.purple50, borderRadius: radius.lg,
+    borderWidth: 1.5, borderColor: colors.purple200,
+    padding: spacing[4], gap: spacing[3],
+  },
+  dynamicNoticeTitle: { ...typeScale.label, color: colors.purple800 },
+  dynamicNoticeBody:  { ...typeScale.body, color: colors.neutral700, lineHeight: 22 },
+  dynamicExprRow:     { flexDirection: 'row', gap: spacing[2], alignItems: 'center' },
+  dynamicExprLabel:   { ...typeScale.caption, color: colors.neutral600 },
+  dynamicExprValue:   { ...typeScale.label, color: colors.purple600, fontFamily: 'monospace' },
 });
