@@ -30,6 +30,10 @@ export default function CreateQuestionScreen() {
     existing?.choices?.map(c => ({ content: c.content, isCorrect: c.isCorrect, blankIndex: c.blankIndex }))
     ?? [newChoice(), newChoice(), newChoice(), newChoice()]
   );
+  const [answerExpression, setAnswerExpression] = useState(existing?.answerExpression ?? '');
+  const [distractorCount, setDistractorCount] = useState(
+    existing?.distractorCount != null ? String(existing.distractorCount) : ''
+  );
   const [saving, setSaving] = useState(false);
 
   function setChoiceContent(index, text) {
@@ -52,6 +56,9 @@ export default function CreateQuestionScreen() {
 
   function isValid() {
     if (!content.trim() || !correctExplanation.trim() || !incorrectExplanation.trim()) return false;
+    if (type === 'DYNAMIC') {
+      return !!answerExpression.trim();
+    }
     const filled = choices.filter(c => c.content.trim());
     if (filled.length < 2) return false;
     return filled.some(c => c.isCorrect);
@@ -61,16 +68,26 @@ export default function CreateQuestionScreen() {
     if (!isValid() || saving) return;
     setSaving(true);
     try {
-      const payload = {
+      const base = {
         type,
         content: content.trim(),
         correctExplanation: correctExplanation.trim(),
         incorrectExplanation: incorrectExplanation.trim(),
         difficulty,
-        choices: choices
-          .filter(c => c.content.trim())
-          .map(c => ({ content: c.content.trim(), isCorrect: c.isCorrect, blankIndex: c.blankIndex })),
       };
+
+      let payload;
+      if (type === 'DYNAMIC') {
+        const count = distractorCount.trim() ? parseInt(distractorCount.trim(), 10) : undefined;
+        payload = { ...base, answerExpression: answerExpression.trim(), ...(count !== undefined && { distractorCount: count }) };
+      } else {
+        payload = {
+          ...base,
+          choices: choices
+            .filter(c => c.content.trim())
+            .map(c => ({ content: c.content.trim(), isCorrect: c.isCorrect, blankIndex: c.blankIndex })),
+        };
+      }
 
       if (isEditing) {
         const updated = await api.patch(`/sections/${sectionId}/questions/${existing.id}`, payload, token);
@@ -86,6 +103,8 @@ export default function CreateQuestionScreen() {
     }
   }
 
+  const isDynamic = type === 'DYNAMIC';
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
@@ -95,15 +114,19 @@ export default function CreateQuestionScreen() {
           {/* Type toggle */}
           <Text style={styles.label}>Type</Text>
           <View style={styles.typeRow}>
-            {['MULTIPLE_CHOICE', 'FILL_IN_BLANK'].map(t => (
+            {[
+              { value: 'MULTIPLE_CHOICE', label: 'Multiple Choice' },
+              { value: 'FILL_IN_BLANK',   label: 'Fill in Blank' },
+              { value: 'DYNAMIC',         label: 'Dynamic' },
+            ].map(({ value, label }) => (
               <TouchableOpacity
-                key={t}
-                style={[styles.typeBtn, type === t && styles.typeBtnActive]}
-                onPress={() => setType(t)}
+                key={value}
+                style={[styles.typeBtn, type === value && styles.typeBtnActive]}
+                onPress={() => setType(value)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.typeBtnText, type === t && styles.typeBtnTextActive]}>
-                  {t === 'MULTIPLE_CHOICE' ? 'Multiple Choice' : 'Fill in Blank'}
+                <Text style={[styles.typeBtnText, type === value && styles.typeBtnTextActive]}>
+                  {label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -113,7 +136,13 @@ export default function CreateQuestionScreen() {
           <Text style={styles.label}>Question</Text>
           <TextInput
             style={[styles.input, styles.inputMulti]}
-            placeholder={type === 'FILL_IN_BLANK' ? 'e.g. The atomic number of Carbon is ___.' : 'Enter question text'}
+            placeholder={
+              isDynamic
+                ? 'e.g. How many protons are in [el(1,18).name]?'
+                : type === 'FILL_IN_BLANK'
+                  ? 'e.g. The atomic number of Carbon is ___.'
+                  : 'Enter question text'
+            }
             placeholderTextColor={colors.neutral400}
             value={content}
             onChangeText={setContent}
@@ -121,31 +150,81 @@ export default function CreateQuestionScreen() {
             numberOfLines={3}
           />
 
-          {/* Choices */}
-          <Text style={styles.label}>Answer Choices <Text style={styles.hint}>(tap circle to mark correct)</Text></Text>
-          {choices.map((choice, i) => (
-            <View key={i} style={styles.choiceRow}>
-              <TouchableOpacity style={[styles.radio, choice.isCorrect && styles.radioActive]} onPress={() => setCorrect(i)} activeOpacity={0.8}>
-                {choice.isCorrect && <View style={styles.radioDot} />}
-              </TouchableOpacity>
+          {/* DYNAMIC fields */}
+          {isDynamic && (
+            <>
+              {/* Syntax guide */}
+              <View style={styles.syntaxCard}>
+                <Text style={styles.syntaxTitle}>Template Syntax</Text>
+                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,18).name]</Text>  element name (Z 1–18)</Text>
+                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,118).symbol]</Text>  element symbol</Text>
+                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,118).number]</Text>  atomic number</Text>
+                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,118).mass]</Text>  atomic mass</Text>
+                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[num(1,100)]</Text>  random integer</Text>
+                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[compound(acids).formula]</Text>  compound</Text>
+                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
+                  <Text style={styles.syntaxCode}>Categories:</Text>  acids · bases · salts · oxides
+                </Text>
+                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
+                  <Text style={styles.syntaxCode}>Answer ref:</Text>  <Text style={styles.syntaxCode}>1.number</Text>, <Text style={styles.syntaxCode}>1.mass</Text>, <Text style={styles.syntaxCode}>1+2</Text>, <Text style={styles.syntaxCode}>2*1.number</Text>
+                </Text>
+              </View>
+
+              <Text style={styles.label}>Answer Expression</Text>
               <TextInput
-                style={[styles.input, styles.choiceInput]}
-                placeholder={`Choice ${i + 1}`}
+                style={styles.input}
+                placeholder="e.g.  1.number  or  1.mass  or  1 + 2"
                 placeholderTextColor={colors.neutral400}
-                value={choice.content}
-                onChangeText={text => setChoiceContent(i, text)}
+                value={answerExpression}
+                onChangeText={setAnswerExpression}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
-              {choices.length > 2 && (
-                <TouchableOpacity onPress={() => removeChoice(i)} style={styles.removeBtn} activeOpacity={0.7}>
-                  <Text style={styles.removeText}>✕</Text>
+
+              <Text style={styles.label}>
+                Distractor Count <Text style={styles.hint}>(optional, default 3)</Text>
+              </Text>
+              <TextInput
+                style={[styles.input, styles.inputShort]}
+                placeholder="3"
+                placeholderTextColor={colors.neutral400}
+                value={distractorCount}
+                onChangeText={setDistractorCount}
+                keyboardType="number-pad"
+                maxLength={2}
+              />
+            </>
+          )}
+
+          {/* Choices (MC / FIB only) */}
+          {!isDynamic && (
+            <>
+              <Text style={styles.label}>Answer Choices <Text style={styles.hint}>(tap circle to mark correct)</Text></Text>
+              {choices.map((choice, i) => (
+                <View key={i} style={styles.choiceRow}>
+                  <TouchableOpacity style={[styles.radio, choice.isCorrect && styles.radioActive]} onPress={() => setCorrect(i)} activeOpacity={0.8}>
+                    {choice.isCorrect && <View style={styles.radioDot} />}
+                  </TouchableOpacity>
+                  <TextInput
+                    style={[styles.input, styles.choiceInput]}
+                    placeholder={`Choice ${i + 1}`}
+                    placeholderTextColor={colors.neutral400}
+                    value={choice.content}
+                    onChangeText={text => setChoiceContent(i, text)}
+                  />
+                  {choices.length > 2 && (
+                    <TouchableOpacity onPress={() => removeChoice(i)} style={styles.removeBtn} activeOpacity={0.7}>
+                      <Text style={styles.removeText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+              {choices.length < 6 && (
+                <TouchableOpacity onPress={addChoice} style={styles.addChoice} activeOpacity={0.7}>
+                  <Text style={styles.addChoiceText}>+ Add choice</Text>
                 </TouchableOpacity>
               )}
-            </View>
-          ))}
-          {choices.length < 6 && (
-            <TouchableOpacity onPress={addChoice} style={styles.addChoice} activeOpacity={0.7}>
-              <Text style={styles.addChoiceText}>+ Add choice</Text>
-            </TouchableOpacity>
+            </>
           )}
 
           {/* Correct Explanation */}
@@ -217,7 +296,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: colors.purple200, alignItems: 'center',
   },
   typeBtnActive: { backgroundColor: colors.purple400, borderColor: colors.purple400 },
-  typeBtnText: { ...typeScale.label, color: colors.purple600 },
+  typeBtnText: { ...typeScale.label, color: colors.purple600, textAlign: 'center' },
   typeBtnTextActive: { color: colors.neutral900 },
 
   input: {
@@ -226,8 +305,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4], paddingVertical: 12,
   },
   inputMulti: { height: 88, textAlignVertical: 'top', marginBottom: 0 },
+  inputShort: { width: 100 },
   inputCorrect: { borderColor: colors.teal400 },
   inputIncorrect: { borderColor: colors.coral400 },
+
+  syntaxCard: {
+    backgroundColor: colors.purple50,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.purple200,
+    padding: spacing[4],
+    marginTop: spacing[3],
+    gap: spacing[1],
+  },
+  syntaxTitle: { ...typeScale.label, color: colors.purple800, marginBottom: spacing[2] },
+  syntaxLine: { ...typeScale.caption, color: colors.neutral700, lineHeight: 18 },
+  syntaxCode: { ...typeScale.caption, color: colors.purple600, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' },
 
   choiceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginBottom: spacing[2] },
   radio: {

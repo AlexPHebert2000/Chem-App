@@ -4,12 +4,17 @@ import ScreenHeader from '../../components/ScreenHeader';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
-const TYPE_LABEL = { MULTIPLE_CHOICE: 'Multiple Choice', FILL_IN_BLANK: 'Fill in Blank' };
+const TYPE_LABEL = {
+  MULTIPLE_CHOICE: 'Multiple Choice',
+  FILL_IN_BLANK:   'Fill in Blank',
+  DYNAMIC:         'Dynamic',
+};
 
 export default function QuestionDetailScreen() {
   const navigation = useNavigation();
   const { question, sectionId } = useRoute().params;
-  const isFIB = question.type === 'FILL_IN_BLANK';
+  const isFIB     = question.type === 'FILL_IN_BLANK';
+  const isDynamic = question.type === 'DYNAMIC';
 
   const choicesByBlank = isFIB
     ? question.choices.reduce((acc, c) => {
@@ -47,41 +52,75 @@ export default function QuestionDetailScreen() {
 
         {/* Meta row */}
         <View style={styles.metaRow}>
-          <View style={styles.typePill}>
-            <Text style={styles.typeText}>{TYPE_LABEL[question.type]}</Text>
+          <View style={[styles.typePill, isDynamic && styles.typePillDynamic]}>
+            <Text style={[styles.typeText, isDynamic && styles.typeTextDynamic]}>
+              {TYPE_LABEL[question.type]}
+            </Text>
           </View>
           <Text style={styles.difficulty}>{DIFFICULTY_LABEL[question.difficulty]}</Text>
         </View>
 
         {/* Question text */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Question</Text>
+          <Text style={styles.sectionLabel}>Question Template</Text>
           <Text style={styles.questionText}>{question.content}</Text>
         </View>
 
-        {/* Choices */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>
-            {isFIB ? 'Blanks' : 'Answer Choices'}
-          </Text>
+        {/* DYNAMIC — answer expression + distractor count */}
+        {isDynamic && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Answer Expression</Text>
+            <View style={styles.expressionBox}>
+              <Text style={styles.expressionText}>{question.answerExpression}</Text>
+            </View>
+            <Text style={[styles.sectionLabel, { marginTop: spacing[3] }]}>
+              Distractors per question
+            </Text>
+            <Text style={styles.distractorValue}>
+              {question.distractorCount ?? 3} wrong choices generated per student
+            </Text>
+          </View>
+        )}
 
-          {isFIB ? (
-            Object.entries(choicesByBlank)
-              .sort(([a], [b]) => Number(a) - Number(b))
-              .map(([blankIndex, choices]) => (
-                <View key={blankIndex} style={styles.blankGroup}>
-                  <Text style={styles.blankLabel}>Blank {Number(blankIndex) + 1}</Text>
-                  {choices.map((c, i) => (
-                    <ChoiceRow key={c.id} choice={c} letter={String.fromCharCode(65 + i)} />
-                  ))}
-                </View>
+        {/* DYNAMIC — generated choices note */}
+        {isDynamic && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Answer Choices</Text>
+            <View style={styles.dynamicChoicesNote}>
+              <Text style={styles.dynamicChoicesIcon}>⚡</Text>
+              <Text style={styles.dynamicChoicesText}>
+                Choices are generated automatically for each student when they load the section.
+                The correct answer and {question.distractorCount ?? 3} distractors are derived from the resolved template values.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* MC / FIB choices */}
+        {!isDynamic && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>
+              {isFIB ? 'Blanks' : 'Answer Choices'}
+            </Text>
+
+            {isFIB ? (
+              Object.entries(choicesByBlank)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([blankIndex, choices]) => (
+                  <View key={blankIndex} style={styles.blankGroup}>
+                    <Text style={styles.blankLabel}>Blank {Number(blankIndex) + 1}</Text>
+                    {choices.map((c, i) => (
+                      <ChoiceRow key={c.id} choice={c} letter={String.fromCharCode(65 + i)} />
+                    ))}
+                  </View>
+                ))
+            ) : (
+              question.choices.map((c, i) => (
+                <ChoiceRow key={c.id} choice={c} letter={String.fromCharCode(65 + i)} />
               ))
-          ) : (
-            question.choices.map((c, i) => (
-              <ChoiceRow key={c.id} choice={c} letter={String.fromCharCode(65 + i)} />
-            ))
-          )}
-        </View>
+            )}
+          </View>
+        )}
 
         {/* Explanations */}
         <View style={styles.section}>
@@ -151,7 +190,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple100, borderRadius: radius.sm,
     paddingHorizontal: spacing[3], paddingVertical: spacing[1],
   },
+  typePillDynamic: { backgroundColor: colors.teal50, borderWidth: 1, borderColor: colors.teal300 },
   typeText: { ...typeScale.label, color: colors.purple800 },
+  typeTextDynamic: { color: colors.teal700 },
   difficulty: { ...typeScale.h3, color: colors.gold600 },
 
   section: { marginBottom: spacing[5] },
@@ -164,6 +205,34 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.purple100,
     lineHeight: 26,
   },
+
+  expressionBox: {
+    backgroundColor: colors.teal50,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.teal300,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+  },
+  expressionText: {
+    ...typeScale.body,
+    color: colors.teal700,
+    fontFamily: 'monospace',
+  },
+  distractorValue: { ...typeScale.body, color: colors.neutral600 },
+
+  dynamicChoicesNote: {
+    flexDirection: 'row',
+    gap: spacing[3],
+    backgroundColor: colors.purple50,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.purple200,
+    padding: spacing[4],
+    alignItems: 'flex-start',
+  },
+  dynamicChoicesIcon: { fontSize: 20 },
+  dynamicChoicesText: { ...typeScale.body, color: colors.purple700, flex: 1, lineHeight: 22 },
 
   choiceRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing[3],
