@@ -60,4 +60,119 @@ async function deleteReward(req, res) {
   res.status(204).end();
 }
 
-module.exports = { createReward, getCourseRewards, deleteReward };
+async function getStudentCourseRewards(req, res) {
+  const { courseId } = req.params;
+  const studentId = req.user.sub;
+
+  const enrollment = await prisma.studentCourse.findUnique({
+    where: { studentId_courseId: { studentId, courseId } },
+  });
+  if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
+
+  const rewards = await prisma.reward.findMany({
+    where: { courseId },
+    include: { students: { where: { studentId } } },
+    orderBy: { name: 'asc' },
+  });
+
+  const result = rewards.map(({ students, ...r }) => ({
+    ...r,
+    myRedemption: students[0] ?? null,
+  }));
+
+  res.json(result);
+}
+
+async function redeemReward(req, res) {
+  const { rewardId } = req.params;
+  const studentId = req.user.sub;
+
+  const reward = await prisma.reward.findUnique({ where: { id: rewardId } });
+  if (!reward) return res.status(404).json({ error: 'Reward not found' });
+
+  const enrollment = await prisma.studentCourse.findUnique({
+    where: { studentId_courseId: { studentId, courseId: reward.courseId } },
+  });
+  if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
+
+  const existing = await prisma.studentReward.findUnique({
+    where: { studentId_rewardId: { studentId, rewardId } },
+  });
+  if (existing) return res.status(409).json({ error: 'Already redeemed this reward' });
+
+  const approvedCount = await prisma.studentReward.count({
+    where: { rewardId, teacherConfirmation: true },
+  });
+  if (approvedCount >= reward.redemptionLimit) {
+    return res.status(409).json({ error: 'Redemption limit reached for this reward' });
+  }
+
+  const redemption = await prisma.studentReward.create({
+    data: { studentId, rewardId },
+  });
+
+  res.status(201).json(redemption);
+}
+
+async function getCourseRedemptions(req, res) {
+  const { courseId } = req.params;
+  const teacherId = req.user.sub;
+  const { status } = req.query;
+
+  if (!await ownedCourse(courseId, teacherId, res)) return;
+
+  const where = {
+    reward: { courseId },
+    ...(status === 'PENDING' && { teacherConfirmation: false }),
+    ...(status === 'APPROVED' && { teacherConfirmation: true }),
+  };
+
+  const redemptions = await prisma.studentReward.findMany({
+    where,
+    include: {
+      student: { omit: { password: true } },
+      reward: true,
+    },
+    orderBy: { redeemedAt: 'asc' },
+  });
+
+  res.json(redemptions);
+}
+
+async function updateRedemption(req, res) {
+  const { redemptionId } = req.params;
+  const teacherId = req.user.sub;
+  const { action } = req.body;
+
+  if (action !== 'approve' && action !== 'reject') {
+    return res.status(400).json({ error: 'action must be "approve" or "reject"' });
+  }
+
+  const redemption = await prisma.studentReward.findUnique({
+    where: { id: redemptionId },
+    include: { reward: true },
+  });
+  if (!redemption) return res.status(404).json({ error: 'Redemption not found' });
+
+  if (!await ownedCourse(redemption.reward.courseId, teacherId, res)) return;
+
+  if (redemption.teacherConfirmation) {
+    return res.status(409).json({ error: 'Redemption already approved' });
+  }
+
+  if (action === 'approve') {
+    const updated = await prisma.studentReward.update({
+      where: { id: redemptionId },
+      data: { teacherConfirmation: true, redeemedAt: new Date() },
+    });
+    return res.json(updated);
+  }
+
+  await prisma.studentReward.delete({ where: { id: redemptionId } });
+  res.status(204).end();
+}
+
+module.exports = {
+  createReward, getCourseRewards, deleteReward,
+  getStudentCourseRewards, redeemReward, getCourseRedemptions, updateRedemption,
+};

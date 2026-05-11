@@ -4,7 +4,7 @@ const { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, 
 const { getCourseChapters, createChapter, swapChapters } = require('../controllers/chapter.controller');
 const { exportStudentsCsv } = require('../controllers/export.controller');
 const { getStudentCourses, getStudentCourseProgress, getStudentCourseChapters } = require('../controllers/student.controller');
-const { createReward, getCourseRewards } = require('../controllers/reward.controller');
+const { createReward, getCourseRewards, getStudentCourseRewards, getCourseRedemptions } = require('../controllers/reward.controller');
 
 const router = Router();
 
@@ -28,6 +28,7 @@ router.post('/:courseId/chapters', authenticate, requireRole('TEACHER'), createC
 router.patch('/:courseId/chapters/swap', authenticate, requireRole('TEACHER'), swapChapters);
 router.post('/:courseId/join-requests/:requestId/approve', authenticate, requireRole('TEACHER'), approveJoin);
 router.post('/:courseId/rewards', authenticate, requireRole('TEACHER'), createReward);
-router.get('/:courseId/rewards', authenticate, requireRole('TEACHER'), getCourseRewards);
+router.get('/:courseId/rewards', authenticate, byRole(getCourseRewards, getStudentCourseRewards));
+router.get('/:courseId/redemptions', authenticate, requireRole('TEACHER'), getCourseRedemptions);
 
 module.exports = router;
