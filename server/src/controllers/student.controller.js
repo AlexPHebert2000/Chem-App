@@ -1,4 +1,8 @@
 const prisma = require('../lib/prisma');
+const {
+  parseBrackets, resolveAll, renderContent,
+  evaluateAnswer, generateDistractors, buildDynamicChoices,
+} = require('../lib/questionTemplate');
 
 async function getStudentCourses(req, res) {
   const studentId = req.user.sub;
@@ -81,11 +85,33 @@ async function getStudentSectionQuestions(req, res) {
     include: { choices: true },
   });
 
-  // Strip isCorrect so students can't see answers in the payload
-  res.json(questions.map(q => ({
-    ...q,
-    choices: q.choices.map(({ isCorrect, ...choice }) => choice),
-  })));
+  const processedQuestions = await Promise.all(questions.map(async (q) => {
+    if (q.type !== 'DYNAMIC') {
+      return { ...q, choices: q.choices.map(({ isCorrect, ...choice }) => choice) };
+    }
+
+    const brackets = parseBrackets(q.content);
+    const resolutions = resolveAll(brackets);
+    const resolvedContent = renderContent(q.content, resolutions);
+    const correctValue = evaluateAnswer(q.answerExpression, resolutions);
+    const count = q.distractorCount ?? 3;
+    const distractors = generateDistractors(correctValue, resolutions, brackets, q.answerExpression, count);
+    const dynamicChoices = buildDynamicChoices(correctValue, distractors);
+
+    await prisma.questionResolution.upsert({
+      where: { studentId_questionId: { studentId, questionId: q.id } },
+      update: { resolvedContent, choicesJson: JSON.stringify(dynamicChoices), createdAt: new Date() },
+      create: { studentId, questionId: q.id, resolvedContent, choicesJson: JSON.stringify(dynamicChoices) },
+    });
+
+    return {
+      ...q,
+      content: resolvedContent,
+      choices: dynamicChoices.map(({ isCorrect, ...c }) => c),
+    };
+  }));
+
+  res.json(processedQuestions);
 }
 
 async function getStudentCourseChapters(req, res) {

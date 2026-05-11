@@ -63,7 +63,7 @@ async function completeSection(req, res) {
     for (const q of questions) {
       const attempt = latestByQuestion.get(q.id);
       if (!attempt) continue;
-      const maxScore = q.type === 'MULTIPLE_CHOICE'
+      const maxScore = (q.type === 'MULTIPLE_CHOICE' || q.type === 'DYNAMIC')
         ? 1
         : new Set(q.choices.map(c => c.blankIndex)).size;
       if (attempt.score === maxScore) {

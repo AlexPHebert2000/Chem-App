@@ -1,0 +1,37 @@
+module.exports = {
+  acids: [
+    { name: 'Hydrochloric acid',  formula: 'HCl',     molarMass: 36.46  },
+    { name: 'Sulfuric acid',      formula: 'H2SO4',   molarMass: 98.08  },
+    { name: 'Nitric acid',        formula: 'HNO3',    molarMass: 63.01  },
+    { name: 'Phosphoric acid',    formula: 'H3PO4',   molarMass: 98.00  },
+    { name: 'Acetic acid',        formula: 'CH3COOH', molarMass: 60.05  },
+    { name: 'Carbonic acid',      formula: 'H2CO3',   molarMass: 62.03  },
+    { name: 'Hydrofluoric acid',  formula: 'HF',      molarMass: 20.01  },
+    { name: 'Hydrobromic acid',   formula: 'HBr',     molarMass: 80.91  },
+  ],
+  bases: [
+    { name: 'Sodium hydroxide',    formula: 'NaOH',    molarMass: 40.00  },
+    { name: 'Potassium hydroxide', formula: 'KOH',     molarMass: 56.11  },
+    { name: 'Calcium hydroxide',   formula: 'Ca(OH)2', molarMass: 74.09  },
+    { name: 'Ammonia',             formula: 'NH3',     molarMass: 17.03  },
+    { name: 'Magnesium hydroxide', formula: 'Mg(OH)2', molarMass: 58.32  },
+    { name: 'Barium hydroxide',    formula: 'Ba(OH)2', molarMass: 171.34 },
+  ],
+  salts: [
+    { name: 'Sodium chloride',     formula: 'NaCl',    molarMass: 58.44  },
+    { name: 'Potassium chloride',  formula: 'KCl',     molarMass: 74.55  },
+    { name: 'Calcium carbonate',   formula: 'CaCO3',   molarMass: 100.09 },
+    { name: 'Ammonium nitrate',    formula: 'NH4NO3',  molarMass: 80.04  },
+    { name: 'Magnesium sulfate',   formula: 'MgSO4',   molarMass: 120.37 },
+    { name: 'Iron(III) chloride',  formula: 'FeCl3',   molarMass: 162.20 },
+    { name: 'Sodium bicarbonate',  formula: 'NaHCO3',  molarMass: 84.01  },
+  ],
+  oxides: [
+    { name: 'Water',              formula: 'H2O',   molarMass: 18.02  },
+    { name: 'Carbon dioxide',     formula: 'CO2',   molarMass: 44.01  },
+    { name: 'Carbon monoxide',    formula: 'CO',    molarMass: 28.01  },
+    { name: 'Silicon dioxide',    formula: 'SiO2',  molarMass: 60.08  },
+    { name: 'Iron(III) oxide',    formula: 'Fe2O3', molarMass: 159.69 },
+    { name: 'Calcium oxide',      formula: 'CaO',   molarMass: 56.08  },
+  ],
+};

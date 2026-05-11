@@ -78,6 +78,8 @@ model Question {
   correctExplanation   String?
   incorrectExplanation String?
   difficulty           Int
+  answerExpression     String?
+  distractorCount      Int?
   section              Section           @relation(fields: [sectionId], references: [id])
   choices              Choice[]
   attempts             QuestionAttempt[]
@@ -183,6 +185,17 @@ model StudentSection {
   section     Section   @relation(fields: [sectionId], references: [id])
 
   @@unique([studentId, sectionId])
+}
+
+model QuestionResolution {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId       String   @db.ObjectId
+  questionId      String   @db.ObjectId
+  resolvedContent String
+  choicesJson     String
+  createdAt       DateTime @default(now())
+
+  @@unique([studentId, questionId])
 }
 
 // ─── Gamification ─────────────────────────────────────────────────────────────

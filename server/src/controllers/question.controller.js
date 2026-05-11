@@ -1,8 +1,9 @@
 const prisma = require('../lib/prisma');
 const { recordActivity } = require('../services/workSession.service');
 const { awardBadges } = require('../services/badge.service');
+const { validateTemplate } = require('../lib/questionTemplate');
 
-const QUESTION_TYPES = ['MULTIPLE_CHOICE', 'FILL_IN_BLANK'];
+const QUESTION_TYPES = ['MULTIPLE_CHOICE', 'FILL_IN_BLANK', 'DYNAMIC'];
 
 async function ownedSection(sectionId, teacherId) {
   const section = await prisma.section.findUnique({ where: { id: sectionId } });
@@ -86,7 +87,7 @@ async function getSectionQuestions(req, res) {
 
 async function createQuestion(req, res) {
   const { sectionId } = req.params;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount } = req.body;
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
@@ -96,6 +97,35 @@ async function createQuestion(req, res) {
   if (difficulty === undefined || !Number.isInteger(difficulty) || difficulty < 1 || difficulty > 5) errors.push('difficulty must be an integer between 1 and 5');
 
   if (errors.length) return res.status(400).json({ error: errors.join('; ') });
+
+  if (type === 'DYNAMIC') {
+    if (!answerExpression || !answerExpression.trim()) {
+      return res.status(400).json({ error: 'answerExpression is required for DYNAMIC questions' });
+    }
+    if (distractorCount !== undefined && (!Number.isInteger(distractorCount) || distractorCount < 1 || distractorCount > 10)) {
+      return res.status(400).json({ error: 'distractorCount must be an integer between 1 and 10' });
+    }
+    const templateError = validateTemplate(content.trim(), answerExpression.trim());
+    if (templateError) return res.status(400).json({ error: templateError });
+
+    const { error, status } = await ownedSection(sectionId, req.user.sub);
+    if (error) return res.status(status).json({ error });
+
+    const question = await prisma.question.create({
+      data: {
+        sectionId,
+        type,
+        content: content.trim(),
+        correctExplanation: correctExplanation.trim(),
+        incorrectExplanation: incorrectExplanation.trim(),
+        difficulty,
+        answerExpression: answerExpression.trim(),
+        ...(distractorCount !== undefined && { distractorCount }),
+      },
+      include: { choices: true },
+    });
+    return res.status(201).json(question);
+  }
 
   const choiceError = type === 'FILL_IN_BLANK'
     ? validateFillInBlank(choices)
@@ -123,7 +153,7 @@ async function createQuestion(req, res) {
 
 async function updateQuestion(req, res) {
   const { sectionId, questionId } = req.params;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount } = req.body;
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
@@ -134,10 +164,21 @@ async function updateQuestion(req, res) {
 
   if (errors.length) return res.status(400).json({ error: errors.join('; ') });
 
-  const choiceError = type === 'FILL_IN_BLANK'
-    ? validateFillInBlank(choices)
-    : validateMultipleChoice(choices);
-  if (choiceError) return res.status(400).json({ error: choiceError });
+  if (type === 'DYNAMIC') {
+    if (!answerExpression || !answerExpression.trim()) {
+      return res.status(400).json({ error: 'answerExpression is required for DYNAMIC questions' });
+    }
+    if (distractorCount !== undefined && (!Number.isInteger(distractorCount) || distractorCount < 1 || distractorCount > 10)) {
+      return res.status(400).json({ error: 'distractorCount must be an integer between 1 and 10' });
+    }
+    const templateError = validateTemplate(content.trim(), answerExpression.trim());
+    if (templateError) return res.status(400).json({ error: templateError });
+  } else {
+    const choiceError = type === 'FILL_IN_BLANK'
+      ? validateFillInBlank(choices)
+      : validateMultipleChoice(choices);
+    if (choiceError) return res.status(400).json({ error: choiceError });
+  }
 
   const { error, status } = await ownedSection(sectionId, req.user.sub);
   if (error) return res.status(status).json({ error });
@@ -146,24 +187,29 @@ async function updateQuestion(req, res) {
   if (!existing || existing.sectionId !== sectionId) return res.status(404).json({ error: 'Question not found' });
 
   try {
+    // Always safe — no-op if DYNAMIC (no stored choices)
     await prisma.choice.deleteMany({ where: { questionId } });
 
-    const builtChoices = buildChoices(type, choices);
+    const updateData = {
+      type,
+      content: content.trim(),
+      correctExplanation: correctExplanation.trim(),
+      incorrectExplanation: incorrectExplanation.trim(),
+      difficulty,
+    };
 
-    await prisma.question.update({
-      where: { id: questionId },
-      data: {
-        type,
-        content: content.trim(),
-        correctExplanation: correctExplanation.trim(),
-        incorrectExplanation: incorrectExplanation.trim(),
-        difficulty,
-      },
-    });
+    if (type === 'DYNAMIC') {
+      updateData.answerExpression = answerExpression.trim();
+      updateData.distractorCount = distractorCount ?? null;
+    } else {
+      // Clear dynamic fields when changing type away from DYNAMIC
+      updateData.answerExpression = null;
+      updateData.distractorCount = null;
+      const builtChoices = buildChoices(type, choices);
+      await Promise.all(builtChoices.map(c => prisma.choice.create({ data: { ...c, questionId } })));
+    }
 
-    await Promise.all(
-      builtChoices.map(c => prisma.choice.create({ data: { ...c, questionId } }))
-    );
+    await prisma.question.update({ where: { id: questionId }, data: updateData });
 
     const question = await prisma.question.findUnique({
       where: { id: questionId },
@@ -208,6 +254,40 @@ async function attemptQuestion(req, res) {
     where: { studentId_courseId: { studentId, courseId: session.courseId } },
   });
   if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
+
+  // DYNAMIC question handling
+  if (question.type === 'DYNAMIC') {
+    if (choiceIds.length !== 1) {
+      return res.status(400).json({ error: 'Dynamic questions require exactly one choice' });
+    }
+    const resolution = await prisma.questionResolution.findUnique({
+      where: { studentId_questionId: { studentId, questionId } },
+    });
+    if (!resolution) {
+      return res.status(400).json({ error: 'No active question resolution found. Fetch the section questions first.' });
+    }
+    const dynamicChoices = JSON.parse(resolution.choicesJson);
+    const selectedChoice = dynamicChoices.find(c => c.id === choiceIds[0]);
+    if (!selectedChoice) {
+      return res.status(400).json({ error: `Choice ${choiceIds[0]} does not belong to this question` });
+    }
+    const isCorrect = selectedChoice.isCorrect;
+    const score = isCorrect ? 1 : 0;
+    const xpDelta = isCorrect ? question.difficulty * 10 : 0;
+
+    const attempt = await prisma.questionAttempt.create({
+      data: { studentId, questionId, sessionId, attemptedAt: new Date(), score },
+      include: { answers: true },
+    });
+    await recordActivity(sessionId, xpDelta);
+    await awardBadges(studentId);
+    return res.status(201).json({
+      attempt,
+      isCorrect,
+      explanation: isCorrect ? question.correctExplanation : question.incorrectExplanation,
+      xpDelta,
+    });
+  }
 
   // Validate all submitted choices belong to this question
   const choiceMap = new Map(question.choices.map(c => [c.id, c]));
