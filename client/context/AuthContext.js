@@ -50,9 +50,8 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
-  async function login(role, email, password, courseId, stayLoggedIn = false) {
+  async function login(role, email, password, stayLoggedIn = false) {
     const body = { role, email, password, stayLoggedIn };
-    if (role === 'STUDENT') body.courseId = courseId;
 
     const data = await api.post('/auth/login', body);
 

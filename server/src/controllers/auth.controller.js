@@ -39,13 +39,12 @@ async function signup(req, res) {
 }
 
 async function login(req, res) {
-  const { role, email, password, courseId, stayLoggedIn } = req.body;
+  const { role, email, password, stayLoggedIn } = req.body;
   const errors = [];
 
   if (!role || !['TEACHER', 'STUDENT'].includes(role)) errors.push('role must be TEACHER or STUDENT');
   if (!email) errors.push('email is required');
   if (!password) errors.push('password is required');
-  if (role === 'STUDENT' && !courseId) errors.push('courseId is required for student login');
   if (errors.length) return res.status(400).json({ error: errors.join('; ') });
 
   const model = getModel(role);
@@ -54,13 +53,6 @@ async function login(req, res) {
 
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-
-  if (role === 'STUDENT') {
-    const enrollment = await prisma.studentCourse.findUnique({
-      where: { studentId_courseId: { studentId: user.id, courseId } },
-    });
-    if (!enrollment) return res.status(403).json({ error: 'Student is not enrolled in this course' });
-  }
 
   const token = signToken(user.id, role);
   const responseBody = { token, user: { id: user.id, name: user.name, email: user.email, role } };

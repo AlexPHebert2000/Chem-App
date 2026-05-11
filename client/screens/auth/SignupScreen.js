@@ -84,12 +84,6 @@ export default function SignupScreen({ navigation }) {
           autoComplete="new-password"
         />
 
-        {role === 'STUDENT' && (
-          <Text style={styles.hint}>
-            You'll need a Course ID to log in. Ask your teacher for it.
-          </Text>
-        )}
-
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.btnShadow}>

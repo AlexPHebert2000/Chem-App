@@ -12,7 +12,6 @@ export default function LoginScreen({ navigation }) {
   const [role, setRole] = useState('TEACHER');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [courseId, setCourseId] = useState('');
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +20,7 @@ export default function LoginScreen({ navigation }) {
     setError('');
     setLoading(true);
     try {
-      await login(role, email.trim(), password, role === 'STUDENT' ? courseId.trim() : undefined, stayLoggedIn);
+      await login(role, email.trim(), password, stayLoggedIn);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -71,17 +70,6 @@ export default function LoginScreen({ navigation }) {
           secureTextEntry
           autoComplete="current-password"
         />
-
-        {role === 'STUDENT' && (
-          <TextInput
-            style={styles.input}
-            placeholder="Course ID"
-            placeholderTextColor={colors.neutral600}
-            value={courseId}
-            onChangeText={setCourseId}
-            autoCapitalize="none"
-          />
-        )}
 
         {/* Stay logged in */}
         <TouchableOpacity style={styles.checkRow} onPress={() => setStayLoggedIn(v => !v)} activeOpacity={0.7}>

@@ -109,15 +109,9 @@ describe('POST /api/auth/login', () => {
     expect(res.body.error).toMatch(/role/);
   });
 
-  test('400 if courseId is missing for STUDENT', async () => {
-    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123' });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/courseId/);
-  });
-
   test('401 if user not found', async () => {
     prisma.student.findUnique.mockResolvedValue(null);
-    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: 'nobody@test.com', password: 'password123', courseId: 'course-id-1' });
+    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: 'nobody@test.com', password: 'password123' });
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/Invalid credentials/);
   });
@@ -125,25 +119,15 @@ describe('POST /api/auth/login', () => {
   test('401 if password is wrong', async () => {
     prisma.student.findUnique.mockResolvedValue(STUDENT);
     bcrypt.compare.mockResolvedValue(false);
-    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'wrongpassword', courseId: 'course-id-1' });
+    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'wrongpassword' });
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/Invalid credentials/);
-  });
-
-  test('403 if student is not enrolled in the course', async () => {
-    prisma.student.findUnique.mockResolvedValue(STUDENT);
-    bcrypt.compare.mockResolvedValue(true);
-    prisma.studentCourse.findUnique.mockResolvedValue(null);
-    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', courseId: 'course-id-1' });
-    expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/not enrolled/);
   });
 
   test('200 without sessionToken when stayLoggedIn is false', async () => {
     prisma.student.findUnique.mockResolvedValue(STUDENT);
     bcrypt.compare.mockResolvedValue(true);
-    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: STUDENT.id, courseId: 'course-id-1' });
-    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', courseId: 'course-id-1', stayLoggedIn: false });
+    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', stayLoggedIn: false });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
     expect(res.body.sessionToken).toBeUndefined();
@@ -153,9 +137,8 @@ describe('POST /api/auth/login', () => {
   test('200 with sessionToken when stayLoggedIn is true (STUDENT)', async () => {
     prisma.student.findUnique.mockResolvedValue(STUDENT);
     bcrypt.compare.mockResolvedValue(true);
-    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: STUDENT.id, courseId: 'course-id-1' });
     prisma.authSession.create.mockResolvedValue(AUTH_SESSION);
-    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', courseId: 'course-id-1', stayLoggedIn: true });
+    const res = await request(app).post('/api/auth/login').send({ role: 'STUDENT', email: STUDENT.email, password: 'password123', stayLoggedIn: true });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
     expect(res.body.sessionToken).toBeDefined();
