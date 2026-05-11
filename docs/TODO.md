@@ -6,19 +6,19 @@ Ordered by priority — #1 and #2 are the core game loop that everything else bu
 
 ## Study Flow
 
-- [ ] **#1 — Question attempt** `POST /api/questions/:questionId/attempt`
+- [x] **#1 — Question attempt** `POST /api/questions/:questionId/attempt`
   Submit an answer, validate correctness, return score + explanation + XP delta.
   Creates `QuestionAttempt` + `AttemptAnswer` records. Calls `workSession.recordActivity`.
 
-- [ ] **#2 — Section complete** `POST /api/sections/:sectionId/complete`
+- [x] **#2 — Section complete** `POST /api/sections/:sectionId/complete`
   Mark section done (`StudentSection`), advance `StudentCourse.currentSectionId`,
   award XP to `currentPoints` + `lifetimePoints`, increment streak if applicable.
 
-- [ ] **#3 — Student course list + progress**
+- [x] **#3 — Student course list + progress**
   - `GET /api/courses` — enrolled courses with XP, streak, currentSection
   - `GET /api/courses/:courseId/progress` — sections completed, current section, points
 
-- [ ] **#4 — Student section/question fetch**
+- [x] **#4 — Student section/question fetch**
   - `GET /api/sections/:sectionId/questions` — questions + choices, **no `isCorrect` flags**
   - `GET /api/courses/:courseId/chapters` — chapter list with per-section completion status
 
