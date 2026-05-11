@@ -137,6 +137,31 @@ async function getStudentCourseChapters(req, res) {
   })));
 }
 
+async function patchStudentProfile(req, res) {
+  const studentId = req.user.sub;
+  const { name, profileImage } = req.body;
+
+  if (name !== undefined && (!name || !name.trim())) {
+    return res.status(400).json({ error: 'name cannot be blank' });
+  }
+
+  const data = {};
+  if (name !== undefined) data.name = name.trim();
+  if (profileImage !== undefined) data.profileImage = profileImage;
+
+  if (!Object.keys(data).length) {
+    return res.status(400).json({ error: 'Provide at least one field to update: name, profileImage' });
+  }
+
+  const student = await prisma.student.update({
+    where: { id: studentId },
+    data,
+    omit: { password: true },
+  });
+
+  res.json(student);
+}
+
 async function getCourseLeaderboard(req, res) {
   const { courseId } = req.params;
   const { sub: userId, role } = req.user;
@@ -181,4 +206,4 @@ async function getStudentBadges(req, res) {
   res.json(studentBadges);
 }
 
-module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard };
+module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard, patchStudentProfile };

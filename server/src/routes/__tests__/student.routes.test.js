@@ -7,6 +7,7 @@ jest.mock('../../lib/prisma', () => ({
   chapter:        { findMany: jest.fn(), findUnique: jest.fn() },
   section:        { findUnique: jest.fn() },
   question:       { findMany: jest.fn() },
+  student:        { update: jest.fn() },
   studentCourse:  { findUnique: jest.fn(), findMany: jest.fn() },
   studentSection: { findMany: jest.fn() },
   studentBadge:   { findMany: jest.fn() },
@@ -323,6 +324,77 @@ describe('GET /api/courses/:courseId/leaderboard', () => {
     prisma.studentCourse.findMany.mockResolvedValue(ENTRIES);
     const res = await request(app).get(url).set(studentAuth());
     res.body.forEach(entry => expect(entry).not.toHaveProperty('password'));
+  });
+});
+
+// ─── PATCH /api/students/me ───────────────────────────────────────────────────
+
+describe('PATCH /api/students/me', () => {
+  const UPDATED_STUDENT = { id: STUDENT_ID, name: 'Alice Updated', email: 'alice@test.com', profileImage: null };
+
+  test('401 if no token', async () => {
+    const res = await request(app).patch('/api/students/me').send({ name: 'Alice' });
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if requester is a TEACHER', async () => {
+    const res = await request(app)
+      .patch('/api/students/me')
+      .set(teacherAuth())
+      .send({ name: 'Alice' });
+    expect(res.status).toBe(403);
+  });
+
+  test('400 if no fields provided', async () => {
+    const res = await request(app)
+      .patch('/api/students/me')
+      .set(studentAuth())
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/at least one field/);
+  });
+
+  test('400 if name is blank string', async () => {
+    const res = await request(app)
+      .patch('/api/students/me')
+      .set(studentAuth())
+      .send({ name: '   ' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/blank/);
+  });
+
+  test('200 updates name only', async () => {
+    prisma.student.update.mockResolvedValue(UPDATED_STUDENT);
+    const res = await request(app)
+      .patch('/api/students/me')
+      .set(studentAuth())
+      .send({ name: 'Alice Updated' });
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('Alice Updated');
+    expect(res.body).not.toHaveProperty('password');
+  });
+
+  test('200 updates profileImage only', async () => {
+    const withImage = { ...UPDATED_STUDENT, profileImage: 'https://example.com/avatar.png' };
+    prisma.student.update.mockResolvedValue(withImage);
+    const res = await request(app)
+      .patch('/api/students/me')
+      .set(studentAuth())
+      .send({ profileImage: 'https://example.com/avatar.png' });
+    expect(res.status).toBe(200);
+    expect(res.body.profileImage).toBe('https://example.com/avatar.png');
+  });
+
+  test('200 updates both name and profileImage', async () => {
+    const withBoth = { ...UPDATED_STUDENT, profileImage: 'https://example.com/avatar.png' };
+    prisma.student.update.mockResolvedValue(withBoth);
+    const res = await request(app)
+      .patch('/api/students/me')
+      .set(studentAuth())
+      .send({ name: 'Alice Updated', profileImage: 'https://example.com/avatar.png' });
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('Alice Updated');
+    expect(res.body.profileImage).toBe('https://example.com/avatar.png');
   });
 });
 
