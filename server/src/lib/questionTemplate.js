@@ -201,6 +201,13 @@ function getPrimarySlot(answerExpression, brackets) {
   return brackets.find(b => b.position === pos) ?? null;
 }
 
+// Extract the answer property from a simple expression like "1.number" → "number".
+// Returns null for arithmetic expressions or bare slot refs.
+function getAnswerProperty(answerExpression) {
+  const m = answerExpression.trim().match(/^\d+\.([a-zA-Z]+)$/);
+  return m ? m[1] : null;
+}
+
 function hasArithmetic(answerExpression) {
   return /[+\-*/]/.test(answerExpression);
 }
@@ -247,7 +254,9 @@ function generateDistractors(correctValue, resolutions, brackets, answerExpressi
   const resolution = resolutions.find(r => r.position === primaryBracket.position);
 
   if (primaryBracket.type === 'el') {
-    const prop = primaryBracket.property;
+    // Use the property named in the answer expression (e.g. "number" from "1.number"),
+    // not the bracket's display property (e.g. "name" from [el(1,18).name]).
+    const prop = getAnswerProperty(answerExpression) ?? primaryBracket.property;
     const inRange = periodicTable.filter(e =>
       e.number >= primaryBracket.min &&
       e.number <= primaryBracket.max &&
@@ -272,7 +281,7 @@ function generateDistractors(correctValue, resolutions, brackets, answerExpressi
       }
     }
   } else if (primaryBracket.type === 'compound') {
-    const prop = primaryBracket.property;
+    const prop = getAnswerProperty(answerExpression) ?? primaryBracket.property;
     const category = primaryBracket.category;
     const sameCategory = (compounds[category] || []).filter(c => String(c[prop]) !== correctValue);
     const shuffled = sameCategory.sort(() => Math.random() - 0.5);

@@ -202,6 +202,18 @@ describe('generateDistractors', () => {
     expect(d).toHaveLength(3);
     expect(d).not.toContain('Hydrogen');
   });
+
+  test('distractors use answer property, not bracket display property', () => {
+    // Question: "How many protons are in [el(1,18).name]?" — display prop is 'name'
+    // Answer: "1.number" — answer prop is 'number'
+    // Distractors must be numbers, not element names
+    const nameBrackets = parseBrackets('[el(1,18).name]');
+    const res = [{ position: 1, displayValue: 'Carbon', rawData: { number: 6, name: 'Carbon', symbol: 'C', mass: 12.011 } }];
+    const d = generateDistractors('6', res, nameBrackets, '1.number', 3);
+    expect(d).toHaveLength(3);
+    d.forEach(v => expect(Number.isNaN(Number(v))).toBe(false));
+    expect(d).not.toContain('6');
+  });
 });
 
 // ─── buildDynamicChoices ──────────────────────────────────────────────────────
