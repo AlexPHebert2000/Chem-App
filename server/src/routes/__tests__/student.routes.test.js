@@ -262,6 +262,70 @@ describe('GET /api/sections/:sectionId/questions — STUDENT', () => {
   });
 });
 
+// ─── GET /api/courses/:courseId/leaderboard ───────────────────────────────────
+
+describe('GET /api/courses/:courseId/leaderboard', () => {
+  const url = `/api/courses/${COURSE.id}/leaderboard`;
+  const STUDENT_2 = { id: 'student-id-2', name: 'Bob', email: 'bob@test.com' };
+  const ENTRIES = [
+    { studentId: STUDENT_ID,    currentPoints: 200, lifetimePoints: 300, streak: 5, student: { id: STUDENT_ID,    name: 'Alice', email: 'alice@test.com' } },
+    { studentId: STUDENT_2.id,  currentPoints: 100, lifetimePoints: 150, streak: 2, student: STUDENT_2 },
+  ];
+
+  test('401 if no token', async () => {
+    const res = await request(app).get(url);
+    expect(res.status).toBe(401);
+  });
+
+  test('404 if course not found', async () => {
+    prisma.course.findUnique.mockResolvedValue(null);
+    const res = await request(app).get(url).set(studentAuth());
+    expect(res.status).toBe(404);
+  });
+
+  test('403 if student not enrolled', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.studentCourse.findUnique.mockResolvedValue(null);
+    const res = await request(app).get(url).set(studentAuth());
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/Not enrolled/);
+  });
+
+  test('403 if teacher does not own course', async () => {
+    prisma.course.findUnique.mockResolvedValue({ ...COURSE, teacherId: 'other-teacher' });
+    const res = await request(app).get(url).set(teacherAuth());
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('200 student gets ranked leaderboard', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentCourse.findMany.mockResolvedValue(ENTRIES);
+    const res = await request(app).get(url).set(studentAuth());
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0]).toMatchObject({ rank: 1, name: 'Alice', currentPoints: 200 });
+    expect(res.body[1]).toMatchObject({ rank: 2, name: 'Bob',   currentPoints: 100 });
+  });
+
+  test('200 teacher gets leaderboard for owned course', async () => {
+    prisma.course.findUnique.mockResolvedValue({ ...COURSE, teacherId: TEACHER_ID });
+    prisma.studentCourse.findMany.mockResolvedValue(ENTRIES);
+    const res = await request(app).get(url).set(teacherAuth());
+    expect(res.status).toBe(200);
+    expect(res.body[0].rank).toBe(1);
+  });
+
+  test('response entries do not include password', async () => {
+    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentCourse.findMany.mockResolvedValue(ENTRIES);
+    const res = await request(app).get(url).set(studentAuth());
+    res.body.forEach(entry => expect(entry).not.toHaveProperty('password'));
+  });
+});
+
 // ─── GET /api/students/me/badges ─────────────────────────────────────────────
 
 describe('GET /api/students/me/badges', () => {

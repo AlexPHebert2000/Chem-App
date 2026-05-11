@@ -137,6 +137,38 @@ async function getStudentCourseChapters(req, res) {
   })));
 }
 
+async function getCourseLeaderboard(req, res) {
+  const { courseId } = req.params;
+  const { sub: userId, role } = req.user;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+
+  if (role === 'TEACHER') {
+    if (course.teacherId !== userId) return res.status(403).json({ error: 'You do not own this course' });
+  } else {
+    const enrollment = await prisma.studentCourse.findUnique({
+      where: { studentId_courseId: { studentId: userId, courseId } },
+    });
+    if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
+  }
+
+  const entries = await prisma.studentCourse.findMany({
+    where: { courseId },
+    orderBy: { currentPoints: 'desc' },
+    include: { student: { omit: { password: true } } },
+  });
+
+  res.json(entries.map((e, i) => ({
+    rank: i + 1,
+    studentId: e.studentId,
+    name: e.student.name,
+    currentPoints: e.currentPoints,
+    lifetimePoints: e.lifetimePoints,
+    streak: e.streak,
+  })));
+}
+
 async function getStudentBadges(req, res) {
   const studentId = req.user.sub;
 
@@ -149,4 +181,4 @@ async function getStudentBadges(req, res) {
   res.json(studentBadges);
 }
 
-module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges };
+module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard };

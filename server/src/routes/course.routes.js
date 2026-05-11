@@ -3,7 +3,7 @@ const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests } = require('../controllers/course.controller');
 const { getCourseChapters, createChapter, swapChapters } = require('../controllers/chapter.controller');
 const { exportStudentsCsv } = require('../controllers/export.controller');
-const { getStudentCourses, getStudentCourseProgress, getStudentCourseChapters } = require('../controllers/student.controller');
+const { getStudentCourses, getStudentCourseProgress, getStudentCourseChapters, getCourseLeaderboard } = require('../controllers/student.controller');
 const { createReward, getCourseRewards, getStudentCourseRewards, getCourseRedemptions } = require('../controllers/reward.controller');
 
 const router = Router();
@@ -30,5 +30,6 @@ router.post('/:courseId/join-requests/:requestId/approve', authenticate, require
 router.post('/:courseId/rewards', authenticate, requireRole('TEACHER'), createReward);
 router.get('/:courseId/rewards', authenticate, byRole(getCourseRewards, getStudentCourseRewards));
 router.get('/:courseId/redemptions', authenticate, requireRole('TEACHER'), getCourseRedemptions);
+router.get('/:courseId/leaderboard', authenticate, getCourseLeaderboard);
 
 module.exports = router;
