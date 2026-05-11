@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { awardBadges } = require('../services/badge.service');
 
 async function findNextSection(sectionOrderIndex, chapter) {
   const nextInChapter = await prisma.section.findFirst({
@@ -93,6 +94,8 @@ async function completeSection(req, res) {
       currentSectionId: nextSection?.id ?? null,
     },
   });
+
+  await awardBadges(studentId);
 
   res.json({
     studentSection,

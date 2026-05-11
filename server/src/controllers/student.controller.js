@@ -137,4 +137,16 @@ async function getStudentCourseChapters(req, res) {
   })));
 }
 
-module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters };
+async function getStudentBadges(req, res) {
+  const studentId = req.user.sub;
+
+  const studentBadges = await prisma.studentBadge.findMany({
+    where: { studentId },
+    include: { badge: true },
+    orderBy: { dateAchieved: 'desc' },
+  });
+
+  res.json(studentBadges);
+}
+
+module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges };

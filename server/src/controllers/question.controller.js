@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { recordActivity } = require('../services/workSession.service');
+const { awardBadges } = require('../services/badge.service');
 
 const QUESTION_TYPES = ['MULTIPLE_CHOICE', 'FILL_IN_BLANK'];
 
@@ -267,6 +268,7 @@ async function attemptQuestion(req, res) {
   });
 
   await recordActivity(sessionId, xpDelta);
+  await awardBadges(studentId);
 
   res.status(201).json({
     attempt,

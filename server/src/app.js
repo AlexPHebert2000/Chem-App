@@ -8,6 +8,7 @@ const questionRoutes = require('./routes/question.routes');
 const studyRoutes = require('./routes/study.routes');
 const rewardRoutes = require('./routes/reward.routes');
 const redemptionRoutes = require('./routes/redemption.routes');
+const studentRoutes = require('./routes/student.routes');
 
 const app = express();
 
@@ -26,5 +27,6 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/study', studyRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/redemptions', redemptionRoutes);
+app.use('/api/students', studentRoutes);
 
 module.exports = app;

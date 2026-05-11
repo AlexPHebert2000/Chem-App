@@ -11,6 +11,8 @@ jest.mock('../../lib/prisma', () => ({
   questionAttempt: { findMany: jest.fn() },
 }));
 
+jest.mock('../../services/badge.service', () => ({ awardBadges: jest.fn().mockResolvedValue(undefined) }));
+
 const prisma = require('../../lib/prisma');
 
 process.env.JWT_SECRET = 'test_secret';
