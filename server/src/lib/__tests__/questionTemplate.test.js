@@ -20,7 +20,17 @@ describe('parseBrackets', () => {
   test('parses num bracket', () => {
     const result = parseBrackets('Add [num(1,100)] grams.');
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ position: 1, type: 'num', min: 1, max: 100, property: null });
+    expect(result[0]).toMatchObject({ position: 1, type: 'num', min: 1, max: 100, precision: 0, property: null });
+  });
+
+  test('parses decimal num bracket and extracts precision', () => {
+    const result = parseBrackets('[num(1.00,5.00)]');
+    expect(result[0]).toMatchObject({ type: 'num', min: 1, max: 5, precision: 2 });
+  });
+
+  test('decimal num precision is the max of both bounds', () => {
+    const result = parseBrackets('[num(1.0,5.00)]');
+    expect(result[0].precision).toBe(2);
   });
 
   test('parses compound bracket', () => {
@@ -94,6 +104,23 @@ describe('resolveAll', () => {
       expect(parseInt(r.displayValue, 10)).toBeGreaterThanOrEqual(5);
       expect(parseInt(r.displayValue, 10)).toBeLessThanOrEqual(10);
     }
+  });
+
+  test('decimal num bracket displayValue has correct number of decimal places', () => {
+    const brackets = parseBrackets('[num(1.00,5.00)]');
+    for (let i = 0; i < 20; i++) {
+      const r = resolveAll(brackets)[0];
+      expect(r.displayValue).toMatch(/^\d+\.\d{2}$/);
+      expect(parseFloat(r.displayValue)).toBeGreaterThanOrEqual(1);
+      expect(parseFloat(r.displayValue)).toBeLessThanOrEqual(5);
+    }
+  });
+
+  test('decimal num rawData is numeric and precision is stored', () => {
+    const brackets = parseBrackets('[num(1.00,5.00)]');
+    const r = resolveAll(brackets)[0];
+    expect(typeof r.rawData).toBe('number');
+    expect(r.precision).toBe(2);
   });
 
   test('compound bracket resolves to compound from correct category', () => {
@@ -207,8 +234,19 @@ describe('evaluateAnswer', () => {
   });
 
   test('num slot bare reference returns the number', () => {
-    const resolutions = [{ position: 1, displayValue: '42', rawData: 42 }];
+    const resolutions = [{ position: 1, displayValue: '42', rawData: 42, precision: 0 }];
     expect(evaluateAnswer('1', resolutions)).toBe('42');
+  });
+
+  test('decimal num bare reference preserves trailing zeros', () => {
+    // rawData 3.5 with precision 2 → answer must be "3.50" not "3.5"
+    const resolutions = [{ position: 1, displayValue: '3.50', rawData: 3.5, precision: 2 }];
+    expect(evaluateAnswer('1', resolutions)).toBe('3.50');
+  });
+
+  test('decimal num bare reference at a round value', () => {
+    const resolutions = [{ position: 1, displayValue: '5.00', rawData: 5.0, precision: 2 }];
+    expect(evaluateAnswer('1', resolutions)).toBe('5.00');
   });
 
   test('result is integer string when result is whole', () => {
@@ -273,10 +311,21 @@ describe('generateDistractors', () => {
 
   test('num distractors are adjacent integers', () => {
     const numBrackets = parseBrackets('[num(1,100)]');
-    const numResolutions = [{ position: 1, displayValue: '50', rawData: 50 }];
+    const numResolutions = [{ position: 1, displayValue: '50', rawData: 50, precision: 0 }];
     const d = generateDistractors('50', numResolutions, numBrackets, '1', 3);
     expect(d).toHaveLength(3);
     d.forEach(v => expect(v).not.toBe('50'));
+  });
+
+  test('decimal num distractors are formatted to the correct decimal places', () => {
+    const numBrackets = parseBrackets('[num(1.00,5.00)]');
+    const numResolutions = [{ position: 1, displayValue: '3.00', rawData: 3.0, precision: 2 }];
+    const d = generateDistractors('3.00', numResolutions, numBrackets, '1', 3);
+    expect(d).toHaveLength(3);
+    d.forEach(v => {
+      expect(v).toMatch(/^\d+\.\d{2}$/);
+      expect(v).not.toBe('3.00');
+    });
   });
 
   test('handles small el range by expanding to full table', () => {
@@ -343,6 +392,10 @@ describe('validateTemplate', () => {
 
   test('returns null for valid num template', () => {
     expect(validateTemplate('Add [num(1,100)] grams.', '1')).toBeNull();
+  });
+
+  test('returns null for decimal num template', () => {
+    expect(validateTemplate('The value is [num(1.00,5.00)].', '1')).toBeNull();
   });
 
   test('returns null for valid compound template', () => {

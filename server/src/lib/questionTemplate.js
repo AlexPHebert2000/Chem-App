@@ -8,6 +8,24 @@ const EL_PROPS = ['name', 'symbol', 'number', 'mass'];
 const COMPOUND_PROPS = ['name', 'formula', 'molarMass'];
 const KNOWN_TYPES = ['el', 'num', 'compound', 'ref', 'expr'];
 
+// Number of decimal places encoded in a bound string ("1.00" → 2, "5" → 0).
+function decimalPrecision(s) {
+  const dot = s.indexOf('.');
+  return dot === -1 ? 0 : s.length - dot - 1;
+}
+
+// Random decimal in [min, max] formatted to `precision` decimal places.
+function randNum(min, max, precision) {
+  const scale = Math.pow(10, precision);
+  const lo = Math.round(min * scale);
+  const hi = Math.round(max * scale);
+  const val = (Math.floor(Math.random() * (hi - lo + 1)) + lo) / scale;
+  return val.toFixed(precision);
+}
+
+// Regex for a num(min,max) token where min/max may be negative decimals.
+const NUM_RANGE_RE = /num\((-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\)/g;
+
 // ─── Parse ────────────────────────────────────────────────────────────────────
 
 function parseBrackets(content) {
@@ -34,22 +52,25 @@ function parseBrackets(content) {
         });
       }
     } else if (inner.startsWith('num(')) {
-      // num(min,max) — min may be negative e.g. num(-5,5)
-      const m = inner.match(/^num\((-?\d+),(-?\d+)\)$/);
+      // num(min,max) — bounds may be negative or decimal e.g. num(-5,5) num(1.00,5.00)
+      const m = inner.match(/^num\((-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\)$/);
       if (m) {
+        const precision = Math.max(decimalPrecision(m[1]), decimalPrecision(m[2]));
         Object.assign(descriptor, {
           type: 'num',
-          min: parseInt(m[1], 10),
-          max: parseInt(m[2], 10),
+          min: parseFloat(m[1]),
+          max: parseFloat(m[2]),
+          precision,
           property: null,
         });
       } else if (/[+\-*/^]/.test(inner)) {
         // Complex expression starting with num(...), e.g. "num(1,5) + num(1,5)"
         const numRanges = [];
-        const numRe2 = /num\((-?\d+),(-?\d+)\)/g;
+        NUM_RANGE_RE.lastIndex = 0;
         let nm2;
-        while ((nm2 = numRe2.exec(inner)) !== null) {
-          numRanges.push({ token: nm2[0], min: parseInt(nm2[1], 10), max: parseInt(nm2[2], 10) });
+        while ((nm2 = NUM_RANGE_RE.exec(inner)) !== null) {
+          const prec = Math.max(decimalPrecision(nm2[1]), decimalPrecision(nm2[2]));
+          numRanges.push({ token: nm2[0], min: parseFloat(nm2[1]), max: parseFloat(nm2[2]), precision: prec });
         }
         const slotRefs2 = [];
         const srRe2 = /(\d+)\.([a-zA-Z]+)/g;
@@ -57,7 +78,7 @@ function parseBrackets(content) {
         while ((sr2 = srRe2.exec(inner)) !== null) {
           slotRefs2.push({ token: sr2[0], refPosition: parseInt(sr2[1], 10), property: sr2[2] });
         }
-        Object.assign(descriptor, { type: 'expr', expression: inner, numRanges: numRanges, slotRefs: slotRefs2 });
+        Object.assign(descriptor, { type: 'expr', expression: inner, numRanges, slotRefs: slotRefs2 });
       } else {
         descriptor.type = 'num';
         descriptor.parseError = `Invalid num syntax: ${raw}`;
@@ -81,14 +102,16 @@ function parseBrackets(content) {
         refPosition: parseInt(m[1], 10),
         property: m[2],
       });
-    } else if (/num\(-?\d+,-?\d+\)/.test(inner) || (/\d+\.\w+/.test(inner) && /[+\-*/^]/.test(inner))) {
+    } else if ((/num\(-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?\)/.test(inner) && /[+\-*/^]/.test(inner)) ||
+               (/\d+\.\w+/.test(inner) && /[+\-*/^]/.test(inner))) {
       // In-bracket arithmetic expression: [1.number + num(-2,2)]
       // Resolves to a computed numeric display value.
       const numRanges = [];
-      const numRe = /num\((-?\d+),(-?\d+)\)/g;
+      NUM_RANGE_RE.lastIndex = 0;
       let nm;
-      while ((nm = numRe.exec(inner)) !== null) {
-        numRanges.push({ token: nm[0], min: parseInt(nm[1], 10), max: parseInt(nm[2], 10) });
+      while ((nm = NUM_RANGE_RE.exec(inner)) !== null) {
+        const prec = Math.max(decimalPrecision(nm[1]), decimalPrecision(nm[2]));
+        numRanges.push({ token: nm[0], min: parseFloat(nm[1]), max: parseFloat(nm[2]), precision: prec });
       }
       const slotRefs = [];
       const srRe = /(\d+)\.([a-zA-Z]+)/g;
@@ -117,11 +140,14 @@ function resolveAll(brackets) {
     let resolution;
 
     if (b.type === 'expr') {
+      // Precision of the result = max precision across all num sub-ranges in this expression.
+      const exprPrecision = b.numRanges.reduce((mx, nr) => Math.max(mx, nr.precision ?? 0), 0);
       let expr = b.expression;
-      // 1. Replace num(min,max) sub-ranges with random integers
-      expr = expr.replace(/num\((-?\d+),(-?\d+)\)/g, (_, minS, maxS) => {
-        const min = parseInt(minS, 10), max = parseInt(maxS, 10);
-        return String(Math.floor(Math.random() * (max - min + 1)) + min);
+      // 1. Replace num(min,max) sub-ranges with random values at their own precision
+      NUM_RANGE_RE.lastIndex = 0;
+      expr = expr.replace(NUM_RANGE_RE, (_, minS, maxS) => {
+        const prec = Math.max(decimalPrecision(minS), decimalPrecision(maxS));
+        return randNum(parseFloat(minS), parseFloat(maxS), prec);
       });
       // 2. Replace slot refs with values from already-resolved slots
       expr = expr.replace(/(\d+)\.([a-zA-Z]+)/g, (_, pos, prop) => {
@@ -134,10 +160,8 @@ function resolveAll(brackets) {
       expr = expr.replace(/\+\s*-/g, '- ').replace(/-\s*-/g, '+ ');
       const result = safeArithmetic(expr);
       const numericResult = isNaN(result) ? null : result;
-      const displayValue = numericResult == null
-        ? '?'
-        : (Number.isInteger(numericResult) ? String(numericResult) : numericResult.toFixed(3));
-      resolution = { position: b.position, displayValue, rawData: numericResult };
+      const displayValue = numericResult == null ? '?' : numericResult.toFixed(exprPrecision);
+      resolution = { position: b.position, displayValue, rawData: numericResult, precision: exprPrecision };
     } else if (b.type === 'ref') {
       const source = resolvedMap.get(b.refPosition);
       const rawData = source?.rawData ?? null;
@@ -150,8 +174,9 @@ function resolveAll(brackets) {
       const el = pool[Math.floor(Math.random() * pool.length)];
       resolution = { position: b.position, displayValue: String(el[b.property]), rawData: el };
     } else if (b.type === 'num') {
-      const val = Math.floor(Math.random() * (b.max - b.min + 1)) + b.min;
-      resolution = { position: b.position, displayValue: String(val), rawData: val };
+      const formatted = randNum(b.min, b.max, b.precision);
+      const val = parseFloat(formatted);
+      resolution = { position: b.position, displayValue: formatted, rawData: val, precision: b.precision };
     } else if (b.type === 'compound') {
       const pool = compounds[b.category] || [];
       const compound = pool[Math.floor(Math.random() * pool.length)];
@@ -242,36 +267,41 @@ function safeArithmetic(expr) {
 }
 
 function evaluateAnswer(expression, resolutions) {
-  const resMap = new Map(resolutions.map(r => [r.position, r.rawData]));
+  // Store full resolution objects so precision is available for num bracket formatting.
+  const resMap = new Map(resolutions.map(r => [r.position, r]));
 
   let expr = expression.trim();
 
   // Replace N.property tokens (e.g. "1.number", "1.name")
   expr = expr.replace(/(\d+)\.([a-zA-Z]+)/g, (_, pos, prop) => {
-    const rawData = resMap.get(parseInt(pos, 10));
-    if (rawData == null) return 'NaN';
-    const val = typeof rawData === 'object' ? rawData[prop] : rawData;
+    const r = resMap.get(parseInt(pos, 10));
+    if (!r) return 'NaN';
+    const val = typeof r.rawData === 'object' ? r.rawData[prop] : r.rawData;
     return val != null ? String(val) : 'NaN';
   });
 
-  // If no arithmetic operators remain, return the resolved string directly
+  // Helper: format a num/expr resolution value respecting its precision.
+  function fmtNum(r) {
+    const rawData = r.rawData;
+    if (typeof rawData !== 'number') return null;
+    return r.precision != null ? rawData.toFixed(r.precision) : String(rawData);
+  }
+
+  // If no arithmetic operators remain, return the resolved string directly.
   if (!/[+\-*/^]/.test(expr)) {
-    // Handle bare slot numbers for num type (e.g. expression "1" with rawData = 42)
     expr = expr.replace(/\b(\d+)\b/g, (_, pos) => {
-      const posNum = parseInt(pos, 10);
-      if (!resMap.has(posNum)) return pos;
-      const rawData = resMap.get(posNum);
-      return typeof rawData === 'number' ? String(rawData) : pos;
+      const r = resMap.get(parseInt(pos, 10));
+      if (!r) return pos;
+      return fmtNum(r) ?? pos;
     });
     return expr.trim();
   }
 
-  // Replace bare slot numbers for num type before arithmetic
+  // Replace bare slot numbers for num/expr types before arithmetic.
   expr = expr.replace(/\b(\d+)\b/g, (_, pos) => {
-    const posNum = parseInt(pos, 10);
-    if (!resMap.has(posNum)) return pos;
-    const rawData = resMap.get(posNum);
-    return typeof rawData === 'number' ? String(rawData) : pos;
+    const r = resMap.get(parseInt(pos, 10));
+    if (!r) return pos;
+    return fmtNum(r) ?? pos;
   });
 
   const result = safeArithmetic(expr);
@@ -396,24 +426,27 @@ function generateDistractors(correctValue, resolutions, brackets, answerExpressi
       }
     }
   } else if (primaryBracket.type === 'num') {
-    const correct = parseInt(correctValue, 10);
-    for (let k = 1; distractors.size < count && k <= primaryBracket.max - primaryBracket.min + 10; k++) {
+    const precision = primaryBracket.precision ?? 0;
+    const step = precision > 0 ? Math.pow(10, -precision) : 1;
+    const correct = parseFloat(correctValue);
+    const rangeSteps = Math.round((primaryBracket.max - primaryBracket.min) / step);
+    for (let k = 1; distractors.size < count && k <= rangeSteps + 10; k++) {
       for (const sign of [-1, 1]) {
-        const candidate = correct + sign * k;
-        if (candidate >= primaryBracket.min && candidate <= primaryBracket.max) {
-          const val = String(candidate);
-          if (!distractors.has(val)) {
+        const raw = correct + sign * k * step;
+        if (raw >= primaryBracket.min && raw <= primaryBracket.max) {
+          const val = raw.toFixed(precision);
+          if (val !== correctValue && !distractors.has(val)) {
             distractors.add(val);
             if (distractors.size >= count) break;
           }
         }
       }
     }
-    // If range is too tight (e.g. num(5,5)), go outside range
+    // If range is too tight, go outside
     for (let k = 1; distractors.size < count && k <= 20; k++) {
       for (const sign of [-1, 1]) {
-        const val = String(correct + sign * k);
-        if (!distractors.has(val)) {
+        const val = (correct + sign * k * step).toFixed(precision);
+        if (val !== correctValue && !distractors.has(val)) {
           distractors.add(val);
           if (distractors.size >= count) break;
         }
