@@ -21,7 +21,7 @@ export default function CreateQuestionScreen() {
   const { sectionId, question: existing } = useRoute().params;
   const isEditing = !!existing;
 
-  const [type, setType] = useState(existing?.type ?? 'MULTIPLE_CHOICE');
+  const [type, setType] = useState(existing?.type ?? 'DYNAMIC');
   const [content, setContent] = useState(existing?.content ?? '');
   const [correctExplanation, setCorrectExplanation] = useState(existing?.correctExplanation ?? '');
   const [incorrectExplanation, setIncorrectExplanation] = useState(existing?.incorrectExplanation ?? '');
