@@ -23,6 +23,12 @@ describe('parseBrackets', () => {
     expect(result[0]).toMatchObject({ position: 1, type: 'num', min: 1, max: 100, precision: 0, property: null });
   });
 
+  test('parses num bracket with spaces around comma', () => {
+    const result = parseBrackets('charge of [num(-2, 2)]');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: 'num', min: -2, max: 2, precision: 0 });
+  });
+
   test('parses decimal num bracket and extracts precision', () => {
     const result = parseBrackets('[num(1.00,5.00)]');
     expect(result[0]).toMatchObject({ type: 'num', min: 1, max: 5, precision: 2 });
@@ -209,20 +215,20 @@ describe('renderContent', () => {
 describe('evaluateAnswer', () => {
   const carbonResolution = [{ position: 1, displayValue: 'Carbon', rawData: { number: 6, name: 'Carbon', symbol: 'C', mass: 12.011 } }];
 
-  test('"1.number" returns element atomic number as string', () => {
-    expect(evaluateAnswer('1.number', carbonResolution)).toBe('6');
+  test('"[1.number]" returns element atomic number as string', () => {
+    expect(evaluateAnswer('[1.number]', carbonResolution)).toBe('6');
   });
 
-  test('"1.mass" returns mass as string', () => {
-    expect(evaluateAnswer('1.mass', carbonResolution)).toBe('12.011');
+  test('"[1.mass]" returns mass as string', () => {
+    expect(evaluateAnswer('[1.mass]', carbonResolution)).toBe('12.011');
   });
 
-  test('"1.name" returns name string', () => {
-    expect(evaluateAnswer('1.name', carbonResolution)).toBe('Carbon');
+  test('"[1.name]" returns name string', () => {
+    expect(evaluateAnswer('[1.name]', carbonResolution)).toBe('Carbon');
   });
 
-  test('arithmetic expression "2 * 1.number" computes correctly', () => {
-    expect(evaluateAnswer('2 * 1.number', carbonResolution)).toBe('12');
+  test('arithmetic expression "2 * [1.number]" computes correctly', () => {
+    expect(evaluateAnswer('2 * [1.number]', carbonResolution)).toBe('12');
   });
 
   test('two-slot addition', () => {
@@ -230,33 +236,33 @@ describe('evaluateAnswer', () => {
       { position: 1, displayValue: '3', rawData: 3 },
       { position: 2, displayValue: '4', rawData: 4 },
     ];
-    expect(evaluateAnswer('1 + 2', resolutions)).toBe('7');
+    expect(evaluateAnswer('[1] + [2]', resolutions)).toBe('7');
   });
 
   test('num slot bare reference returns the number', () => {
     const resolutions = [{ position: 1, displayValue: '42', rawData: 42, precision: 0 }];
-    expect(evaluateAnswer('1', resolutions)).toBe('42');
+    expect(evaluateAnswer('[1]', resolutions)).toBe('42');
   });
 
   test('decimal num bare reference preserves trailing zeros', () => {
     // rawData 3.5 with precision 2 → answer must be "3.50" not "3.5"
     const resolutions = [{ position: 1, displayValue: '3.50', rawData: 3.5, precision: 2 }];
-    expect(evaluateAnswer('1', resolutions)).toBe('3.50');
+    expect(evaluateAnswer('[1]', resolutions)).toBe('3.50');
   });
 
   test('decimal num bare reference at a round value', () => {
     const resolutions = [{ position: 1, displayValue: '5.00', rawData: 5.0, precision: 2 }];
-    expect(evaluateAnswer('1', resolutions)).toBe('5.00');
+    expect(evaluateAnswer('[1]', resolutions)).toBe('5.00');
   });
 
   test('result is integer string when result is whole', () => {
-    expect(evaluateAnswer('1.number', carbonResolution)).toBe('6');
-    expect(evaluateAnswer('1.number', carbonResolution)).not.toContain('.');
+    expect(evaluateAnswer('[1.number]', carbonResolution)).toBe('6');
+    expect(evaluateAnswer('[1.number]', carbonResolution)).not.toContain('.');
   });
 
   test('^ computes exponentiation: 2^3 = 8', () => {
     const res = [{ position: 1, displayValue: '2', rawData: 2 }, { position: 2, displayValue: '3', rawData: 3 }];
-    expect(evaluateAnswer('1 ^ 2', res)).toBe('8');
+    expect(evaluateAnswer('[1] ^ [2]', res)).toBe('8');
   });
 
   test('^ is right-associative: 2^3^2 = 2^9 = 512', () => {
@@ -265,19 +271,44 @@ describe('evaluateAnswer', () => {
       { position: 2, displayValue: '3', rawData: 3 },
       { position: 3, displayValue: '2', rawData: 2 },
     ];
-    expect(evaluateAnswer('1 ^ 2 ^ 3', res)).toBe('512');
+    expect(evaluateAnswer('[1] ^ [2] ^ [3]', res)).toBe('512');
   });
 
   test('^ with * for scientific notation: coefficient * 10^exponent', () => {
     const res = [{ position: 1, displayValue: '5', rawData: 5 }, { position: 2, displayValue: '3', rawData: 3 }];
-    expect(evaluateAnswer('1 * 10 ^ 2', res)).toBe('5000');
+    expect(evaluateAnswer('[1] * 10 ^ [2]', res)).toBe('5000');
   });
 
   test('^ has higher precedence than *: coefficient * 10^exponent', () => {
-    // slot 1 = coefficient (3), slot 2 = exponent (4); "10" is a literal constant
+    // slot 1 = coefficient (3), slot 2 = exponent (4); "10" is an unambiguous literal
     const res = [{ position: 1, displayValue: '3', rawData: 3 }, { position: 2, displayValue: '4', rawData: 4 }];
     // evaluates as 3 * (10^4) = 30000, not (3*10)^4
-    expect(evaluateAnswer('1 * 10 ^ 2', res)).toBe('30000');
+    expect(evaluateAnswer('[1] * 10 ^ [2]', res)).toBe('30000');
+  });
+
+  test('subtracting a negative num slot: "atomic# - charge" with charge = -2', () => {
+    // Chlorine (17) minus charge -2 = 17 - (-2) = 19 electrons
+    const res = [
+      { position: 1, displayValue: 'Chlorine', rawData: { number: 17, name: 'Chlorine', symbol: 'Cl', mass: 35.45 } },
+      { position: 2, displayValue: '-2', rawData: -2, precision: 0 },
+    ];
+    expect(evaluateAnswer('[1.number] - [2]', res)).toBe('19');
+  });
+
+  test('subtracting a positive num slot: "atomic# - charge" with charge = 1', () => {
+    const res = [
+      { position: 1, displayValue: 'Sodium', rawData: { number: 11, name: 'Sodium', symbol: 'Na', mass: 22.99 } },
+      { position: 2, displayValue: '1', rawData: 1, precision: 0 },
+    ];
+    expect(evaluateAnswer('[1.number] - [2]', res)).toBe('10');
+  });
+
+  test('adding a negative num slot: "atomic# + charge" with charge = -2', () => {
+    const res = [
+      { position: 1, displayValue: 'Oxygen', rawData: { number: 8, name: 'Oxygen', symbol: 'O', mass: 15.999 } },
+      { position: 2, displayValue: '-2', rawData: -2, precision: 0 },
+    ];
+    expect(evaluateAnswer('[1.number] + [2]', res)).toBe('6');
   });
 });
 
@@ -288,31 +319,31 @@ describe('generateDistractors', () => {
   const brackets = parseBrackets('[el(1,18).number]');
 
   test('returns exactly count distractors', () => {
-    const d = generateDistractors('6', carbonResolution, brackets, '1.number', 3);
+    const d = generateDistractors('6', carbonResolution, brackets, '[1.number]', 3);
     expect(d).toHaveLength(3);
   });
 
   test('no distractor equals the correct value', () => {
     for (let i = 0; i < 10; i++) {
-      const d = generateDistractors('6', carbonResolution, brackets, '1.number', 3);
+      const d = generateDistractors('6', carbonResolution, brackets, '[1.number]', 3);
       expect(d).not.toContain('6');
     }
   });
 
   test('all distractors are strings', () => {
-    const d = generateDistractors('6', carbonResolution, brackets, '1.number', 3);
+    const d = generateDistractors('6', carbonResolution, brackets, '[1.number]', 3);
     d.forEach(v => expect(typeof v).toBe('string'));
   });
 
   test('no duplicates within distractor list', () => {
-    const d = generateDistractors('6', carbonResolution, brackets, '1.number', 3);
+    const d = generateDistractors('6', carbonResolution, brackets, '[1.number]', 3);
     expect(new Set(d).size).toBe(d.length);
   });
 
   test('num distractors are adjacent integers', () => {
     const numBrackets = parseBrackets('[num(1,100)]');
     const numResolutions = [{ position: 1, displayValue: '50', rawData: 50, precision: 0 }];
-    const d = generateDistractors('50', numResolutions, numBrackets, '1', 3);
+    const d = generateDistractors('50', numResolutions, numBrackets, '[1]', 3);
     expect(d).toHaveLength(3);
     d.forEach(v => expect(v).not.toBe('50'));
   });
@@ -320,7 +351,7 @@ describe('generateDistractors', () => {
   test('decimal num distractors are formatted to the correct decimal places', () => {
     const numBrackets = parseBrackets('[num(1.00,5.00)]');
     const numResolutions = [{ position: 1, displayValue: '3.00', rawData: 3.0, precision: 2 }];
-    const d = generateDistractors('3.00', numResolutions, numBrackets, '1', 3);
+    const d = generateDistractors('3.00', numResolutions, numBrackets, '[1]', 3);
     expect(d).toHaveLength(3);
     d.forEach(v => {
       expect(v).toMatch(/^\d+\.\d{2}$/);
@@ -331,18 +362,18 @@ describe('generateDistractors', () => {
   test('handles small el range by expanding to full table', () => {
     const smallBrackets = parseBrackets('[el(1,2).name]');
     const smallResolutions = [{ position: 1, displayValue: 'Hydrogen', rawData: { number: 1, name: 'Hydrogen', symbol: 'H', mass: 1.008 } }];
-    const d = generateDistractors('Hydrogen', smallResolutions, smallBrackets, '1.name', 3);
+    const d = generateDistractors('Hydrogen', smallResolutions, smallBrackets, '[1.name]', 3);
     expect(d).toHaveLength(3);
     expect(d).not.toContain('Hydrogen');
   });
 
   test('distractors use answer property, not bracket display property', () => {
     // Question: "How many protons are in [el(1,18).name]?" — display prop is 'name'
-    // Answer: "1.number" — answer prop is 'number'
+    // Answer: "[1.number]" — answer prop is 'number'
     // Distractors must be numbers, not element names
     const nameBrackets = parseBrackets('[el(1,18).name]');
     const res = [{ position: 1, displayValue: 'Carbon', rawData: { number: 6, name: 'Carbon', symbol: 'C', mass: 12.011 } }];
-    const d = generateDistractors('6', res, nameBrackets, '1.number', 3);
+    const d = generateDistractors('6', res, nameBrackets, '[1.number]', 3);
     expect(d).toHaveLength(3);
     d.forEach(v => expect(Number.isNaN(Number(v))).toBe(false));
     expect(d).not.toContain('6');
@@ -387,95 +418,95 @@ describe('buildDynamicChoices', () => {
 
 describe('validateTemplate', () => {
   test('returns null for a valid el template', () => {
-    expect(validateTemplate('How many protons are in [el(1,18).name]?', '1.number')).toBeNull();
+    expect(validateTemplate('How many protons are in [el(1,18).name]?', '[1.number]')).toBeNull();
   });
 
   test('returns null for valid num template', () => {
-    expect(validateTemplate('Add [num(1,100)] grams.', '1')).toBeNull();
+    expect(validateTemplate('Add [num(1,100)] grams.', '[1]')).toBeNull();
   });
 
   test('returns null for decimal num template', () => {
-    expect(validateTemplate('The value is [num(1.00,5.00)].', '1')).toBeNull();
+    expect(validateTemplate('The value is [num(1.00,5.00)].', '[1]')).toBeNull();
   });
 
   test('returns null for valid compound template', () => {
-    expect(validateTemplate('The formula is [compound(acids).formula].', '1.molarMass')).toBeNull();
+    expect(validateTemplate('The formula is [compound(acids).formula].', '[1.molarMass]')).toBeNull();
   });
 
   test('returns error if no brackets in content', () => {
-    expect(validateTemplate('No brackets here.', '1.number')).toMatch(/bracket/i);
+    expect(validateTemplate('No brackets here.', '[1.number]')).toMatch(/bracket/i);
   });
 
   test('returns error for malformed el bracket (dash instead of comma)', () => {
-    expect(validateTemplate('[el(1-18).name]', '1.number')).toBeTruthy();
+    expect(validateTemplate('[el(1-18).name]', '[1.number]')).toBeTruthy();
   });
 
   test('returns error for unknown bracket type', () => {
-    expect(validateTemplate('[ion(1,5).charge]', '1.charge')).toMatch(/unknown/i);
+    expect(validateTemplate('[ion(1,5).charge]', '[1.charge]')).toMatch(/unknown/i);
   });
 
   test('returns error for invalid el property', () => {
-    expect(validateTemplate('[el(1,18).color]', '1.color')).toMatch(/property/i);
+    expect(validateTemplate('[el(1,18).color]', '[1.color]')).toMatch(/property/i);
   });
 
   test('returns error for invalid compound category', () => {
-    expect(validateTemplate('[compound(gases).formula]', '1.formula')).toMatch(/category/i);
+    expect(validateTemplate('[compound(gases).formula]', '[1.formula]')).toMatch(/category/i);
   });
 
   test('returns error if answerExpression references out-of-range slot', () => {
-    expect(validateTemplate('[el(1,18).name]', '2.number')).toMatch(/slot 2/);
+    expect(validateTemplate('[el(1,18).name]', '[2.number]')).toMatch(/slot 2/);
   });
 
   test('returns error if el range is out of bounds', () => {
-    expect(validateTemplate('[el(0,18).name]', '1.number')).toMatch(/range/i);
+    expect(validateTemplate('[el(0,18).name]', '[1.number]')).toMatch(/range/i);
   });
 
   test('returns error for invalid characters in answerExpression', () => {
-    expect(validateTemplate('[el(1,18).name]', '1.number; DROP TABLE')).toBeTruthy();
+    expect(validateTemplate('[el(1,18).name]', '[1.number]; DROP TABLE')).toBeTruthy();
   });
 
   test('returns null for valid answerExpression using ^', () => {
-    // slot 1 = coefficient, slot 2 = exponent; "10" is a literal constant not a slot ref
-    expect(validateTemplate('[num(1,9)][num(1,6)]', '1 * 10 ^ 2')).toBeNull();
+    // [1] = coefficient, [2] = exponent; "10" is an unambiguous literal
+    expect(validateTemplate('[num(1,9)][num(1,6)]', '[1] * 10 ^ [2]')).toBeNull();
   });
 
   test('returns null for valid ref bracket', () => {
-    expect(validateTemplate('[el(1,18).name] and [1.symbol]', '1.number')).toBeNull();
+    expect(validateTemplate('[el(1,18).name] and [1.symbol]', '[1.number]')).toBeNull();
   });
 
   test('returns error for forward ref bracket', () => {
-    expect(validateTemplate('[2.symbol] and [el(1,18).name]', '2.number')).toBeTruthy();
+    expect(validateTemplate('[2.symbol] and [el(1,18).name]', '[2.number]')).toBeTruthy();
   });
 
   test('returns error for ref to num bracket', () => {
-    expect(validateTemplate('[num(1,10)] and [1.number]', '1')).toMatch(/num/i);
+    expect(validateTemplate('[num(1,10)] and [1.number]', '[1]')).toMatch(/num/i);
   });
 
   test('returns error for ref bracket with invalid el property', () => {
-    expect(validateTemplate('[el(1,18).name] and [1.color]', '1.number')).toMatch(/property/i);
+    expect(validateTemplate('[el(1,18).name] and [1.color]', '[1.number]')).toMatch(/property/i);
   });
 
   test('returns null for valid expr bracket', () => {
-    expect(validateTemplate('[el(1,18).number] has [1.number + num(-2,2)] electrons.', '2')).toBeNull();
+    expect(validateTemplate('[el(1,18).number] has [1.number + num(-2,2)] electrons.', '[2]')).toBeNull();
   });
 
   test('returns null for expr bracket with only num ranges', () => {
-    expect(validateTemplate('Add [num(1,5) + num(1,5)] grams.', '1')).toBeNull();
+    expect(validateTemplate('Add [num(1,5) + num(1,5)] grams.', '[1]')).toBeNull();
   });
 
   test('returns error for expr bracket referencing a forward slot', () => {
-    expect(validateTemplate('[2.number + num(-2,2)] and [el(1,18).number]', '1')).toBeTruthy();
+    expect(validateTemplate('[2.number + num(-2,2)] and [el(1,18).number]', '[1]')).toBeTruthy();
   });
 
   test('returns error for expr bracket referencing a num bracket property', () => {
-    expect(validateTemplate('[num(1,10)] and [1.number + num(-1,1)]', '2')).toMatch(/num/i);
+    expect(validateTemplate('[num(1,10)] and [1.number + num(-1,1)]', '[2]')).toMatch(/num/i);
   });
 
   test('returns error for expr bracket with invalid el property', () => {
-    expect(validateTemplate('[el(1,18).number] and [1.color + num(-1,1)]', '2')).toMatch(/property/i);
+    expect(validateTemplate('[el(1,18).number] and [1.color + num(-1,1)]', '[2]')).toMatch(/property/i);
   });
 
   test('returns error for expr num range with min > max', () => {
-    expect(validateTemplate('[el(1,18).number] has [1.number + num(2,-2)] electrons.', '2')).toBeTruthy();
+    expect(validateTemplate('[el(1,18).number] has [1.number + num(2,-2)] electrons.', '[2]')).toBeTruthy();
   });
 });

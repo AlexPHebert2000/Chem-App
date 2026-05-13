@@ -6,7 +6,11 @@ const BRACKET_RE = /\[([^\]]+)\]/g;
 
 const EL_PROPS = ['name', 'symbol', 'number', 'mass'];
 const COMPOUND_PROPS = ['name', 'formula', 'molarMass'];
-const KNOWN_TYPES = ['el', 'num', 'compound', 'ref', 'expr'];
+const KNOWN_TYPES = ['el', 'num', 'compound', 'ref', 'expr', 'const'];
+
+const CONSTANTS = {
+  NA: { value: 6.02214076e23, displayValue: '6.022 × 10²³' },
+};
 
 // Number of decimal places encoded in a bound string ("1.00" → 2, "5" → 0).
 function decimalPrecision(s) {
@@ -24,7 +28,8 @@ function randNum(min, max, precision) {
 }
 
 // Regex for a num(min,max) token where min/max may be negative decimals.
-const NUM_RANGE_RE = /num\((-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\)/g;
+// Allows optional whitespace around the comma and inside the parens.
+const NUM_RANGE_RE = /num\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g;
 
 // ─── Parse ────────────────────────────────────────────────────────────────────
 
@@ -39,7 +44,9 @@ function parseBrackets(content) {
     const inner = match[1].trim();
     const descriptor = { position, raw };
 
-    if (inner.startsWith('el(')) {
+    if (CONSTANTS[inner]) {
+      Object.assign(descriptor, { type: 'const', constantName: inner, value: CONSTANTS[inner].value });
+    } else if (inner.startsWith('el(')) {
       // el(min,max).property
       const m = inner.match(/^el\((\d+),(\d+)\)\.(\w+)$/);
       if (!m) { descriptor.type = 'el'; descriptor.parseError = `Invalid el syntax: ${raw}`; }
@@ -53,7 +60,7 @@ function parseBrackets(content) {
       }
     } else if (inner.startsWith('num(')) {
       // num(min,max) — bounds may be negative or decimal e.g. num(-5,5) num(1.00,5.00)
-      const m = inner.match(/^num\((-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\)$/);
+      const m = inner.match(/^num\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/);
       if (m) {
         const precision = Math.max(decimalPrecision(m[1]), decimalPrecision(m[2]));
         Object.assign(descriptor, {
@@ -181,6 +188,9 @@ function resolveAll(brackets) {
       const pool = compounds[b.category] || [];
       const compound = pool[Math.floor(Math.random() * pool.length)];
       resolution = { position: b.position, displayValue: String(compound[b.property]), rawData: compound };
+    } else if (b.type === 'const') {
+      const c = CONSTANTS[b.constantName];
+      resolution = { position: b.position, displayValue: c.displayValue, rawData: c.value };
     } else {
       resolution = { position: b.position, displayValue: '?', rawData: null };
     }
@@ -223,9 +233,24 @@ function renderContent(content, resolutions) {
 
 // Safe arithmetic evaluator — no eval().
 // Handles: integers, decimals, +, -, *, /, ^ (exponentiation, right-associative)
+// Also handles unary minus: "8 - -2" and "8 + -2" are both valid.
 function safeArithmetic(expr) {
-  const tokens = expr.match(/[\d.]+|[+\-*/^]/g);
-  if (!tokens) return NaN;
+  const raw = expr.match(/[\d.]+(?:[eE][+\-]?\d+)?|[+\-*/^]/g);
+  if (!raw) return NaN;
+
+  // Fold unary minus: a '-' that follows an operator (or starts the expression)
+  // merges with the next number token so "-2" is one operand, not two tokens.
+  const tokens = [];
+  for (let i = 0; i < raw.length; i++) {
+    const last = tokens[tokens.length - 1];
+    const prevIsOpOrStart = last === undefined || last === '+' || last === '-' || last === '*' || last === '/' || last === '^';
+    if (raw[i] === '-' && prevIsOpOrStart && i + 1 < raw.length && /^[\d.]/.test(raw[i + 1])) {
+      tokens.push('-' + raw[i + 1]);
+      i++;
+    } else {
+      tokens.push(raw[i]);
+    }
+  }
 
   const nums = [];
   const ops  = [];
@@ -243,11 +268,11 @@ function safeArithmetic(expr) {
 
   // ^ has higher precedence than * and /; it is right-associative so we use
   // strict > (not >=) when deciding whether to pop a pending ^ before pushing.
-  const precedence   = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
-  const rightAssoc   = new Set(['^']);
+  const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, '^': 3 };
+  const rightAssoc = new Set(['^']);
 
   for (const tok of tokens) {
-    if (/[\d.]/.test(tok)) {
+    if (!/^[+\-*/^]$/.test(tok)) {
       nums.push(parseFloat(tok));
     } else {
       while (
@@ -267,29 +292,27 @@ function safeArithmetic(expr) {
 }
 
 function evaluateAnswer(expression, resolutions) {
-  // Store full resolution objects so precision is available for num bracket formatting.
   const resMap = new Map(resolutions.map(r => [r.position, r]));
 
   let expr = expression.trim();
 
-  // Replace N.property tokens (e.g. "1.number", "1.name")
-  expr = expr.replace(/(\d+)\.([a-zA-Z]+)/g, (_, pos, prop) => {
+  // Replace [N.property] refs first (property access on a slot)
+  expr = expr.replace(/\[(\d+)\.([a-zA-Z]+)\]/g, (_, pos, prop) => {
     const r = resMap.get(parseInt(pos, 10));
     if (!r) return 'NaN';
     const val = typeof r.rawData === 'object' ? r.rawData[prop] : r.rawData;
     return val != null ? String(val) : 'NaN';
   });
 
-  // Helper: format a num/expr resolution value respecting its precision.
   function fmtNum(r) {
     const rawData = r.rawData;
     if (typeof rawData !== 'number') return null;
     return r.precision != null ? rawData.toFixed(r.precision) : String(rawData);
   }
 
-  // If no arithmetic operators remain, return the resolved string directly.
+  // If no arithmetic remains, resolve bare [N] refs and return as string (e.g. element name)
   if (!/[+\-*/^]/.test(expr)) {
-    expr = expr.replace(/\b(\d+)\b/g, (_, pos) => {
+    expr = expr.replace(/\[(\d+)\]/g, (_, pos) => {
       const r = resMap.get(parseInt(pos, 10));
       if (!r) return pos;
       return fmtNum(r) ?? pos;
@@ -297,8 +320,8 @@ function evaluateAnswer(expression, resolutions) {
     return expr.trim();
   }
 
-  // Replace bare slot numbers for num/expr types before arithmetic.
-  expr = expr.replace(/\b(\d+)\b/g, (_, pos) => {
+  // Replace bare [N] refs before arithmetic evaluation
+  expr = expr.replace(/\[(\d+)\]/g, (_, pos) => {
     const r = resMap.get(parseInt(pos, 10));
     if (!r) return pos;
     return fmtNum(r) ?? pos;
@@ -312,7 +335,7 @@ function evaluateAnswer(expression, resolutions) {
 // ─── Distractors ──────────────────────────────────────────────────────────────
 
 function getPrimarySlot(answerExpression, brackets) {
-  const m = answerExpression.match(/^(\d+)/);
+  const m = answerExpression.match(/^\[(\d+)/);
   if (!m) return null;
   const pos = parseInt(m[1], 10);
   const bracket = brackets.find(b => b.position === pos) ?? null;
@@ -326,8 +349,8 @@ function getPrimarySlot(answerExpression, brackets) {
 // Extract the answer property from a simple expression like "1.number" → "number".
 // Returns null for arithmetic expressions or bare slot refs.
 function getAnswerProperty(answerExpression) {
-  const m = answerExpression.trim().match(/^\d+\.([a-zA-Z]+)$/);
-  return m ? m[1] : null;
+  const m = answerExpression.trim().match(/^\[(\d+)\.([a-zA-Z]+)\]$/);
+  return m ? m[2] : null;
 }
 
 function hasArithmetic(answerExpression) {
@@ -339,7 +362,7 @@ function generateDistractors(correctValue, resolutions, brackets, answerExpressi
   const primaryBracket = getPrimarySlot(answerExpression, brackets);
   const isArithmetic = hasArithmetic(answerExpression);
 
-  if (isArithmetic || !primaryBracket || primaryBracket.type === 'expr') {
+  if (isArithmetic || !primaryBracket || primaryBracket.type === 'expr' || primaryBracket.type === 'const') {
     // Numeric variants: ±5%, ±10%, ±15%, ±20%, ±25%
     const correct = parseFloat(correctValue);
     if (!isNaN(correct)) {
@@ -543,6 +566,12 @@ function validateTemplate(content, answerExpression) {
         return `Invalid compound property "${b.property}". Valid: ${COMPOUND_PROPS.join(', ')}`;
       }
     }
+
+    if (b.type === 'const') {
+      if (!CONSTANTS[b.constantName]) {
+        return `Unknown constant "${b.constantName}". Valid: ${Object.keys(CONSTANTS).join(', ')}`;
+      }
+    }
   }
 
   // Validate answerExpression
@@ -550,21 +579,17 @@ function validateTemplate(content, answerExpression) {
     return 'answerExpression is required';
   }
 
-  // Only allow: digits, dots, spaces, +, -, *, /, ^, and word chars for property names
-  if (/[^0-9a-zA-Z\s+\-*/^.()]/.test(answerExpression)) {
-    return 'answerExpression contains invalid characters. Only digits, property names, and +−*/^ operators are allowed';
+  // Only allow: digits, letters, spaces, operators, decimal point, parens, and square brackets
+  if (/[^0-9a-zA-Z\s+\-*/^.()\[\]]/.test(answerExpression)) {
+    return 'answerExpression contains invalid characters. Use [N] or [N.property] for slot references and +−*/^ for operators';
   }
 
-  // Validate slot references in the answer expression.
-  // N.property is always a slot ref and must be in range.
-  // Bare N is a slot ref only when N <= maxPosition; larger numbers are literal
-  // constants (e.g. the "10" in "1 * 10 ^ 2" is the base, not slot 10).
+  // Validate bracket slot references: [N] or [N.property]
   const maxPosition = brackets.length;
-  const slotRefs = [...answerExpression.matchAll(/(\d+)(\.\w+)?/g)];
-  for (const [, pos, prop] of slotRefs) {
+  const slotRefs = [...answerExpression.matchAll(/\[(\d+)(?:\.([a-zA-Z]+))?\]/g)];
+  for (const [, pos] of slotRefs) {
     const posNum = parseInt(pos, 10);
-    const isSlotRef = prop ? true : posNum <= maxPosition;
-    if (isSlotRef && (posNum < 1 || posNum > maxPosition)) {
+    if (posNum < 1 || posNum > maxPosition) {
       return `answerExpression references slot ${posNum} but content only has ${maxPosition} bracket(s)`;
     }
   }
