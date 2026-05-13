@@ -31,6 +31,9 @@ function randNum(min, max, precision) {
 // Allows optional whitespace around the comma and inside the parens.
 const NUM_RANGE_RE = /num\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g;
 
+// Matches a full comparison answer expression: [gt(1.mass,2.mass)] or [lt(1.prop,2.prop)]
+const CMP_EXPR_RE = /^\[(?:gt|lt)\((\d+)\.([a-zA-Z]+),(\d+)\.([a-zA-Z]+)\)\]$/;
+
 // ─── Parse ────────────────────────────────────────────────────────────────────
 
 function parseBrackets(content) {
@@ -142,6 +145,8 @@ function parseBrackets(content) {
 function resolveAll(brackets) {
   const resolvedMap = new Map();
   const results = [];
+  const usedAtomicNumbers = new Set();
+  const usedCompoundFormulas = new Set();
 
   for (const b of brackets) {
     let resolution;
@@ -177,16 +182,21 @@ function resolveAll(brackets) {
         : null;
       resolution = { position: b.position, displayValue: val != null ? String(val) : '?', rawData };
     } else if (b.type === 'el') {
-      const pool = periodicTable.filter(e => e.number >= b.min && e.number <= b.max);
+      let pool = periodicTable.filter(e => e.number >= b.min && e.number <= b.max && !usedAtomicNumbers.has(e.number));
+      if (pool.length === 0) pool = periodicTable.filter(e => e.number >= b.min && e.number <= b.max);
       const el = pool[Math.floor(Math.random() * pool.length)];
+      usedAtomicNumbers.add(el.number);
       resolution = { position: b.position, displayValue: String(el[b.property]), rawData: el };
     } else if (b.type === 'num') {
       const formatted = randNum(b.min, b.max, b.precision);
       const val = parseFloat(formatted);
       resolution = { position: b.position, displayValue: formatted, rawData: val, precision: b.precision };
     } else if (b.type === 'compound') {
-      const pool = compounds[b.category] || [];
+      const categoryPool = compounds[b.category] || [];
+      let pool = categoryPool.filter(c => !usedCompoundFormulas.has(c.formula));
+      if (pool.length === 0) pool = categoryPool;
       const compound = pool[Math.floor(Math.random() * pool.length)];
+      usedCompoundFormulas.add(compound.formula);
       resolution = { position: b.position, displayValue: String(compound[b.property]), rawData: compound };
     } else if (b.type === 'const') {
       const c = CONSTANTS[b.constantName];
@@ -317,6 +327,20 @@ function safeArithmetic(expr) {
 function evaluateAnswer(expression, resolutions) {
   const resMap = new Map(resolutions.map(r => [r.position, r]));
 
+  // Comparison operators — return displayValue of the winning slot
+  const cmpMatch = expression.trim().match(CMP_EXPR_RE);
+  if (cmpMatch) {
+    const isGt = expression.trim().startsWith('[gt');
+    const [, p1, pr1, p2, pr2] = cmpMatch;
+    const r1 = resMap.get(parseInt(p1, 10));
+    const r2 = resMap.get(parseInt(p2, 10));
+    if (!r1 || !r2) return expression;
+    const n1 = parseFloat(typeof r1.rawData === 'object' ? r1.rawData[pr1] : r1.rawData);
+    const n2 = parseFloat(typeof r2.rawData === 'object' ? r2.rawData[pr2] : r2.rawData);
+    const r1Wins = isGt ? (n1 >= n2) : (n1 <= n2);
+    return (r1Wins ? r1 : r2).displayValue;
+  }
+
   let expr = expression.trim();
 
   // Replace [N.property] refs first (property access on a slot)
@@ -365,6 +389,13 @@ function evaluateAnswer(expression, resolutions) {
 // ─── Distractors ──────────────────────────────────────────────────────────────
 
 function getPrimarySlot(answerExpression, brackets) {
+  const cmpMatch = answerExpression.trim().match(CMP_EXPR_RE);
+  if (cmpMatch) {
+    const pos1 = parseInt(cmpMatch[1], 10);
+    const b = brackets.find(b => b.position === pos1) ?? null;
+    if (b?.type === 'ref') return brackets.find(x => x.position === b.refPosition) ?? null;
+    return b;
+  }
   const m = answerExpression.match(/^\[(\d+)/);
   if (!m) return null;
   const pos = parseInt(m[1], 10);
@@ -391,6 +422,49 @@ function generateDistractors(correctValue, resolutions, brackets, answerExpressi
   const distractors = new Set();
   const primaryBracket = getPrimarySlot(answerExpression, brackets);
   const isArithmetic = hasArithmetic(answerExpression);
+
+  // Comparison distractor path
+  const cmpDistractorMatch = answerExpression.trim().match(CMP_EXPR_RE);
+  if (cmpDistractorMatch) {
+    const [, p1, , p2] = cmpDistractorMatch;
+    const resMap = new Map(resolutions.map(r => [r.position, r]));
+
+    // Step 1: losing slots are natural distractors
+    for (const pos of [parseInt(p1, 10), parseInt(p2, 10)]) {
+      if (distractors.size >= count) break;
+      const r = resMap.get(pos);
+      if (r && r.displayValue !== correctValue && !distractors.has(r.displayValue)) {
+        distractors.add(r.displayValue);
+      }
+    }
+
+    // Step 2: pad with random elements/compounds from the same pool
+    if (distractors.size < count && primaryBracket?.type === 'el') {
+      const prop = primaryBracket.property;
+      const inRange = periodicTable
+        .filter(e => e.number >= primaryBracket.min && e.number <= primaryBracket.max && String(e[prop]) !== correctValue)
+        .sort(() => Math.random() - 0.5);
+      for (const el of inRange) {
+        if (distractors.size >= count) break;
+        const val = String(el[prop]);
+        if (!distractors.has(val)) distractors.add(val);
+      }
+      if (distractors.size < count) {
+        periodicTable
+          .filter(e => (e.number < primaryBracket.min || e.number > primaryBracket.max) && String(e[prop]) !== correctValue)
+          .sort(() => Math.random() - 0.5)
+          .forEach(el => { if (distractors.size < count) distractors.add(String(el[prop])); });
+      }
+    } else if (distractors.size < count && primaryBracket?.type === 'compound') {
+      const prop = primaryBracket.property;
+      (compounds[primaryBracket.category] || [])
+        .filter(c => String(c[prop]) !== correctValue)
+        .sort(() => Math.random() - 0.5)
+        .forEach(c => { if (distractors.size < count) distractors.add(String(c[prop])); });
+    }
+
+    return [...distractors].slice(0, count);
+  }
 
   if (isArithmetic || !primaryBracket || primaryBracket.type === 'expr' || primaryBracket.type === 'const') {
     // Numeric variants: ±5%, ±10%, ±15%, ±20%, ±25%
@@ -605,6 +679,30 @@ function validateTemplate(content, answerExpression) {
   // Validate answerExpression
   if (!answerExpression || !answerExpression.trim()) {
     return 'answerExpression is required';
+  }
+
+  // Comparison expression: [gt(N.prop,M.prop)] or [lt(N.prop,M.prop)]
+  const cmpAnswerMatch = answerExpression.trim().match(CMP_EXPR_RE);
+  if (cmpAnswerMatch) {
+    const [, p1, pr1, p2, pr2] = cmpAnswerMatch;
+    const maxPosition = brackets.length;
+    for (const [pos, prop] of [[parseInt(p1, 10), pr1], [parseInt(p2, 10), pr2]]) {
+      if (pos < 1 || pos > maxPosition)
+        return `answerExpression references slot ${pos} but content only has ${maxPosition} bracket(s)`;
+      const src = brackets.find(b => b.position === pos);
+      if (!src) return `answerExpression references slot ${pos} which does not exist`;
+      if (src.type === 'num')
+        return `Cannot use a num bracket in a comparison expression (slot ${pos})`;
+      if (src.type === 'el' && !EL_PROPS.includes(prop))
+        return `Comparison property "${prop}" is not valid for el brackets. Valid: ${EL_PROPS.join(', ')}`;
+      if (src.type === 'compound' && !COMPOUND_PROPS.includes(prop))
+        return `Comparison property "${prop}" is not valid for compound brackets. Valid: ${COMPOUND_PROPS.join(', ')}`;
+    }
+    const b1 = brackets.find(b => b.position === parseInt(p1, 10));
+    const b2 = brackets.find(b => b.position === parseInt(p2, 10));
+    if (b1.type !== b2.type)
+      return `Both slots in a comparison expression must be the same type (slot ${p1} is ${b1.type}, slot ${p2} is ${b2.type})`;
+    return null;
   }
 
   // Only allow: digits, letters, spaces, operators, decimal point, parens, and square brackets

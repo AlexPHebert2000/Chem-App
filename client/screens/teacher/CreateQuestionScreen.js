@@ -172,6 +172,12 @@ export default function CreateQuestionScreen() {
                 <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
                   <Text style={styles.syntaxCode}>Answer ref:</Text>  <Text style={styles.syntaxCode}>1.number</Text>, <Text style={styles.syntaxCode}>1.mass</Text>, <Text style={styles.syntaxCode}>1+2</Text>, <Text style={styles.syntaxCode}>2*1.number</Text>
                 </Text>
+                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
+                  <Text style={styles.syntaxCode}>Comparison:</Text>{'  '}<Text style={styles.syntaxCode}>[gt(1.mass,2.mass)]</Text>{'  '}slot with greater value
+                </Text>
+                <Text style={styles.syntaxLine}>
+                  <Text style={styles.syntaxCode}>[lt(1.mass,2.mass)]</Text>{'  '}slot with lesser value
+                </Text>
               </View>
 
               <Text style={styles.label}>Answer Expression</Text>

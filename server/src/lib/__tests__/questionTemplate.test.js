@@ -539,3 +539,137 @@ describe('validateTemplate', () => {
     expect(validateTemplate('[el(1,18).number] has [1.number + num(2,-2)] electrons.', '[2]')).toBeTruthy();
   });
 });
+
+// ─── Deduplication ────────────────────────────────────────────────────────────
+
+describe('resolveAll — deduplication', () => {
+  test('two el brackets with same range resolve to different elements', () => {
+    const brackets = parseBrackets('[el(1,8).name] and [el(1,8).name]');
+    for (let i = 0; i < 50; i++) {
+      const resolutions = resolveAll(brackets);
+      expect(resolutions[0].rawData.number).not.toBe(resolutions[1].rawData.number);
+    }
+  });
+
+  test('el deduplication falls back when range has only one element', () => {
+    const brackets = parseBrackets('[el(1,1).name] and [el(1,1).name]');
+    const resolutions = resolveAll(brackets);
+    expect(resolutions[0].displayValue).toBe('Hydrogen');
+    expect(resolutions[1].displayValue).toBe('Hydrogen');
+  });
+
+  test('two compound brackets with same category resolve to different compounds', () => {
+    const brackets = parseBrackets('[compound(acids).formula] and [compound(acids).formula]');
+    for (let i = 0; i < 20; i++) {
+      const resolutions = resolveAll(brackets);
+      expect(resolutions[0].rawData.formula).not.toBe(resolutions[1].rawData.formula);
+    }
+  });
+});
+
+// ─── evaluateAnswer — comparison operators ────────────────────────────────────
+
+describe('evaluateAnswer — comparison operators', () => {
+  const resolutions = [
+    { position: 1, displayValue: 'Carbon', rawData: { number: 6, name: 'Carbon', symbol: 'C', mass: 12.011 } },
+    { position: 2, displayValue: 'Oxygen', rawData: { number: 8, name: 'Oxygen', symbol: 'O', mass: 15.999 } },
+  ];
+
+  test('[gt(1.mass,2.mass)] returns the element with the greater mass', () => {
+    expect(evaluateAnswer('[gt(1.mass,2.mass)]', resolutions)).toBe('Oxygen');
+  });
+
+  test('[lt(1.mass,2.mass)] returns the element with the lesser mass', () => {
+    expect(evaluateAnswer('[lt(1.mass,2.mass)]', resolutions)).toBe('Carbon');
+  });
+
+  test('[gt(1.number,2.number)] returns element with greater atomic number', () => {
+    expect(evaluateAnswer('[gt(1.number,2.number)]', resolutions)).toBe('Oxygen');
+  });
+
+  test('[lt(1.number,2.number)] returns element with lesser atomic number', () => {
+    expect(evaluateAnswer('[lt(1.number,2.number)]', resolutions)).toBe('Carbon');
+  });
+
+  test('tie-break: lower position wins for both gt and lt', () => {
+    const tied = [
+      { position: 1, displayValue: 'Carbon', rawData: { mass: 12.011 } },
+      { position: 2, displayValue: 'Also12', rawData: { mass: 12.011 } },
+    ];
+    expect(evaluateAnswer('[gt(1.mass,2.mass)]', tied)).toBe('Carbon');
+    expect(evaluateAnswer('[lt(1.mass,2.mass)]', tied)).toBe('Carbon');
+  });
+
+  test('graceful fallback when slot does not exist', () => {
+    expect(evaluateAnswer('[gt(1.mass,9.mass)]', resolutions)).toBe('[gt(1.mass,9.mass)]');
+  });
+});
+
+// ─── generateDistractors — comparison expressions ─────────────────────────────
+
+describe('generateDistractors — comparison expressions', () => {
+  const brackets = parseBrackets('[el(1,8).name] and [el(1,8).name]');
+  const resolutions = [
+    { position: 1, displayValue: 'Carbon', rawData: { number: 6, name: 'Carbon', symbol: 'C', mass: 12.011 } },
+    { position: 2, displayValue: 'Oxygen', rawData: { number: 8, name: 'Oxygen', symbol: 'O', mass: 15.999 } },
+  ];
+  const expr = '[lt(1.mass,2.mass)]'; // correct answer is "Carbon"
+
+  test('returns exactly count distractors', () => {
+    const d = generateDistractors('Carbon', resolutions, brackets, expr, 3);
+    expect(d).toHaveLength(3);
+  });
+
+  test('first distractor is the losing slot displayValue', () => {
+    const d = generateDistractors('Carbon', resolutions, brackets, expr, 3);
+    expect(d[0]).toBe('Oxygen');
+  });
+
+  test('correct answer is not in distractors', () => {
+    const d = generateDistractors('Carbon', resolutions, brackets, expr, 3);
+    expect(d).not.toContain('Carbon');
+  });
+
+  test('no duplicates in distractor list', () => {
+    const d = generateDistractors('Carbon', resolutions, brackets, expr, 3);
+    expect(new Set(d).size).toBe(d.length);
+  });
+
+  test('additional distractors are element names from same range', () => {
+    const d = generateDistractors('Carbon', resolutions, brackets, expr, 3);
+    const valid = ['Hydrogen', 'Helium', 'Lithium', 'Beryllium', 'Boron', 'Nitrogen', 'Oxygen', 'Fluorine'];
+    d.forEach(v => expect(valid).toContain(v));
+  });
+});
+
+// ─── validateTemplate — comparison expressions ────────────────────────────────
+
+describe('validateTemplate — comparison expressions', () => {
+  test('returns null for valid [lt(1.mass,2.mass)] with two el brackets', () => {
+    expect(validateTemplate('[el(1,8).name] and [el(1,8).name]', '[lt(1.mass,2.mass)]')).toBeNull();
+  });
+
+  test('returns null for valid [gt(1.mass,2.mass)]', () => {
+    expect(validateTemplate('[el(1,18).name] and [el(1,18).name]', '[gt(1.mass,2.mass)]')).toBeNull();
+  });
+
+  test('returns error when comparison property is invalid for el', () => {
+    expect(validateTemplate('[el(1,8).name] and [el(1,8).name]', '[lt(1.color,2.color)]')).toMatch(/property/i);
+  });
+
+  test('returns error when comparison slot is out of bounds', () => {
+    expect(validateTemplate('[el(1,8).name]', '[lt(1.mass,2.mass)]')).toMatch(/slot 2/);
+  });
+
+  test('returns error when comparing slots of different types', () => {
+    expect(validateTemplate('[el(1,8).name] and [compound(acids).formula]', '[lt(1.mass,2.molarMass)]')).toMatch(/same type/i);
+  });
+
+  test('returns error when comparing a num bracket', () => {
+    expect(validateTemplate('[num(1,100)] and [num(1,100)]', '[gt(1.mass,2.mass)]')).toMatch(/num/i);
+  });
+
+  test('comma in [lt(...)] is not rejected by invalid-characters check', () => {
+    expect(validateTemplate('[el(1,8).name] and [el(1,8).name]', '[lt(1.mass,2.mass)]')).toBeNull();
+  });
+});
