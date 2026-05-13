@@ -310,6 +310,18 @@ describe('evaluateAnswer', () => {
     ];
     expect(evaluateAnswer('[1.number] + [2]', res)).toBe('6');
   });
+
+  test('[NA] constant in answer expression evaluates to Avogadro * moles', () => {
+    const res = [{ position: 1, displayValue: '2.5', rawData: 2.5, precision: 1 }];
+    const result = evaluateAnswer('[1] * [NA]', res);
+    // 2.5 * 6.02214076e23 = 1.505535190e24
+    expect(parseFloat(result)).toBeCloseTo(2.5 * 6.02214076e23, -10);
+  });
+
+  test('[NA] alone resolves to Avogadro string', () => {
+    const result = evaluateAnswer('[NA]', []);
+    expect(parseFloat(result)).toBeCloseTo(6.02214076e23, -10);
+  });
 });
 
 // ─── generateDistractors ──────────────────────────────────────────────────────

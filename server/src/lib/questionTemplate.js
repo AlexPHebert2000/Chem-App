@@ -304,6 +304,12 @@ function evaluateAnswer(expression, resolutions) {
     return val != null ? String(val) : 'NaN';
   });
 
+  // Replace named constant refs like [NA]
+  expr = expr.replace(/\[([A-Za-z][A-Za-z0-9]*)\]/g, (_, name) => {
+    const c = CONSTANTS[name];
+    return c != null ? String(c.value) : 'NaN';
+  });
+
   function fmtNum(r) {
     const rawData = r.rawData;
     if (typeof rawData !== 'number') return null;
@@ -591,6 +597,14 @@ function validateTemplate(content, answerExpression) {
     const posNum = parseInt(pos, 10);
     if (posNum < 1 || posNum > maxPosition) {
       return `answerExpression references slot ${posNum} but content only has ${maxPosition} bracket(s)`;
+    }
+  }
+
+  // Validate named constant refs like [NA]
+  const constRefs = [...answerExpression.matchAll(/\[([A-Za-z][A-Za-z0-9]*)\]/g)];
+  for (const [, name] of constRefs) {
+    if (!CONSTANTS[name]) {
+      return `answerExpression references unknown constant [${name}]. Valid: ${Object.keys(CONSTANTS).map(k => `[${k}]`).join(', ')}`;
     }
   }
 
