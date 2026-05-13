@@ -104,6 +104,13 @@ function parseBrackets(content) {
           property: m[2],
         });
       }
+    } else if (/^\d+$/.test(inner)) {
+      // Bare cross-bracket ref: [1] → display the resolved value of a num/expr slot
+      Object.assign(descriptor, {
+        type: 'ref',
+        refPosition: parseInt(inner, 10),
+        property: null,
+      });
     } else if (/^\d+\.\w+$/.test(inner)) {
       // Cross-bracket ref: [1.symbol] → display a property of an earlier resolved slot
       const m = inner.match(/^(\d+)\.(\w+)$/);
@@ -176,11 +183,21 @@ function resolveAll(brackets) {
       resolution = { position: b.position, displayValue, rawData: numericResult, precision: exprPrecision };
     } else if (b.type === 'ref') {
       const source = resolvedMap.get(b.refPosition);
-      const rawData = source?.rawData ?? null;
-      const val = rawData != null
-        ? (typeof rawData === 'object' ? rawData[b.property] : rawData)
-        : null;
-      resolution = { position: b.position, displayValue: val != null ? String(val) : '?', rawData };
+      if (b.property === null) {
+        // Bare [N] ref — display the source's resolved value directly
+        resolution = {
+          position: b.position,
+          displayValue: source?.displayValue ?? '?',
+          rawData: source?.rawData ?? null,
+          ...(source?.precision != null && { precision: source.precision }),
+        };
+      } else {
+        const rawData = source?.rawData ?? null;
+        const val = rawData != null
+          ? (typeof rawData === 'object' ? rawData[b.property] : rawData)
+          : null;
+        resolution = { position: b.position, displayValue: val != null ? String(val) : '?', rawData };
+      }
     } else if (b.type === 'el') {
       let pool = periodicTable.filter(e => e.number >= b.min && e.number <= b.max && !usedAtomicNumbers.has(e.number));
       if (pool.length === 0) pool = periodicTable.filter(e => e.number >= b.min && e.number <= b.max);
@@ -629,21 +646,30 @@ function validateTemplate(content, answerExpression) {
     }
 
     if (b.type === 'ref') {
+      const refLabel = b.property === null ? `[${b.refPosition}]` : `[${b.refPosition}.${b.property}]`;
       if (b.refPosition >= b.position) {
-        return `[${b.refPosition}.${b.property}] must reference an earlier bracket position (forward refs are not allowed)`;
+        return `${refLabel} must reference an earlier bracket position (forward refs are not allowed)`;
       }
       const source = brackets.find(s => s.position === b.refPosition);
       if (!source) {
-        return `[${b.refPosition}.${b.property}] references slot ${b.refPosition} which does not exist`;
+        return `${refLabel} references slot ${b.refPosition} which does not exist`;
       }
-      if (source.type === 'num') {
-        return `Cannot use a ref bracket to reference a num bracket`;
-      }
-      if (source.type === 'el' && !EL_PROPS.includes(b.property)) {
-        return `Invalid el property "${b.property}" in ref bracket. Valid: ${EL_PROPS.join(', ')}`;
-      }
-      if (source.type === 'compound' && !COMPOUND_PROPS.includes(b.property)) {
-        return `Invalid compound property "${b.property}" in ref bracket. Valid: ${COMPOUND_PROPS.join(', ')}`;
+      if (b.property === null) {
+        // Bare [N] ref — only valid for num and expr brackets
+        if (source.type !== 'num' && source.type !== 'expr') {
+          return `[${b.refPosition}] bare reference is only valid for num or expr brackets. Use [${b.refPosition}.property] for ${source.type} brackets`;
+        }
+      } else {
+        // [N.property] ref
+        if (source.type === 'num') {
+          return `Cannot use [${b.refPosition}.${b.property}] to reference a num bracket — use [${b.refPosition}] instead`;
+        }
+        if (source.type === 'el' && !EL_PROPS.includes(b.property)) {
+          return `Invalid el property "${b.property}" in ref bracket. Valid: ${EL_PROPS.join(', ')}`;
+        }
+        if (source.type === 'compound' && !COMPOUND_PROPS.includes(b.property)) {
+          return `Invalid compound property "${b.property}" in ref bracket. Valid: ${COMPOUND_PROPS.join(', ')}`;
+        }
       }
     }
 

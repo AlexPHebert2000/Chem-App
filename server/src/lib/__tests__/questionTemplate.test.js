@@ -72,6 +72,12 @@ describe('parseBrackets', () => {
     expect(result[1]).toMatchObject({ position: 2, type: 'ref', refPosition: 1, property: 'symbol' });
   });
 
+  test('parses bare ref bracket [1] with property null', () => {
+    const result = parseBrackets('[num(1,100)] and [1] grams');
+    expect(result).toHaveLength(2);
+    expect(result[1]).toMatchObject({ position: 2, type: 'ref', refPosition: 1, property: null });
+  });
+
   test('parses expr bracket with slot ref + num range', () => {
     const result = parseBrackets('[el(1,18).number] has [1.number + num(-2,2)] electrons.');
     expect(result).toHaveLength(2);
@@ -151,6 +157,18 @@ describe('resolveAll', () => {
     const sourceName = resolutions[0].displayValue;
     const sourceSymbol = resolutions[0].rawData.symbol;
     expect(resolutions[1].displayValue).toBe(String(sourceSymbol));
+  });
+
+  test('bare ref [N] displays source num bracket value', () => {
+    const brackets = parseBrackets('[num(1,100)] and [1] grams');
+    const resolutions = resolveAll(brackets);
+    expect(resolutions[1].displayValue).toBe(resolutions[0].displayValue);
+  });
+
+  test('bare ref [N] inherits precision from source num bracket', () => {
+    const brackets = parseBrackets('[num(1.00,5.00)] and [1]');
+    const resolutions = resolveAll(brackets);
+    expect(resolutions[1].precision).toBe(2);
   });
 
   test('ref bracket shares rawData of source resolution', () => {
@@ -507,8 +525,20 @@ describe('validateTemplate', () => {
     expect(validateTemplate('[2.symbol] and [el(1,18).name]', '[2.number]')).toBeTruthy();
   });
 
-  test('returns error for ref to num bracket', () => {
+  test('returns error for property ref to num bracket', () => {
     expect(validateTemplate('[num(1,10)] and [1.number]', '[1]')).toMatch(/num/i);
+  });
+
+  test('returns null for bare [N] ref to num bracket', () => {
+    expect(validateTemplate('[num(1,100)] and [1] grams', '[1]')).toBeNull();
+  });
+
+  test('returns error for bare [N] ref to el bracket', () => {
+    expect(validateTemplate('[el(1,18).name] and [1]', '[1.number]')).toMatch(/num or expr/i);
+  });
+
+  test('returns error for forward bare [N] ref', () => {
+    expect(validateTemplate('[2] and [num(1,100)]', '[2]')).toMatch(/earlier/i);
   });
 
   test('returns error for ref bracket with invalid el property', () => {
