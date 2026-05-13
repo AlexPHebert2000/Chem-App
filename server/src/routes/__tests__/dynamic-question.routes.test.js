@@ -52,7 +52,7 @@ const DYNAMIC_QUESTION = {
   sectionId: SECTION.id,
   type: 'DYNAMIC',
   content: 'How many protons are in [el(1,18).number]?',
-  answerExpression: '1.number',
+  answerExpression: '[1.number]',
   distractorCount: 3,
   difficulty: 3,
   correctExplanation: 'Carbon has 6 protons.',
@@ -84,7 +84,7 @@ describe('POST /api/sections/:sectionId/questions — DYNAMIC type', () => {
     correctExplanation: 'Carbon has 6 protons.',
     incorrectExplanation: 'Review atomic numbers.',
     difficulty: 3,
-    answerExpression: '1.number',
+    answerExpression: '[1.number]',
   };
 
   function mockOwnership() {
@@ -100,7 +100,7 @@ describe('POST /api/sections/:sectionId/questions — DYNAMIC type', () => {
     expect(res.status).toBe(201);
     expect(res.body.type).toBe('DYNAMIC');
     expect(prisma.question.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ type: 'DYNAMIC', answerExpression: '1.number' }),
+      data: expect.objectContaining({ type: 'DYNAMIC', answerExpression: '[1.number]' }),
     }));
   });
 

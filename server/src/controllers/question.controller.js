@@ -1,7 +1,11 @@
 const prisma = require('../lib/prisma');
 const { recordActivity } = require('../services/workSession.service');
 const { awardBadges } = require('../services/badge.service');
-const { validateTemplate } = require('../lib/questionTemplate');
+const {
+  validateTemplate,
+  parseBrackets, resolveAll, renderContent,
+  evaluateAnswer, generateDistractors, buildDynamicChoices,
+} = require('../lib/questionTemplate');
 
 const QUESTION_TYPES = ['MULTIPLE_CHOICE', 'FILL_IN_BLANK', 'DYNAMIC'];
 
@@ -358,4 +362,35 @@ async function attemptQuestion(req, res) {
   });
 }
 
-module.exports = { getSectionQuestions, createQuestion, updateQuestion, attemptQuestion };
+async function previewDynamicQuestion(req, res) {
+  const { questionId } = req.params;
+
+  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!question) return res.status(404).json({ error: 'Question not found' });
+  if (question.type !== 'DYNAMIC') return res.status(400).json({ error: 'Question is not dynamic' });
+
+  const section = await prisma.section.findUnique({ where: { id: question.sectionId } });
+  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
+  const course  = await prisma.course.findUnique({ where: { id: chapter.courseId } });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this question' });
+
+  const brackets     = parseBrackets(question.content);
+  const resolutions  = resolveAll(brackets);
+  const content      = renderContent(question.content, resolutions);
+  const correctValue = evaluateAnswer(question.answerExpression, resolutions);
+  const count        = question.distractorCount ?? 3;
+  const distractors  = generateDistractors(correctValue, resolutions, brackets, question.answerExpression, count);
+  const choices      = buildDynamicChoices(correctValue, distractors);
+
+  res.json({
+    id: question.id,
+    type: question.type,
+    difficulty: question.difficulty,
+    content,
+    choices,
+    correctExplanation: question.correctExplanation,
+    incorrectExplanation: question.incorrectExplanation,
+  });
+}
+
+module.exports = { getSectionQuestions, createQuestion, updateQuestion, attemptQuestion, previewDynamicQuestion };
