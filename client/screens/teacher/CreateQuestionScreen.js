@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -35,6 +35,7 @@ export default function CreateQuestionScreen() {
     existing?.distractorCount != null ? String(existing.distractorCount) : ''
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   function setChoiceContent(index, text) {
     setChoices(prev => prev.map((c, i) => i === index ? { ...c, content: text } : c));
@@ -67,6 +68,7 @@ export default function CreateQuestionScreen() {
   async function handleSave() {
     if (!isValid() || saving) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const base = {
         type,
@@ -97,7 +99,7 @@ export default function CreateQuestionScreen() {
         navigation.goBack();
       }
     } catch (e) {
-      Alert.alert('Error', e.message || 'Could not save question.');
+      setSaveError(e.message || 'Could not save question.');
     } finally {
       setSaving(false);
     }
@@ -276,6 +278,13 @@ export default function CreateQuestionScreen() {
             ))}
           </View>
 
+          {/* Save error */}
+          {saveError && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{saveError}</Text>
+            </View>
+          )}
+
           {/* Save */}
           <View style={[styles.saveShadow, (!isValid() || saving) && styles.saveShadowDisabled]}>
             <TouchableOpacity
@@ -355,6 +364,16 @@ const styles = StyleSheet.create({
   diffBtnActive: { backgroundColor: colors.gold200, borderColor: colors.gold400 },
   diffText: { ...typeScale.label, color: colors.neutral600 },
   diffTextActive: { color: colors.gold800 },
+
+  errorBox: {
+    backgroundColor: colors.coral50 ?? '#FFF0EE',
+    borderWidth: 1.5,
+    borderColor: colors.coral400,
+    borderRadius: radius.md,
+    padding: spacing[3],
+    marginTop: spacing[4],
+  },
+  errorText: { ...typeScale.body, color: colors.coral600 },
 
   saveShadow: {
     marginTop: spacing[5],
