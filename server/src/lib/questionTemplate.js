@@ -231,6 +231,29 @@ function renderContent(content, resolutions) {
 
 // ─── Evaluate answer ──────────────────────────────────────────────────────────
 
+// Format a numeric result using the same number of decimal places as the
+// question's input slots. For very large/small values uses scientific
+// notation with precision+1 significant figures (minimum 2).
+function formatResult(value, precision) {
+  const abs = Math.abs(value);
+  if (abs >= 1e6 || (abs > 0 && abs < 1e-3)) {
+    return value.toPrecision(Math.max(precision + 1, 2));
+  }
+  if (precision === 0) return String(Math.round(value));
+  return value.toFixed(precision);
+}
+
+// Return the max decimal precision of any num-type slot referenced in an
+// answer expression, e.g. "[1] * [NA]" with slot 1 having precision=1 → 1.
+function getAnswerPrecision(answerExpression, resMap) {
+  let precision = 0;
+  for (const [, pos] of answerExpression.matchAll(/\[(\d+)(?:\.[a-zA-Z]+)?\]/g)) {
+    const r = resMap.get(parseInt(pos, 10));
+    if (r?.precision != null) precision = Math.max(precision, r.precision);
+  }
+  return precision;
+}
+
 // Safe arithmetic evaluator — no eval().
 // Handles: integers, decimals, +, -, *, /, ^ (exponentiation, right-associative)
 // Also handles unary minus: "8 - -2" and "8 + -2" are both valid.
@@ -335,7 +358,8 @@ function evaluateAnswer(expression, resolutions) {
 
   const result = safeArithmetic(expr);
   if (isNaN(result)) return expression;
-  return Number.isInteger(result) ? String(result) : result.toFixed(3);
+  const precision = getAnswerPrecision(expression, resMap);
+  return formatResult(result, precision);
 }
 
 // ─── Distractors ──────────────────────────────────────────────────────────────
@@ -371,29 +395,27 @@ function generateDistractors(correctValue, resolutions, brackets, answerExpressi
   if (isArithmetic || !primaryBracket || primaryBracket.type === 'expr' || primaryBracket.type === 'const') {
     // Numeric variants: ±5%, ±10%, ±15%, ±20%, ±25%
     const correct = parseFloat(correctValue);
+    const resMap = new Map(resolutions.map(r => [r.position, r]));
+    const precision = getAnswerPrecision(answerExpression, resMap);
     if (!isNaN(correct)) {
       const pcts = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.50];
       for (const pct of pcts) {
         if (distractors.size >= count) break;
         for (const sign of [-1, 1]) {
-          const candidate = correct + sign * correct * pct;
-          const formatted = Number.isInteger(correct)
-            ? String(Math.round(candidate))
-            : candidate.toFixed(3);
+          const formatted = formatResult(correct + sign * correct * pct, precision);
           if (formatted !== correctValue && !distractors.has(formatted)) {
             distractors.add(formatted);
             if (distractors.size >= count) break;
           }
         }
       }
-      // Fallback: simple ±1, ±2, ...
+      // Fallback: step by the smallest unit implied by precision (e.g. 0.1 for precision=1)
+      const step = precision === 0 ? 1 : Math.pow(10, -precision);
       for (let k = 1; distractors.size < count && k <= 20; k++) {
         for (const sign of [-1, 1]) {
-          const candidate = Number.isInteger(correct)
-            ? String(correct + sign * k)
-            : (correct + sign * k * 0.001).toFixed(3);
-          if (candidate !== correctValue && !distractors.has(candidate)) {
-            distractors.add(candidate);
+          const formatted = formatResult(correct + sign * k * step, precision);
+          if (formatted !== correctValue && !distractors.has(formatted)) {
+            distractors.add(formatted);
             if (distractors.size >= count) break;
           }
         }

@@ -314,13 +314,30 @@ describe('evaluateAnswer', () => {
   test('[NA] constant in answer expression evaluates to Avogadro * moles', () => {
     const res = [{ position: 1, displayValue: '2.5', rawData: 2.5, precision: 1 }];
     const result = evaluateAnswer('[1] * [NA]', res);
-    // 2.5 * 6.02214076e23 = 1.505535190e24
-    expect(parseFloat(result)).toBeCloseTo(2.5 * 6.02214076e23, -10);
+    // 2.5 * 6.02214076e23 — large number, precision=1 → toPrecision(2) → "1.5e+24"
+    expect(result).toBe('1.5e+24');
   });
 
-  test('[NA] alone resolves to Avogadro string', () => {
-    const result = evaluateAnswer('[NA]', []);
-    expect(parseFloat(result)).toBeCloseTo(6.02214076e23, -10);
+  test('[1] * [NA] with precision=0 (integer moles) gives 2-sig-fig scientific notation', () => {
+    const res = [{ position: 1, displayValue: '3', rawData: 3, precision: 0 }];
+    // 3 * 6.02214076e23 = 1.80664228e24; precision=0 → toPrecision(2) → "1.8e+24"
+    expect(evaluateAnswer('[1] * [NA]', res)).toBe('1.8e+24');
+  });
+
+  test('precision=2 moles gives 2 decimal places in scientific notation', () => {
+    const res = [{ position: 1, displayValue: '2.50', rawData: 2.5, precision: 2 }];
+    const result = evaluateAnswer('[1] * [NA]', res);
+    // precision=2 → toPrecision(3) → "1.51e+24"
+    expect(result).toBe('1.51e+24');
+  });
+
+  test('integer answer with precision=0 stays as integer string', () => {
+    // electrons = atomic number - charge; both slots precision=0 → integer result
+    const res = [
+      { position: 1, displayValue: 'Chlorine', rawData: { number: 17 }, precision: undefined },
+      { position: 2, displayValue: '2', rawData: 2, precision: 0 },
+    ];
+    expect(evaluateAnswer('[1.number] - [2]', res)).toBe('15');
   });
 });
 
