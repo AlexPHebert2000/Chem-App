@@ -111,6 +111,11 @@ async function getStudentSectionQuestions(req, res) {
     };
   }));
 
+  for (let i = processedQuestions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [processedQuestions[i], processedQuestions[j]] = [processedQuestions[j], processedQuestions[i]];
+  }
+
   res.json(processedQuestions);
 }
 
