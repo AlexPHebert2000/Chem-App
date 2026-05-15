@@ -48,8 +48,9 @@ async function clear() {
     ? (await prisma.section.findMany({ where: { chapterId: { in: chapterIds } }, select: { id: true } })).map(s => s.id)
     : [];
 
-  const questionIds = sectionIds.length
-    ? (await prisma.question.findMany({ where: { sectionId: { in: sectionIds } }, select: { id: true } })).map(q => q.id)
+  // Questions are teacher-owned; look them up by teacherId
+  const questionIds = teacher
+    ? (await prisma.question.findMany({ where: { teacherId: teacher.id }, select: { id: true } })).map(q => q.id)
     : [];
 
   // Delete in reverse-dependency order
@@ -112,12 +113,13 @@ async function seed() {
   // ── Section 1: The Nucleus ─────────────────────────────────────────────────
 
   const nucleus = await prisma.section.create({
-    data: { chapterId: gchemCh1.id, name: 'The Nucleus', description: 'Atomic number and mass number', orderIndex: 0 },
+    data: { chapterId: gchemCh1.id, name: 'The Nucleus', description: 'Atomic number and mass number', orderIndex: 0, questionIds: [] },
   });
 
   const q1 = await prisma.question.create({
     data: {
-      sectionId: nucleus.id, type: 'MULTIPLE_CHOICE', difficulty: 2,
+      teacherId: teacher.id, sectionIds: [nucleus.id], tagIds: [],
+      type: 'MULTIPLE_CHOICE', difficulty: 2,
       content: 'How many protons does a carbon atom have?',
       correctExplanation: 'Carbon has atomic number 6, meaning 6 protons.',
       incorrectExplanation: 'The atomic number equals the number of protons. Carbon is element 6.',
@@ -131,7 +133,8 @@ async function seed() {
 
   const q2 = await prisma.question.create({
     data: {
-      sectionId: nucleus.id, type: 'MULTIPLE_CHOICE', difficulty: 1,
+      teacherId: teacher.id, sectionIds: [nucleus.id], tagIds: [],
+      type: 'MULTIPLE_CHOICE', difficulty: 1,
       content: 'What is the charge of a neutron?',
       correctExplanation: 'Neutrons carry no electrical charge.',
       incorrectExplanation: 'Protons are positive, electrons are negative, neutrons are neutral.',
@@ -146,7 +149,8 @@ async function seed() {
   // FIB with 2 blanks — maxScore = 2, exercises the FIB scoring path
   const q3 = await prisma.question.create({
     data: {
-      sectionId: nucleus.id, type: 'FILL_IN_BLANK', difficulty: 3,
+      teacherId: teacher.id, sectionIds: [nucleus.id], tagIds: [],
+      type: 'FILL_IN_BLANK', difficulty: 3,
       content: 'Nitrogen has ___ protons and its most common isotope has ___ neutrons.',
       correctExplanation: 'Nitrogen-14 has 7 protons (atomic number 7) and 7 neutrons (14 − 7).',
       incorrectExplanation: 'Nitrogen is element 7. Mass number 14 minus 7 protons gives 7 neutrons.',
@@ -161,15 +165,21 @@ async function seed() {
     },
   });
 
+  await prisma.section.update({
+    where: { id: nucleus.id },
+    data: { questionIds: [q1.id, q2.id, q3.id] },
+  });
+
   // ── Section 2: Electron Configuration ─────────────────────────────────────
 
   const electrons = await prisma.section.create({
-    data: { chapterId: gchemCh1.id, name: 'Electron Configuration', description: 'Shells and orbitals', orderIndex: 1 },
+    data: { chapterId: gchemCh1.id, name: 'Electron Configuration', description: 'Shells and orbitals', orderIndex: 1, questionIds: [] },
   });
 
   const q4 = await prisma.question.create({
     data: {
-      sectionId: electrons.id, type: 'MULTIPLE_CHOICE', difficulty: 2,
+      teacherId: teacher.id, sectionIds: [electrons.id], tagIds: [],
+      type: 'MULTIPLE_CHOICE', difficulty: 2,
       content: 'How many electrons can the second electron shell hold?',
       correctExplanation: 'The second shell (n=2) holds up to 8 electrons (2n²).',
       incorrectExplanation: 'Use the formula 2n². For n=2: 2×4 = 8.',
@@ -183,7 +193,8 @@ async function seed() {
 
   const q5 = await prisma.question.create({
     data: {
-      sectionId: electrons.id, type: 'MULTIPLE_CHOICE', difficulty: 1,
+      teacherId: teacher.id, sectionIds: [electrons.id], tagIds: [],
+      type: 'MULTIPLE_CHOICE', difficulty: 1,
       content: 'What is the electron configuration of Helium?',
       correctExplanation: 'Helium has 2 electrons, filling the 1s orbital: 1s².',
       incorrectExplanation: 'Helium (Z=2) places both electrons in the 1s orbital.',
@@ -193,6 +204,11 @@ async function seed() {
         { content: '2s²', isCorrect: false, blankIndex: 0 },
       ]},
     },
+  });
+
+  await prisma.section.update({
+    where: { id: electrons.id },
+    data: { questionIds: [q4.id, q5.id] },
   });
 
   // ── Enrollments ────────────────────────────────────────────────────────────
@@ -297,12 +313,13 @@ async function seed() {
   });
 
   const alkanes = await prisma.section.create({
-    data: { chapterId: ochemCh1.id, name: 'Alkanes', description: 'Saturated hydrocarbons', orderIndex: 0 },
+    data: { chapterId: ochemCh1.id, name: 'Alkanes', description: 'Saturated hydrocarbons', orderIndex: 0, questionIds: [] },
   });
 
   const q6 = await prisma.question.create({
     data: {
-      sectionId: alkanes.id, type: 'MULTIPLE_CHOICE', difficulty: 2,
+      teacherId: teacher.id, sectionIds: [alkanes.id], tagIds: [],
+      type: 'MULTIPLE_CHOICE', difficulty: 2,
       content: 'What is the general molecular formula for alkanes?',
       correctExplanation: 'Alkanes are fully saturated: CₙH₂ₙ₊₂.',
       incorrectExplanation: 'Alkanes have only single C–C bonds. The formula is CₙH₂ₙ₊₂.',
@@ -316,7 +333,8 @@ async function seed() {
 
   const q7 = await prisma.question.create({
     data: {
-      sectionId: alkanes.id, type: 'MULTIPLE_CHOICE', difficulty: 1,
+      teacherId: teacher.id, sectionIds: [alkanes.id], tagIds: [],
+      type: 'MULTIPLE_CHOICE', difficulty: 1,
       content: 'Which of the following is an alkane?',
       correctExplanation: 'Methane (CH₄) is the simplest alkane.',
       incorrectExplanation: 'Ethylene has a double bond; acetylene has a triple bond. Methane has only single bonds.',
@@ -328,13 +346,19 @@ async function seed() {
     },
   });
 
+  await prisma.section.update({
+    where: { id: alkanes.id },
+    data: { questionIds: [q6.id, q7.id] },
+  });
+
   const alkenes = await prisma.section.create({
-    data: { chapterId: ochemCh1.id, name: 'Alkenes', description: 'Unsaturated hydrocarbons with double bonds', orderIndex: 1 },
+    data: { chapterId: ochemCh1.id, name: 'Alkenes', description: 'Unsaturated hydrocarbons with double bonds', orderIndex: 1, questionIds: [] },
   });
 
   const q8 = await prisma.question.create({
     data: {
-      sectionId: alkenes.id, type: 'MULTIPLE_CHOICE', difficulty: 1,
+      teacherId: teacher.id, sectionIds: [alkenes.id], tagIds: [],
+      type: 'MULTIPLE_CHOICE', difficulty: 1,
       content: 'What type of bond is characteristic of alkenes?',
       correctExplanation: 'Alkenes contain at least one C=C double bond.',
       incorrectExplanation: 'The "-ene" suffix signals a double bond. Alkynes have triple bonds.',
@@ -344,6 +368,11 @@ async function seed() {
         { content: 'Single bonds only', isCorrect: false, blankIndex: 0 },
       ]},
     },
+  });
+
+  await prisma.section.update({
+    where: { id: alkenes.id },
+    data: { questionIds: [q8.id] },
   });
 
   // ── Enrollments ────────────────────────────────────────────────────────────
