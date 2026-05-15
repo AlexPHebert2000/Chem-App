@@ -18,7 +18,7 @@ function newChoice() {
 export default function CreateQuestionScreen() {
   const { token } = useAuth();
   const navigation = useNavigation();
-  const { sectionId, question: existing } = useRoute().params;
+  const { question: existing } = useRoute().params ?? {};
   const isEditing = !!existing;
 
   const [type, setType] = useState(existing?.type ?? 'DYNAMIC');
@@ -92,10 +92,10 @@ export default function CreateQuestionScreen() {
       }
 
       if (isEditing) {
-        const updated = await api.patch(`/sections/${sectionId}/questions/${existing.id}`, payload, token);
-        navigation.navigate('QuestionDetail', { question: updated, sectionId });
+        const updated = await api.patch(`/questions/${existing.id}`, payload, token);
+        navigation.navigate('QuestionDetail', { question: updated });
       } else {
-        await api.post(`/sections/${sectionId}/questions`, payload, token);
+        await api.post('/questions', payload, token);
         navigation.goBack();
       }
     } catch (e) {

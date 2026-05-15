@@ -4,33 +4,32 @@ import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
-const TYPE_LABEL = { MULTIPLE_CHOICE: 'Multiple Choice', FILL_IN_BLANK: 'Fill in Blank' };
+const TYPE_LABEL = { MULTIPLE_CHOICE: 'Multiple Choice', FILL_IN_BLANK: 'Fill in Blank', DYNAMIC: 'Dynamic' };
 
-export default function SectionScreen() {
+export default function QuestionBankScreen() {
   const { token } = useAuth();
   const navigation = useNavigation();
-  const { sectionId, sectionName } = useRoute().params;
 
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchQuestions = useCallback(async () => {
     try {
-      const data = await api.get(`/sections/${sectionId}/questions`, token);
+      const data = await api.get('/questions', token);
       setQuestions(data);
     } catch {
       Alert.alert('Error', 'Could not load questions.');
     } finally {
       setLoading(false);
     }
-  }, [sectionId, token]);
+  }, [token]);
 
   useFocusEffect(fetchQuestions);
 
@@ -38,7 +37,7 @@ export default function SectionScreen() {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => navigation.navigate('QuestionDetail', { question: item, sectionId })}
+        onPress={() => navigation.navigate('QuestionDetail', { question: item })}
         activeOpacity={0.8}
       >
         <View style={styles.cardTop}>
@@ -55,7 +54,7 @@ export default function SectionScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={sectionName} subtitle="Questions" />
+      <ScreenHeader title="Question Bank" />
 
       {loading ? (
         <ActivityIndicator color={colors.purple400} style={{ marginTop: spacing[6] }} />
@@ -65,17 +64,17 @@ export default function SectionScreen() {
           keyExtractor={item => item.id}
           renderItem={renderQuestion}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No questions yet. Add your first one!</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>No questions yet. Create your first one!</Text>}
         />
       )}
 
       <View style={styles.fabShadow}>
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => navigation.navigate('QuestionPicker', { sectionId, alreadyAddedIds: questions.map(q => q.id) })}
+          onPress={() => navigation.navigate('CreateQuestion', {})}
           activeOpacity={0.85}
         >
-          <Text style={styles.fabText}>+ Add from Bank</Text>
+          <Text style={styles.fabText}>+ New Question</Text>
         </TouchableOpacity>
       </View>
     </View>

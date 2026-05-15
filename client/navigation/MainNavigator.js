@@ -7,6 +7,8 @@ import SectionScreen from '../screens/teacher/SectionScreen';
 import CreateQuestionScreen from '../screens/teacher/CreateQuestionScreen';
 import QuestionDetailScreen from '../screens/teacher/QuestionDetailScreen';
 import QuestionPreviewScreen from '../screens/teacher/QuestionPreviewScreen';
+import QuestionBankScreen from '../screens/teacher/QuestionBankScreen';
+import QuestionPickerScreen from '../screens/teacher/QuestionPickerScreen';
 import StudentDashboardScreen from '../screens/student/DashboardScreen';
 import StudentCourseScreen from '../screens/student/CourseScreen';
 import StudentSectionScreen from '../screens/student/SectionScreen';
@@ -27,6 +29,8 @@ export default function MainNavigator() {
           <Stack.Screen name="CreateQuestion" component={CreateQuestionScreen} />
           <Stack.Screen name="QuestionDetail" component={QuestionDetailScreen} />
           <Stack.Screen name="QuestionPreview" component={QuestionPreviewScreen} />
+          <Stack.Screen name="QuestionBank" component={QuestionBankScreen} />
+          <Stack.Screen name="QuestionPicker" component={QuestionPickerScreen} />
         </>
       ) : (
         <>

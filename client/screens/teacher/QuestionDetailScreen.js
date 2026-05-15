@@ -12,7 +12,7 @@ const TYPE_LABEL = {
 
 export default function QuestionDetailScreen() {
   const navigation = useNavigation();
-  const { question, sectionId } = useRoute().params;
+  const { question, sectionId } = useRoute().params ?? {};
   const isFIB     = question.type === 'FILL_IN_BLANK';
   const isDynamic = question.type === 'DYNAMIC';
 
@@ -42,7 +42,7 @@ export default function QuestionDetailScreen() {
           <View style={styles.editShadow}>
             <TouchableOpacity
               style={styles.editBtn}
-              onPress={() => navigation.navigate('CreateQuestion', { sectionId, question })}
+              onPress={() => navigation.navigate('CreateQuestion', { question })}
               activeOpacity={0.85}
             >
               <Text style={styles.editText}>✎  Edit</Text>

@@ -115,6 +115,19 @@ export default function DashboardScreen() {
         </View>
       </View>
 
+      <TouchableOpacity
+        style={styles.bankCard}
+        onPress={() => navigation.navigate('QuestionBank')}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.bankIcon}>📚</Text>
+        <View style={styles.bankCardBody}>
+          <Text style={styles.bankCardTitle}>Question Bank</Text>
+          <Text style={styles.bankCardSubtitle}>Create and manage reusable questions</Text>
+        </View>
+        <Text style={styles.bankChevron}>›</Text>
+      </TouchableOpacity>
+
       {loading ? (
         <ActivityIndicator color={colors.purple400} style={{ marginTop: spacing[6] }} />
       ) : (
@@ -187,6 +200,21 @@ const styles = StyleSheet.create({
   headerActions: { alignItems: 'flex-end', gap: spacing[2] },
   exportBtn: { ...typeScale.label, color: colors.teal400 },
   signOut: { ...typeScale.label, color: colors.purple400 },
+
+  bankCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.purple400,
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+    gap: spacing[3],
+  },
+  bankIcon: { fontSize: 24 },
+  bankCardBody: { flex: 1 },
+  bankCardTitle: { ...typeScale.h3, color: colors.neutral900 },
+  bankCardSubtitle: { ...typeScale.caption, color: colors.neutral900, opacity: 0.75, marginTop: 2 },
+  bankChevron: { ...typeScale.h2, color: colors.neutral900, opacity: 0.6 },
 
   card: {
     backgroundColor: colors.purple50,
