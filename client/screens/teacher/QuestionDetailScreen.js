@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
+import TagChip from '../../components/TagChip';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
@@ -59,6 +60,13 @@ export default function QuestionDetailScreen() {
           </View>
           <Text style={styles.difficulty}>{DIFFICULTY_LABEL[question.difficulty]}</Text>
         </View>
+
+        {/* Tags */}
+        {question.tags?.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagRow} contentContainerStyle={styles.tagRowContent}>
+            {question.tags.map(tag => <TagChip key={tag.id} label={tag.name} color={tag.color} />)}
+          </ScrollView>
+        )}
 
         {/* Question text */}
         <View style={styles.section}>
@@ -194,6 +202,9 @@ const styles = StyleSheet.create({
   typeText: { ...typeScale.label, color: colors.purple800 },
   typeTextDynamic: { color: colors.teal700 },
   difficulty: { ...typeScale.h3, color: colors.gold600 },
+
+  tagRow: { marginBottom: spacing[4] },
+  tagRowContent: { gap: spacing[2], paddingVertical: 2 },
 
   section: { marginBottom: spacing[5] },
   sectionLabel: { ...typeScale.label, color: colors.neutral600, marginBottom: spacing[2] },
