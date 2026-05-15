@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, FlatList, TouchableOpacity,
+  View, Text, FlatList, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
+import TagChip from '../../components/TagChip';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
@@ -47,6 +48,11 @@ export default function QuestionBankScreen() {
           <Text style={styles.difficulty}>{DIFFICULTY_LABEL[item.difficulty]}</Text>
         </View>
         <Text style={styles.content}>{index + 1}. {item.content}</Text>
+        {item.tags?.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagRow} contentContainerStyle={styles.tagRowContent}>
+            {item.tags.map(tag => <TagChip key={tag.id} label={tag.name} color={tag.color} />)}
+          </ScrollView>
+        )}
         <Text style={styles.choiceCount}>{item.choices.length} choices</Text>
       </TouchableOpacity>
     );
@@ -98,6 +104,8 @@ const styles = StyleSheet.create({
   typeText: { ...typeScale.caption, color: colors.purple800 },
   difficulty: { ...typeScale.caption, color: colors.gold600 },
   content: { ...typeScale.body, color: colors.purple900, marginBottom: spacing[2] },
+  tagRow: { marginBottom: spacing[2] },
+  tagRowContent: { gap: spacing[2], paddingVertical: 2 },
   choiceCount: { ...typeScale.caption, color: colors.neutral600 },
 
   empty: { ...typeScale.body, color: colors.neutral400, textAlign: 'center', marginTop: spacing[6] },
