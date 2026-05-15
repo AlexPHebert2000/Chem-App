@@ -36,6 +36,7 @@ export default function CreateQuestionScreen() {
     ?? [newChoice(), newChoice(), newChoice(), newChoice()]
   );
   const [answerExpression, setAnswerExpression] = useState(existing?.answerExpression ?? '');
+  const [answerUnit, setAnswerUnit] = useState(existing?.answerUnit ?? '');
   const [distractorCount, setDistractorCount] = useState(
     existing?.distractorCount != null ? String(existing.distractorCount) : ''
   );
@@ -122,7 +123,8 @@ export default function CreateQuestionScreen() {
       let payload;
       if (type === 'DYNAMIC') {
         const count = distractorCount.trim() ? parseInt(distractorCount.trim(), 10) : undefined;
-        payload = { ...base, answerExpression: answerExpression.trim(), ...(count !== undefined && { distractorCount: count }) };
+        const unit = answerUnit.trim() || undefined;
+        payload = { ...base, answerExpression: answerExpression.trim(), ...(unit && { answerUnit: unit }), ...(count !== undefined && { distractorCount: count }) };
       } else {
         payload = {
           ...base,
@@ -187,6 +189,20 @@ export default function CreateQuestionScreen() {
                 onChangeText={setAnswerExpression}
                 autoCapitalize="none"
                 autoCorrect={false}
+              />
+
+              <Text style={styles.label}>
+                Answer Unit <Text style={styles.hint}>(optional, e.g. g, mol, L)</Text>
+              </Text>
+              <TextInput
+                style={[styles.input, styles.inputShort]}
+                placeholder="g"
+                placeholderTextColor={colors.neutral400}
+                value={answerUnit}
+                onChangeText={setAnswerUnit}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
               />
 
               <Text style={styles.label}>

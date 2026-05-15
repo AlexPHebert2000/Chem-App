@@ -82,6 +82,14 @@ export default function QuestionDetailScreen() {
             <View style={styles.expressionBox}>
               <Text style={styles.expressionText}>{question.answerExpression}</Text>
             </View>
+            {question.answerUnit ? (
+              <>
+                <Text style={[styles.sectionLabel, { marginTop: spacing[3] }]}>Answer Unit</Text>
+                <View style={styles.unitBox}>
+                  <Text style={styles.unitText}>{question.answerUnit}</Text>
+                </View>
+              </>
+            ) : null}
             <Text style={[styles.sectionLabel, { marginTop: spacing[3] }]}>
               Distractors per question
             </Text>
@@ -217,6 +225,17 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   distractorValue: { ...typeScale.body, color: colors.neutral600 },
+
+  unitBox: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.teal50,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.teal300,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+  },
+  unitText: { ...typeScale.body, color: colors.teal700, fontFamily: 'monospace' },
 
   dynamicChoicesNote: {
     flexDirection: 'row',

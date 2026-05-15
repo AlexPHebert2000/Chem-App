@@ -112,7 +112,7 @@ async function getSectionQuestions(req, res) {
 
 async function createQuestion(req, res) {
   const teacherId = req.user.sub;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount, tagIds } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, answerUnit, distractorCount, tagIds } = req.body;
   const safeTagIds = Array.isArray(tagIds) ? tagIds : [];
   const errors = [];
 
@@ -144,6 +144,7 @@ async function createQuestion(req, res) {
         incorrectExplanation: incorrectExplanation.trim(),
         difficulty,
         answerExpression: answerExpression.trim(),
+        ...(answerUnit?.trim() && { answerUnit: answerUnit.trim() }),
         ...(distractorCount !== undefined && { distractorCount }),
       },
       include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
@@ -185,7 +186,7 @@ async function createQuestion(req, res) {
 
 async function updateQuestion(req, res) {
   const { questionId } = req.params;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount, tagIds } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, answerUnit, distractorCount, tagIds } = req.body;
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
@@ -235,10 +236,12 @@ async function updateQuestion(req, res) {
 
     if (type === 'DYNAMIC') {
       updateData.answerExpression = answerExpression.trim();
+      updateData.answerUnit = answerUnit?.trim() || null;
       updateData.distractorCount = distractorCount ?? null;
     } else {
       // Clear dynamic fields when changing type away from DYNAMIC
       updateData.answerExpression = null;
+      updateData.answerUnit = null;
       updateData.distractorCount = null;
       const builtChoices = buildChoices(type, choices);
       await Promise.all(builtChoices.map(c => prisma.choice.create({ data: { ...c, questionId } })));
@@ -435,6 +438,7 @@ async function previewDynamicQuestion(req, res) {
     difficulty: question.difficulty,
     content,
     choices,
+    answerUnit: question.answerUnit ?? null,
     correctExplanation: question.correctExplanation,
     incorrectExplanation: question.incorrectExplanation,
   });

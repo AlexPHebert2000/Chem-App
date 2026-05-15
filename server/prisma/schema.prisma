@@ -83,6 +83,7 @@ model Question {
   incorrectExplanation String?
   difficulty           Int
   answerExpression     String?
+  answerUnit           String?
   distractorCount      Int?
   teacher              Teacher           @relation(fields: [teacherId], references: [id])
   choices              Choice[]

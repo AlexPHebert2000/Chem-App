@@ -136,10 +136,13 @@ export default function QuestionView({ question, onSubmit, nextLabel = 'Next', o
               if (isSelected && correct)  state = 'correct';
               if (isSelected && !correct) state = 'wrong';
             }
+            const label = question.answerUnit
+              ? `${choice.content} ${question.answerUnit}`
+              : choice.content;
             return (
               <ChoiceButton
                 key={choice.id}
-                label={choice.content}
+                label={label}
                 state={state}
                 onPress={() => handleChoiceSelect(choice.id)}
               />
