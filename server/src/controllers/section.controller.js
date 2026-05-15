@@ -42,7 +42,7 @@ async function completeSection(req, res) {
 
   // Aggregate XP from the latest attempt per question
   const questions = await prisma.question.findMany({
-    where: { sectionId },
+    where: { id: { in: section.questionIds } },
     select: { id: true, difficulty: true, type: true, choices: { select: { blankIndex: true } } },
   });
 
@@ -105,4 +105,67 @@ async function completeSection(req, res) {
   });
 }
 
-module.exports = { completeSection };
+async function addQuestionToSection(req, res) {
+  const { sectionId, questionId } = req.params;
+  const teacherId = req.user.sub;
+
+  // Verify teacher owns the section
+  const section = await prisma.section.findUnique({ where: { id: sectionId } });
+  if (!section) return res.status(404).json({ error: 'Section not found' });
+
+  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
+  const course = await prisma.course.findUnique({ where: { id: chapter.courseId } });
+  if (course.teacherId !== teacherId) return res.status(403).json({ error: 'You do not own this course' });
+
+  // Verify teacher owns the question
+  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!question) return res.status(404).json({ error: 'Question not found' });
+  if (question.teacherId !== teacherId) return res.status(403).json({ error: 'You do not own this question' });
+
+  // Check question isn't already in the section
+  if (section.questionIds.includes(questionId)) {
+    return res.status(409).json({ error: 'Question is already in this section' });
+  }
+
+  await prisma.section.update({
+    where: { id: sectionId },
+    data: { questionIds: { push: questionId } },
+  });
+  await prisma.question.update({
+    where: { id: questionId },
+    data: { sectionIds: { push: sectionId } },
+  });
+
+  res.json({ message: 'Question added to section' });
+}
+
+async function removeQuestionFromSection(req, res) {
+  const { sectionId, questionId } = req.params;
+  const teacherId = req.user.sub;
+
+  // Verify teacher owns the section
+  const section = await prisma.section.findUnique({ where: { id: sectionId } });
+  if (!section) return res.status(404).json({ error: 'Section not found' });
+
+  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
+  const course = await prisma.course.findUnique({ where: { id: chapter.courseId } });
+  if (course.teacherId !== teacherId) return res.status(403).json({ error: 'You do not own this course' });
+
+  // Verify teacher owns the question
+  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  if (!question) return res.status(404).json({ error: 'Question not found' });
+  if (question.teacherId !== teacherId) return res.status(403).json({ error: 'You do not own this question' });
+
+  await prisma.section.update({
+    where: { id: sectionId },
+    data: { questionIds: { set: section.questionIds.filter(id => id !== questionId) } },
+  });
+  await prisma.question.update({
+    where: { id: questionId },
+    data: { sectionIds: { set: question.sectionIds.filter(id => id !== sectionId) } },
+  });
+
+  res.json({ message: 'Question removed from section' });
+}
+
+module.exports = { completeSection, addQuestionToSection, removeQuestionFromSection };

@@ -81,7 +81,7 @@ async function getStudentSectionQuestions(req, res) {
   if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
 
   const questions = await prisma.question.findMany({
-    where: { sectionId },
+    where: { id: { in: section.questionIds } },
     include: { choices: true },
   });
 

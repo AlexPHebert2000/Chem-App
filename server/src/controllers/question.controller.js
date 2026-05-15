@@ -9,15 +9,11 @@ const {
 
 const QUESTION_TYPES = ['MULTIPLE_CHOICE', 'FILL_IN_BLANK', 'DYNAMIC'];
 
-async function ownedSection(sectionId, teacherId) {
-  const section = await prisma.section.findUnique({ where: { id: sectionId } });
-  if (!section) return { error: 'Section not found', status: 404 };
-
-  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
-  const course = await prisma.course.findUnique({ where: { id: chapter.courseId } });
-  if (course.teacherId !== teacherId) return { error: 'You do not own this course', status: 403 };
-
-  return { section };
+async function ownedQuestion(questionId, teacherId) {
+  const question = await prisma.question.findUnique({ where: { id: questionId }, include: { choices: true } });
+  if (!question) return { error: 'Question not found', status: 404 };
+  if (question.teacherId !== teacherId) return { error: 'You do not own this question', status: 403 };
+  return { question };
 }
 
 function validateMultipleChoice(choices) {
@@ -77,20 +73,42 @@ function buildChoices(type, choices) {
   }));
 }
 
-async function getSectionQuestions(req, res) {
-  const { sectionId } = req.params;
-  const { error, status } = await ownedSection(sectionId, req.user.sub);
-  if (error) return res.status(status).json({ error });
+async function getTeacherQuestions(req, res) {
+  const teacherId = req.user.sub;
 
   const questions = await prisma.question.findMany({
-    where: { sectionId },
+    where: { teacherId },
+    include: { choices: true },
+  });
+  res.json(questions);
+}
+
+async function getOneQuestion(req, res) {
+  const { questionId } = req.params;
+  const { error, status, question } = await ownedQuestion(questionId, req.user.sub);
+  if (error) return res.status(status).json({ error });
+  res.json(question);
+}
+
+async function getSectionQuestions(req, res) {
+  const { sectionId } = req.params;
+
+  const section = await prisma.section.findUnique({ where: { id: sectionId } });
+  if (!section) return res.status(404).json({ error: 'Section not found' });
+
+  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
+  const course = await prisma.course.findUnique({ where: { id: chapter.courseId } });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const questions = await prisma.question.findMany({
+    where: { id: { in: section.questionIds } },
     include: { choices: true },
   });
   res.json(questions);
 }
 
 async function createQuestion(req, res) {
-  const { sectionId } = req.params;
+  const teacherId = req.user.sub;
   const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount } = req.body;
   const errors = [];
 
@@ -112,12 +130,9 @@ async function createQuestion(req, res) {
     const templateError = validateTemplate(content.trim(), answerExpression.trim());
     if (templateError) return res.status(400).json({ error: templateError });
 
-    const { error, status } = await ownedSection(sectionId, req.user.sub);
-    if (error) return res.status(status).json({ error });
-
     const question = await prisma.question.create({
       data: {
-        sectionId,
+        teacherId,
         type,
         content: content.trim(),
         correctExplanation: correctExplanation.trim(),
@@ -136,12 +151,9 @@ async function createQuestion(req, res) {
     : validateMultipleChoice(choices);
   if (choiceError) return res.status(400).json({ error: choiceError });
 
-  const { error, status } = await ownedSection(sectionId, req.user.sub);
-  if (error) return res.status(status).json({ error });
-
   const question = await prisma.question.create({
     data: {
-      sectionId,
+      teacherId,
       type,
       content: content.trim(),
       correctExplanation: correctExplanation.trim(),
@@ -156,7 +168,7 @@ async function createQuestion(req, res) {
 }
 
 async function updateQuestion(req, res) {
-  const { sectionId, questionId } = req.params;
+  const { questionId } = req.params;
   const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount } = req.body;
   const errors = [];
 
@@ -184,11 +196,8 @@ async function updateQuestion(req, res) {
     if (choiceError) return res.status(400).json({ error: choiceError });
   }
 
-  const { error, status } = await ownedSection(sectionId, req.user.sub);
+  const { error, status } = await ownedQuestion(questionId, req.user.sub);
   if (error) return res.status(status).json({ error });
-
-  const existing = await prisma.question.findUnique({ where: { id: questionId } });
-  if (!existing || existing.sectionId !== sectionId) return res.status(404).json({ error: 'Question not found' });
 
   try {
     // Always safe — no-op if DYNAMIC (no stored choices)
@@ -247,10 +256,13 @@ async function attemptQuestion(req, res) {
   if (!session || session.studentId !== studentId) return res.status(404).json({ error: 'Session not found' });
   if (session.endedAt) return res.status(409).json({ error: 'Session has already ended' });
 
-  // Verify the question belongs to the session's course
-  const section = await prisma.section.findUnique({ where: { id: question.sectionId } });
-  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
-  if (chapter.courseId !== session.courseId) {
+  // Verify the question belongs to the session's course via sectionIds
+  const courseSections = await prisma.section.findMany({
+    where: { id: { in: question.sectionIds } },
+    include: { chapter: true },
+  });
+  const belongsToCourse = courseSections.some(sec => sec.chapter.courseId === session.courseId);
+  if (!belongsToCourse) {
     return res.status(403).json({ error: 'Question does not belong to the session course' });
   }
 
@@ -369,10 +381,7 @@ async function previewDynamicQuestion(req, res) {
   if (!question) return res.status(404).json({ error: 'Question not found' });
   if (question.type !== 'DYNAMIC') return res.status(400).json({ error: 'Question is not dynamic' });
 
-  const section = await prisma.section.findUnique({ where: { id: question.sectionId } });
-  const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
-  const course  = await prisma.course.findUnique({ where: { id: chapter.courseId } });
-  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this question' });
+  if (question.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this question' });
 
   const brackets     = parseBrackets(question.content);
   const resolutions  = resolveAll(brackets);
@@ -393,4 +402,4 @@ async function previewDynamicQuestion(req, res) {
   });
 }
 
-module.exports = { getSectionQuestions, createQuestion, updateQuestion, attemptQuestion, previewDynamicQuestion };
+module.exports = { getTeacherQuestions, getOneQuestion, getSectionQuestions, createQuestion, updateQuestion, attemptQuestion, previewDynamicQuestion };

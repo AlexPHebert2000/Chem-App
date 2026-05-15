@@ -10,11 +10,12 @@ datasource db {
 // ─── Content Hierarchy ────────────────────────────────────────────────────────
 
 model Teacher {
-  id       String   @id @default(auto()) @map("_id") @db.ObjectId
-  email    String   @unique
-  name     String
-  password String
-  courses  Course[]
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  email        String     @unique
+  name         String
+  password     String
+  questionBank Question[]
+  courses      Course[]
 }
 
 model Course {
@@ -61,18 +62,21 @@ model Chapter {
 model Section {
   id              String           @id @default(auto()) @map("_id") @db.ObjectId
   chapterId       String           @db.ObjectId
+  questionIds     String[]         @db.ObjectId
   name            String
   description     String
   orderIndex      Int
   chapter         Chapter          @relation(fields: [chapterId], references: [id])
-  questions       Question[]
+  questions       Question[]       @relation(fields: [questionIds], references: [id])
   studentSections StudentSection[]
   currentFor      StudentCourse[]  @relation("CurrentSection")
 }
 
 model Question {
   id                   String            @id @default(auto()) @map("_id") @db.ObjectId
-  sectionId            String            @db.ObjectId
+  teacherId            String            @db.ObjectId
+  tagIds               String[]          @db.ObjectId
+  sectionIds           String[]          @db.ObjectId
   content              String
   type                 String
   correctExplanation   String?
@@ -80,9 +84,18 @@ model Question {
   difficulty           Int
   answerExpression     String?
   distractorCount      Int?
-  section              Section           @relation(fields: [sectionId], references: [id])
+  teacher              Teacher           @relation(fields: [teacherId], references: [id])
   choices              Choice[]
   attempts             QuestionAttempt[]
+  tags                 QuestionTag[]     @relation(fields: [tagIds], references: [id])
+  sections             Section[]         @relation(fields: [sectionIds], references: [id])
+}
+
+model QuestionTag {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  questionIds String[]   @db.ObjectId
+  questions   Question[] @relation(fields: [questionIds], references: [id])
 }
 
 model Choice {
@@ -122,18 +135,18 @@ model AttemptAnswer {
 // ─── Student & Enrollment ─────────────────────────────────────────────────────
 
 model Student {
-  id            String            @id @default(auto()) @map("_id") @db.ObjectId
-  email         String            @unique
-  name          String
-  password      String
-  profileImage  String?
-  courses       StudentCourse[]
-  sessions      Session[]
-  sections      StudentSection[]
-  badges        StudentBadge[]
-  rewards       StudentReward[]
-  attempts      QuestionAttempt[]
-  joinRequests  JoinRequest[]
+  id           String            @id @default(auto()) @map("_id") @db.ObjectId
+  email        String            @unique
+  name         String
+  password     String
+  profileImage String?
+  courses      StudentCourse[]
+  sessions     Session[]
+  sections     StudentSection[]
+  badges       StudentBadge[]
+  rewards      StudentReward[]
+  attempts     QuestionAttempt[]
+  joinRequests JoinRequest[]
 }
 
 model StudentCourse {
