@@ -94,6 +94,7 @@ model Question {
 model QuestionTag {
   id          String     @id @default(auto()) @map("_id") @db.ObjectId
   name        String
+  color       String
   questionIds String[]   @db.ObjectId
   questions   Question[] @relation(fields: [questionIds], references: [id])
 }
