@@ -103,7 +103,6 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hello, {user?.name}</Text>
-          <Text style={styles.subtitle}>Your classes</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleExportCsv} disabled={exporting} activeOpacity={0.7}>
@@ -127,7 +126,7 @@ export default function DashboardScreen() {
         </View>
         <Text style={styles.bankChevron}>›</Text>
       </TouchableOpacity>
-
+      <Text style={styles.subtitle}>Your classes</Text>
       {loading ? (
         <ActivityIndicator color={colors.purple400} style={{ marginTop: spacing[6] }} />
       ) : (
@@ -198,7 +197,7 @@ const styles = StyleSheet.create({
   greeting: { ...typeScale.h1, color: colors.purple800 },
   subtitle: { ...typeScale.body, color: colors.neutral600, marginTop: spacing[1] },
   headerActions: { alignItems: 'flex-end', gap: spacing[2] },
-  exportBtn: { ...typeScale.label, color: colors.teal400 },
+  exportBtn: { ...typeScale.label, color: colors.teal600 },
   signOut: { ...typeScale.label, color: colors.purple400 },
 
   bankCard: {
@@ -212,9 +211,9 @@ const styles = StyleSheet.create({
   },
   bankIcon: { fontSize: 24 },
   bankCardBody: { flex: 1 },
-  bankCardTitle: { ...typeScale.h3, color: colors.neutral900 },
-  bankCardSubtitle: { ...typeScale.caption, color: colors.neutral900, opacity: 0.75, marginTop: 2 },
-  bankChevron: { ...typeScale.h2, color: colors.neutral900, opacity: 0.6 },
+  bankCardTitle: { ...typeScale.h3, color: colors.neutral100 },
+  bankCardSubtitle: { ...typeScale.caption, color: colors.neutral100, opacity: 0.75, marginTop: 2 },
+  bankChevron: { ...typeScale.h2, color: colors.neutral100, opacity: 0.6 },
 
   card: {
     backgroundColor: colors.purple50,
@@ -257,7 +256,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
     transform: [{ translateY: -4 }],
   },
-  fabText: { ...typeScale.button, color: colors.neutral900 },
+  fabText: { ...typeScale.button, color: colors.neutral100 },
 
   overlay: {
     flex: 1,
