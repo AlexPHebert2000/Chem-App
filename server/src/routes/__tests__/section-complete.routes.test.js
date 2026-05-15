@@ -150,4 +150,63 @@ describe('POST /api/sections/:sectionId/complete — success', () => {
     expect(res.status).toBe(200);
     expect(res.body.xpEarned).toBe(30); // only q-1: 3*10
   });
+
+  test('DYNAMIC question contributes XP with maxScore of 1', async () => {
+    const dynQuestion = { id: 'q-dyn', difficulty: 4, type: 'DYNAMIC', choices: [] };
+    prisma.section.findUnique.mockResolvedValue(SECTION);
+    prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
+    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentSection.findUnique.mockResolvedValue(null);
+    prisma.question.findMany.mockResolvedValue([dynQuestion]);
+    prisma.questionAttempt.findMany.mockResolvedValue([
+      { questionId: 'q-dyn', score: 1, attemptedAt: new Date() },
+    ]);
+    prisma.studentSection.upsert.mockResolvedValue(STUDENT_SECTION);
+    prisma.section.findFirst.mockResolvedValue(null);
+    prisma.chapter.findFirst.mockResolvedValue(null);
+    prisma.studentCourse.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 40 });
+    const res = await request(app).post(url()).set(auth()).send();
+    expect(res.status).toBe(200);
+    expect(res.body.xpEarned).toBe(40); // difficulty 4 * 10
+  });
+
+  test('uses only the latest attempt when a question was retried', async () => {
+    // Two attempts for q-1: earlier wrong, later correct — only the latest should count
+    prisma.section.findUnique.mockResolvedValue(SECTION);
+    prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
+    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentSection.findUnique.mockResolvedValue(null);
+    prisma.question.findMany.mockResolvedValue([QUESTIONS[0]]); // q-1, difficulty 3, MC
+    prisma.questionAttempt.findMany.mockResolvedValue([
+      { questionId: 'q-1', score: 1, attemptedAt: new Date('2026-05-14T10:00:00Z') }, // latest, correct
+      { questionId: 'q-1', score: 0, attemptedAt: new Date('2026-05-14T09:00:00Z') }, // earlier, wrong
+    ]);
+    prisma.studentSection.upsert.mockResolvedValue(STUDENT_SECTION);
+    prisma.section.findFirst.mockResolvedValue(null);
+    prisma.chapter.findFirst.mockResolvedValue(null);
+    prisma.studentCourse.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 30 });
+    const res = await request(app).post(url()).set(auth()).send();
+    expect(res.status).toBe(200);
+    expect(res.body.xpEarned).toBe(30); // latest attempt is correct: 3 * 10
+  });
+
+  test('nextSectionId resolves to first section of next chapter when current chapter is exhausted', async () => {
+    const NEXT_CHAPTER    = { id: 'chapter-id-2', courseId: COURSE.id, orderIndex: 1 };
+    const NEXT_CH_SECTION = { id: 'section-id-3', chapterId: NEXT_CHAPTER.id, orderIndex: 0 };
+    prisma.section.findUnique.mockResolvedValue(SECTION);
+    prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
+    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentSection.findUnique.mockResolvedValue(null);
+    prisma.question.findMany.mockResolvedValue([]);
+    prisma.questionAttempt.findMany.mockResolvedValue([]);
+    prisma.studentSection.upsert.mockResolvedValue(STUDENT_SECTION);
+    prisma.section.findFirst
+      .mockResolvedValueOnce(null)           // no next section in current chapter
+      .mockResolvedValueOnce(NEXT_CH_SECTION); // first section of next chapter
+    prisma.chapter.findFirst.mockResolvedValue(NEXT_CHAPTER);
+    prisma.studentCourse.update.mockResolvedValue({ ...ENROLLMENT, currentSectionId: NEXT_CH_SECTION.id });
+    const res = await request(app).post(url()).set(auth()).send();
+    expect(res.status).toBe(200);
+    expect(res.body.nextSectionId).toBe(NEXT_CH_SECTION.id);
+  });
 });

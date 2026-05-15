@@ -3,14 +3,15 @@ const jwt = require('jsonwebtoken');
 const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
-  question:           { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
-  section:            { findUnique: jest.fn() },
+  question:           { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+  section:            { findUnique: jest.fn(), findMany: jest.fn() },
   chapter:            { findUnique: jest.fn() },
   course:             { findUnique: jest.fn() },
   studentCourse:      { findUnique: jest.fn() },
   session:            { findUnique: jest.fn(), update: jest.fn() },
   questionResolution: { upsert: jest.fn(), findUnique: jest.fn() },
   questionAttempt:    { create: jest.fn() },
+  choice:             { deleteMany: jest.fn(), create: jest.fn() },
 }));
 
 jest.mock('../../lib/questionTemplate', () => ({
@@ -43,13 +44,14 @@ function token(role, id) {
 const teacherAuth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
 const studentAuth = () => ({ Authorization: `Bearer ${token('STUDENT', STUDENT_ID)}` });
 
-const COURSE   = { id: 'course-id-1', teacherId: TEACHER_ID };
-const CHAPTER  = { id: 'chapter-id-1', courseId: COURSE.id };
-const SECTION  = { id: 'section-id-1', chapterId: CHAPTER.id };
+const COURSE  = { id: 'course-id-1', teacherId: TEACHER_ID };
+const CHAPTER = { id: 'chapter-id-1', courseId: COURSE.id };
+const SECTION = { id: 'section-id-1', chapterId: CHAPTER.id, questionIds: ['q-dyn-1'] };
 
 const DYNAMIC_QUESTION = {
   id: 'q-dyn-1',
-  sectionId: SECTION.id,
+  teacherId: TEACHER_ID,
+  sectionIds: [SECTION.id],
   type: 'DYNAMIC',
   content: 'How many protons are in [el(1,18).number]?',
   answerExpression: '[1.number]',
@@ -60,7 +62,7 @@ const DYNAMIC_QUESTION = {
   choices: [],
 };
 
-const SESSION = { id: 'session-id-1', studentId: STUDENT_ID, courseId: COURSE.id, endedAt: null };
+const SESSION    = { id: 'session-id-1', studentId: STUDENT_ID, courseId: COURSE.id, endedAt: null };
 const ENROLLMENT = { studentId: STUDENT_ID, courseId: COURSE.id };
 
 const DYNAMIC_CHOICES_JSON = JSON.stringify([
@@ -74,10 +76,12 @@ const RESOLUTION = { studentId: STUDENT_ID, questionId: DYNAMIC_QUESTION.id, cho
 
 const ATTEMPT = { id: 'attempt-id-1', studentId: STUDENT_ID, questionId: DYNAMIC_QUESTION.id, sessionId: SESSION.id, score: 1, answers: [] };
 
+beforeEach(() => jest.clearAllMocks());
+
 // ─── Create DYNAMIC question ──────────────────────────────────────────────────
 
-describe('POST /api/sections/:sectionId/questions — DYNAMIC type', () => {
-  const url = `/api/sections/${SECTION.id}/questions`;
+describe('POST /api/questions — DYNAMIC type', () => {
+  const url = '/api/questions';
   const validBody = {
     type: 'DYNAMIC',
     content: 'How many protons are in [el(1,18).number]?',
@@ -87,14 +91,7 @@ describe('POST /api/sections/:sectionId/questions — DYNAMIC type', () => {
     answerExpression: '[1.number]',
   };
 
-  function mockOwnership() {
-    prisma.section.findUnique.mockResolvedValue(SECTION);
-    prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
-    prisma.course.findUnique.mockResolvedValue(COURSE);
-  }
-
   test('201 creates DYNAMIC question without choices', async () => {
-    mockOwnership();
     prisma.question.create.mockResolvedValue({ ...DYNAMIC_QUESTION });
     const res = await request(app).post(url).set(teacherAuth()).send(validBody);
     expect(res.status).toBe(201);
@@ -133,6 +130,7 @@ describe('GET /api/sections/:sectionId/questions — DYNAMIC questions', () => {
   function mockChain() {
     prisma.section.findUnique.mockResolvedValue(SECTION);
     prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
+    prisma.course.findUnique.mockResolvedValue(COURSE);
     prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
     prisma.question.findMany.mockResolvedValue([DYNAMIC_QUESTION]);
     prisma.questionResolution.upsert.mockResolvedValue({});
@@ -171,9 +169,7 @@ describe('POST /api/questions/:questionId/attempt — DYNAMIC', () => {
   function mockChain(overrides = {}) {
     prisma.question.findUnique.mockResolvedValue(DYNAMIC_QUESTION);
     prisma.session.findUnique.mockResolvedValue(SESSION);
-    prisma.section.findUnique.mockResolvedValue(SECTION);
-    prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
-    prisma.course.findUnique.mockResolvedValue(COURSE);
+    prisma.section.findMany.mockResolvedValue([{ ...SECTION, chapter: CHAPTER }]);
     prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
     prisma.questionResolution.findUnique.mockResolvedValue(overrides.resolution !== undefined ? overrides.resolution : RESOLUTION);
     prisma.questionAttempt.create.mockResolvedValue(overrides.attempt ?? ATTEMPT);

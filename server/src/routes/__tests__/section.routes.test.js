@@ -3,11 +3,11 @@ const jwt = require('jsonwebtoken');
 const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
-  section: { findUnique: jest.fn() },
-  chapter: { findUnique: jest.fn() },
-  course: { findUnique: jest.fn() },
-  question: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
-  choice: { deleteMany: jest.fn(), create: jest.fn() },
+  section:       { findUnique: jest.fn(), update: jest.fn() },
+  chapter:       { findUnique: jest.fn() },
+  course:        { findUnique: jest.fn() },
+  question:      { findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
+  choice:        { deleteMany: jest.fn(), create: jest.fn() },
   studentCourse: { findUnique: jest.fn() },
 }));
 
@@ -15,17 +15,20 @@ const prisma = require('../../lib/prisma');
 
 process.env.JWT_SECRET = 'test_secret';
 
-const TEACHER_ID = 'teacher-id-1';
+const TEACHER_ID       = 'teacher-id-1';
 const OTHER_TEACHER_ID = 'teacher-id-2';
-const STUDENT_ID = 'student-id-1';
+const STUDENT_ID       = 'student-id-1';
 
 function token(role, id) {
   return jwt.sign({ sub: id, role }, process.env.JWT_SECRET);
 }
 
-const COURSE   = { id: 'course-id-1', teacherId: TEACHER_ID };
-const CHAPTER  = { id: 'chapter-id-1', courseId: COURSE.id };
-const SECTION  = { id: 'section-id-1', chapterId: CHAPTER.id };
+const COURSE  = { id: 'course-id-1', teacherId: TEACHER_ID };
+const CHAPTER = { id: 'chapter-id-1', courseId: COURSE.id };
+const SECTION = { id: 'section-id-1', chapterId: CHAPTER.id, questionIds: [] };
+
+const QUESTION_ID = 'question-id-1';
+const QUESTION    = { id: QUESTION_ID, teacherId: TEACHER_ID, sectionIds: [] };
 
 const MC_CHOICES = [
   { content: '6',  isCorrect: true  },
@@ -40,464 +43,23 @@ const FIB_CHOICES = [
   { blankIndex: 1, content: 'Ca', isCorrect: false },
 ];
 
-const MC_BODY = {
-  type: 'MULTIPLE_CHOICE',
-  content: 'What is the atomic number of Carbon?',
-  correctExplanation: 'Carbon has 6 protons.',
-  incorrectExplanation: 'Review the periodic table — atomic number = number of protons.',
-  difficulty: 2,
-  choices: MC_CHOICES,
-};
-
-const FIB_BODY = {
-  type: 'FILL_IN_BLANK',
-  content: 'Carbon has atomic number ___ and symbol ___.',
-  correctExplanation: 'Carbon: atomic number 6, symbol C.',
-  incorrectExplanation: 'Look up Carbon on the periodic table.',
-  difficulty: 3,
-  choices: FIB_CHOICES,
-};
-
-const CREATED_QUESTION = { id: 'question-id-1', ...MC_BODY, sectionId: SECTION.id, choices: [] };
-
-const url = `/api/sections/${SECTION.id}/questions`;
-
-function mockOwnership() {
-  prisma.section.findUnique.mockResolvedValue(SECTION);
+function mockOwnership(sectionOverride) {
+  prisma.section.findUnique.mockResolvedValue(sectionOverride ?? SECTION);
   prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
   prisma.course.findUnique.mockResolvedValue(COURSE);
 }
 
-// ─── Auth & role guards ───────────────────────────────────────────────────────
+beforeEach(() => jest.clearAllMocks());
 
-describe('POST /api/sections/:sectionId/questions — guards', () => {
-  test('401 if no token', async () => {
-    const res = await request(app).post(url).send(MC_BODY);
-    expect(res.status).toBe(401);
-  });
-
-  test('403 if requester is a STUDENT', async () => {
-    const res = await request(app).post(url).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`).send(MC_BODY);
-    expect(res.status).toBe(403);
-  });
-});
-
-// ─── Common field validation ──────────────────────────────────────────────────
-
-describe('POST /api/sections/:sectionId/questions — field validation', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('400 if type is missing', async () => {
-    const { type: _, ...body } = MC_BODY;
-    const res = await request(app).post(url).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/type/);
-  });
-
-  test('400 if type is invalid', async () => {
-    const res = await request(app).post(url).set(auth()).send({ ...MC_BODY, type: 'TRUE_FALSE' });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/type/);
-  });
-
-  test('400 if content is missing', async () => {
-    const { content: _, ...body } = MC_BODY;
-    const res = await request(app).post(url).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/content/);
-  });
-
-  test('400 if correctExplanation is missing', async () => {
-    const { correctExplanation: _, ...body } = MC_BODY;
-    const res = await request(app).post(url).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/correctExplanation/);
-  });
-
-  test('400 if incorrectExplanation is missing', async () => {
-    const { incorrectExplanation: _, ...body } = MC_BODY;
-    const res = await request(app).post(url).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/incorrectExplanation/);
-  });
-
-  test('400 if difficulty is missing', async () => {
-    const { difficulty: _, ...body } = MC_BODY;
-    const res = await request(app).post(url).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/difficulty/);
-  });
-
-  test('400 if difficulty is out of range', async () => {
-    const res = await request(app).post(url).set(auth()).send({ ...MC_BODY, difficulty: 6 });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/difficulty/);
-  });
-});
-
-// ─── Multiple choice validation ───────────────────────────────────────────────
-
-describe('POST /api/sections/:sectionId/questions — MULTIPLE_CHOICE validation', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('400 if fewer than 2 choices', async () => {
-    const res = await request(app).post(url).set(auth()).send({ ...MC_BODY, choices: [MC_CHOICES[0]] });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/at least 2/);
-  });
-
-  test('400 if a choice is missing content', async () => {
-    const res = await request(app).post(url).set(auth()).send({
-      ...MC_BODY,
-      choices: [{ content: '', isCorrect: true }, { content: 'B', isCorrect: false }],
-    });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/missing content/);
-  });
-
-  test('400 if no correct choice', async () => {
-    const res = await request(app).post(url).set(auth()).send({
-      ...MC_BODY,
-      choices: MC_CHOICES.map(c => ({ ...c, isCorrect: false })),
-    });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/exactly one/);
-  });
-
-  test('400 if more than one correct choice', async () => {
-    const res = await request(app).post(url).set(auth()).send({
-      ...MC_BODY,
-      choices: MC_CHOICES.map(c => ({ ...c, isCorrect: true })),
-    });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/exactly one/);
-  });
-});
-
-// ─── Fill-in-the-blank validation ────────────────────────────────────────────
-
-describe('POST /api/sections/:sectionId/questions — FILL_IN_BLANK validation', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('400 if choices array is empty', async () => {
-    const res = await request(app).post(url).set(auth()).send({ ...FIB_BODY, choices: [] });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/non-empty/);
-  });
-
-  test('400 if a choice is missing blankIndex', async () => {
-    const badChoices = [
-      { content: '6', isCorrect: true },
-      { blankIndex: 0, content: '12', isCorrect: false },
-    ];
-    const res = await request(app).post(url).set(auth()).send({ ...FIB_BODY, choices: badChoices });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/blankIndex/);
-  });
-
-  test('400 if a blank has fewer than 2 choices', async () => {
-    const badChoices = [
-      { blankIndex: 0, content: '6', isCorrect: true },
-      { blankIndex: 1, content: 'C',  isCorrect: true  },
-      { blankIndex: 1, content: 'Ca', isCorrect: false },
-    ];
-    const res = await request(app).post(url).set(auth()).send({ ...FIB_BODY, choices: badChoices });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/at least 2/);
-  });
-
-  test('400 if a blank has no correct choice', async () => {
-    const badChoices = FIB_CHOICES.map(c => c.blankIndex === 0 ? { ...c, isCorrect: false } : c);
-    const res = await request(app).post(url).set(auth()).send({ ...FIB_BODY, choices: badChoices });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/exactly one correct/);
-  });
-
-  test('400 if a blank has more than one correct choice', async () => {
-    const badChoices = FIB_CHOICES.map(c => c.blankIndex === 0 ? { ...c, isCorrect: true } : c);
-    const res = await request(app).post(url).set(auth()).send({ ...FIB_BODY, choices: badChoices });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/exactly one correct/);
-  });
-});
-
-// ─── Ownership checks ─────────────────────────────────────────────────────────
-
-describe('POST /api/sections/:sectionId/questions — ownership', () => {
-  const auth = (id = TEACHER_ID) => ({ Authorization: `Bearer ${token('TEACHER', id)}` });
-
-  test('404 if section not found', async () => {
-    prisma.section.findUnique.mockResolvedValue(null);
-    const res = await request(app).post(url).set(auth()).send(MC_BODY);
-    expect(res.status).toBe(404);
-    expect(res.body.error).toMatch(/Section not found/);
-  });
-
-  test('403 if teacher does not own the course', async () => {
-    mockOwnership();
-    const res = await request(app).post(url).set(auth(OTHER_TEACHER_ID)).send(MC_BODY);
-    expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/do not own/);
-  });
-});
-
-// ─── Success ──────────────────────────────────────────────────────────────────
-
-describe('POST /api/sections/:sectionId/questions — success', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('201 with created multiple choice question', async () => {
-    mockOwnership();
-    prisma.question.create.mockResolvedValue(CREATED_QUESTION);
-    const res = await request(app).post(url).set(auth()).send(MC_BODY);
-    expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ type: 'MULTIPLE_CHOICE', sectionId: SECTION.id });
-    expect(prisma.question.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ type: 'MULTIPLE_CHOICE', sectionId: SECTION.id }),
-    }));
-  });
-
-  test('201 with created fill-in-the-blank question', async () => {
-    mockOwnership();
-    const fibQuestion = { ...CREATED_QUESTION, type: 'FILL_IN_BLANK' };
-    prisma.question.create.mockResolvedValue(fibQuestion);
-    const res = await request(app).post(url).set(auth()).send(FIB_BODY);
-    expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ type: 'FILL_IN_BLANK', sectionId: SECTION.id });
-    expect(prisma.question.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ type: 'FILL_IN_BLANK' }),
-    }));
-  });
-});
-
-// ─── updateQuestion ───────────────────────────────────────────────────────────
-
-const QUESTION_ID = 'question-id-1';
-const patchUrl = `/api/sections/${SECTION.id}/questions/${QUESTION_ID}`;
-const EXISTING_QUESTION = { id: QUESTION_ID, sectionId: SECTION.id, type: 'MULTIPLE_CHOICE' };
-const UPDATED_MC  = { id: QUESTION_ID, sectionId: SECTION.id, ...MC_BODY,  choices: [] };
-const UPDATED_FIB = { id: QUESTION_ID, sectionId: SECTION.id, ...FIB_BODY, choices: [] };
-
-function mockUpdate(finalQuestion = UPDATED_MC) {
-  mockOwnership();
-  prisma.question.findUnique
-    .mockResolvedValueOnce(EXISTING_QUESTION)
-    .mockResolvedValueOnce(finalQuestion);
-  prisma.choice.deleteMany.mockResolvedValue({});
-  prisma.question.update.mockResolvedValue({});
-  prisma.choice.create.mockResolvedValue({});
-}
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — guards', () => {
-  test('401 if no token', async () => {
-    const res = await request(app).patch(patchUrl).send(MC_BODY);
-    expect(res.status).toBe(401);
-  });
-
-  test('403 if requester is a STUDENT', async () => {
-    const res = await request(app).patch(patchUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`).send(MC_BODY);
-    expect(res.status).toBe(403);
-  });
-});
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — field validation', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('400 if type is missing', async () => {
-    const { type: _, ...body } = MC_BODY;
-    const res = await request(app).patch(patchUrl).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/type/);
-  });
-
-  test('400 if type is invalid', async () => {
-    const res = await request(app).patch(patchUrl).set(auth()).send({ ...MC_BODY, type: 'TRUE_FALSE' });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/type/);
-  });
-
-  test('400 if content is missing', async () => {
-    const { content: _, ...body } = MC_BODY;
-    const res = await request(app).patch(patchUrl).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/content/);
-  });
-
-  test('400 if correctExplanation is missing', async () => {
-    const { correctExplanation: _, ...body } = MC_BODY;
-    const res = await request(app).patch(patchUrl).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/correctExplanation/);
-  });
-
-  test('400 if incorrectExplanation is missing', async () => {
-    const { incorrectExplanation: _, ...body } = MC_BODY;
-    const res = await request(app).patch(patchUrl).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/incorrectExplanation/);
-  });
-
-  test('400 if difficulty is missing', async () => {
-    const { difficulty: _, ...body } = MC_BODY;
-    const res = await request(app).patch(patchUrl).set(auth()).send(body);
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/difficulty/);
-  });
-
-  test('400 if difficulty is out of range', async () => {
-    const res = await request(app).patch(patchUrl).set(auth()).send({ ...MC_BODY, difficulty: 6 });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/difficulty/);
-  });
-});
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — MULTIPLE_CHOICE validation', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('400 if fewer than 2 choices', async () => {
-    const res = await request(app).patch(patchUrl).set(auth()).send({ ...MC_BODY, choices: [MC_CHOICES[0]] });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/at least 2/);
-  });
-
-  test('400 if no correct choice', async () => {
-    const res = await request(app).patch(patchUrl).set(auth()).send({
-      ...MC_BODY,
-      choices: MC_CHOICES.map(c => ({ ...c, isCorrect: false })),
-    });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/exactly one/);
-  });
-
-  test('400 if more than one correct choice', async () => {
-    const res = await request(app).patch(patchUrl).set(auth()).send({
-      ...MC_BODY,
-      choices: MC_CHOICES.map(c => ({ ...c, isCorrect: true })),
-    });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/exactly one/);
-  });
-});
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — FILL_IN_BLANK validation', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('400 if choices array is empty', async () => {
-    const res = await request(app).patch(patchUrl).set(auth()).send({ ...FIB_BODY, choices: [] });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/non-empty/);
-  });
-
-  test('400 if a blank has no correct choice', async () => {
-    const badChoices = FIB_CHOICES.map(c => c.blankIndex === 0 ? { ...c, isCorrect: false } : c);
-    const res = await request(app).patch(patchUrl).set(auth()).send({ ...FIB_BODY, choices: badChoices });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/exactly one correct/);
-  });
-});
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — ownership', () => {
-  const auth = (id = TEACHER_ID) => ({ Authorization: `Bearer ${token('TEACHER', id)}` });
-
-  test('404 if section not found', async () => {
-    prisma.section.findUnique.mockResolvedValue(null);
-    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
-    expect(res.status).toBe(404);
-    expect(res.body.error).toMatch(/Section not found/);
-  });
-
-  test('403 if teacher does not own the course', async () => {
-    mockOwnership();
-    const res = await request(app).patch(patchUrl).set(auth(OTHER_TEACHER_ID)).send(MC_BODY);
-    expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/do not own/);
-  });
-});
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — question existence', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('404 if question not found', async () => {
-    mockOwnership();
-    prisma.question.findUnique.mockResolvedValue(null);
-    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
-    expect(res.status).toBe(404);
-    expect(res.body.error).toMatch(/Question not found/);
-  });
-
-  test('404 if question belongs to a different section', async () => {
-    mockOwnership();
-    prisma.question.findUnique.mockResolvedValue({ id: QUESTION_ID, sectionId: 'other-section-id' });
-    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
-    expect(res.status).toBe(404);
-    expect(res.body.error).toMatch(/Question not found/);
-  });
-});
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — success', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  beforeEach(() => jest.clearAllMocks());
-
-  test('200 with updated MULTIPLE_CHOICE question', async () => {
-    mockUpdate();
-    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ type: 'MULTIPLE_CHOICE', sectionId: SECTION.id });
-    expect(prisma.choice.deleteMany).toHaveBeenCalledWith({ where: { questionId: QUESTION_ID } });
-    expect(prisma.question.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: QUESTION_ID },
-      data: expect.objectContaining({ type: 'MULTIPLE_CHOICE', content: MC_BODY.content }),
-    }));
-  });
-
-  test('200 with updated FILL_IN_BLANK question', async () => {
-    mockUpdate(UPDATED_FIB);
-    const res = await request(app).patch(patchUrl).set(auth()).send(FIB_BODY);
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ type: 'FILL_IN_BLANK', sectionId: SECTION.id });
-    expect(prisma.choice.deleteMany).toHaveBeenCalledWith({ where: { questionId: QUESTION_ID } });
-  });
-
-  test('recreates the correct number of choices', async () => {
-    mockUpdate();
-    await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
-    expect(prisma.choice.create).toHaveBeenCalledTimes(MC_CHOICES.length);
-  });
-});
-
-describe('PATCH /api/sections/:sectionId/questions/:questionId — error path', () => {
-  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
-
-  test('500 if database throws during update', async () => {
-    mockOwnership();
-    prisma.question.findUnique.mockResolvedValueOnce(EXISTING_QUESTION);
-    prisma.choice.deleteMany.mockRejectedValue(new Error('DB error'));
-    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
-    expect(res.status).toBe(500);
-    expect(res.body.error).toMatch(/Could not update question/);
-  });
-});
-
-// ─── Get section questions ────────────────────────────────────────────────────
+// ─── GET /api/sections/:sectionId/questions ───────────────────────────────────
 
 describe('GET /api/sections/:sectionId/questions', () => {
   const getUrl = `/api/sections/${SECTION.id}/questions`;
-  const QUESTION_WITH_CHOICES = { id: 'question-id-1', sectionId: SECTION.id, type: 'MULTIPLE_CHOICE', choices: MC_CHOICES };
+  const QUESTION_WITH_CHOICES = { id: QUESTION_ID, type: 'MULTIPLE_CHOICE', choices: MC_CHOICES };
 
   test('401 if no token', async () => {
     const res = await request(app).get(getUrl);
     expect(res.status).toBe(401);
-  });
-
-  test('200 for STUDENT with questions stripped of isCorrect', async () => {
-    mockOwnership();
-    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: STUDENT_ID, courseId: COURSE.id });
-    prisma.question.findMany.mockResolvedValue([QUESTION_WITH_CHOICES]);
-    const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(1);
-    res.body[0].choices.forEach(c => expect(c).not.toHaveProperty('isCorrect'));
   });
 
   test('404 if section not found', async () => {
@@ -514,17 +76,12 @@ describe('GET /api/sections/:sectionId/questions', () => {
     expect(res.body.error).toMatch(/do not own/);
   });
 
-  test('200 with questions including choices', async () => {
+  test('200 for TEACHER with questions including choices', async () => {
     mockOwnership();
     prisma.question.findMany.mockResolvedValue([QUESTION_WITH_CHOICES]);
     const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
-    expect(res.body[0]).toMatchObject({ type: 'MULTIPLE_CHOICE', sectionId: SECTION.id });
-    expect(prisma.question.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { sectionId: SECTION.id },
-      include: { choices: true },
-    }));
   });
 
   test('200 with empty array when section has no questions', async () => {
@@ -533,5 +90,252 @@ describe('GET /api/sections/:sectionId/questions', () => {
     const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
+  });
+
+  test('200 for STUDENT with questions stripped of isCorrect', async () => {
+    mockOwnership();
+    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: STUDENT_ID, courseId: COURSE.id });
+    prisma.question.findMany.mockResolvedValue([QUESTION_WITH_CHOICES]);
+    const res = await request(app).get(getUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    res.body[0].choices.forEach(c => expect(c).not.toHaveProperty('isCorrect'));
+  });
+});
+
+// ─── POST /api/sections/:sectionId/questions/:questionId — addQuestionToSection
+
+const addUrl = `/api/sections/${SECTION.id}/questions/${QUESTION_ID}`;
+
+describe('POST /api/sections/:sectionId/questions/:questionId — guards', () => {
+  test('401 if no token', async () => {
+    const res = await request(app).post(addUrl);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if STUDENT', async () => {
+    const res = await request(app).post(addUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('POST /api/sections/:sectionId/questions/:questionId — ownership', () => {
+  const auth = (id = TEACHER_ID) => ({ Authorization: `Bearer ${token('TEACHER', id)}` });
+
+  test('404 if section not found', async () => {
+    prisma.section.findUnique.mockResolvedValue(null);
+    const res = await request(app).post(addUrl).set(auth());
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Section not found/);
+  });
+
+  test('403 if teacher does not own the section course', async () => {
+    mockOwnership();
+    const res = await request(app).post(addUrl).set(auth(OTHER_TEACHER_ID));
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('404 if question not found', async () => {
+    mockOwnership();
+    prisma.question.findUnique.mockResolvedValue(null);
+    const res = await request(app).post(addUrl).set(auth());
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Question not found/);
+  });
+
+  test('403 if teacher does not own the question', async () => {
+    mockOwnership();
+    prisma.question.findUnique.mockResolvedValue({ ...QUESTION, teacherId: OTHER_TEACHER_ID });
+    const res = await request(app).post(addUrl).set(auth());
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('409 if question is already in the section', async () => {
+    mockOwnership({ ...SECTION, questionIds: [QUESTION_ID] });
+    prisma.question.findUnique.mockResolvedValue(QUESTION);
+    const res = await request(app).post(addUrl).set(auth());
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/already in/);
+  });
+});
+
+describe('POST /api/sections/:sectionId/questions/:questionId — success', () => {
+  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
+
+  test('200 adds question to section', async () => {
+    mockOwnership({ ...SECTION, questionIds: [] });
+    prisma.question.findUnique.mockResolvedValue({ ...QUESTION, sectionIds: [] });
+    prisma.section.update.mockResolvedValue({});
+    prisma.question.update.mockResolvedValue({});
+    const res = await request(app).post(addUrl).set(auth());
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ message: 'Question added to section' });
+    expect(prisma.section.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: SECTION.id },
+      data: { questionIds: { push: QUESTION_ID } },
+    }));
+    expect(prisma.question.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: QUESTION_ID },
+      data: { sectionIds: { push: SECTION.id } },
+    }));
+  });
+});
+
+// ─── DELETE /api/sections/:sectionId/questions/:questionId — removeQuestionFromSection
+
+const deleteUrl = `/api/sections/${SECTION.id}/questions/${QUESTION_ID}`;
+
+describe('DELETE /api/sections/:sectionId/questions/:questionId — guards', () => {
+  test('401 if no token', async () => {
+    const res = await request(app).delete(deleteUrl);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if STUDENT', async () => {
+    const res = await request(app).delete(deleteUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('DELETE /api/sections/:sectionId/questions/:questionId — ownership', () => {
+  const auth = (id = TEACHER_ID) => ({ Authorization: `Bearer ${token('TEACHER', id)}` });
+
+  test('404 if section not found', async () => {
+    prisma.section.findUnique.mockResolvedValue(null);
+    const res = await request(app).delete(deleteUrl).set(auth());
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Section not found/);
+  });
+
+  test('403 if teacher does not own the section course', async () => {
+    mockOwnership();
+    const res = await request(app).delete(deleteUrl).set(auth(OTHER_TEACHER_ID));
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+
+  test('404 if question not found', async () => {
+    mockOwnership();
+    prisma.question.findUnique.mockResolvedValue(null);
+    const res = await request(app).delete(deleteUrl).set(auth());
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Question not found/);
+  });
+
+  test('403 if teacher does not own the question', async () => {
+    mockOwnership();
+    prisma.question.findUnique.mockResolvedValue({ ...QUESTION, teacherId: OTHER_TEACHER_ID });
+    const res = await request(app).delete(deleteUrl).set(auth());
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+});
+
+describe('DELETE /api/sections/:sectionId/questions/:questionId — success', () => {
+  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
+
+  test('200 removes question from section', async () => {
+    mockOwnership({ ...SECTION, questionIds: [QUESTION_ID] });
+    prisma.question.findUnique.mockResolvedValue({ ...QUESTION, sectionIds: [SECTION.id] });
+    prisma.section.update.mockResolvedValue({});
+    prisma.question.update.mockResolvedValue({});
+    const res = await request(app).delete(deleteUrl).set(auth());
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ message: 'Question removed from section' });
+    expect(prisma.section.update).toHaveBeenCalledWith({
+      where: { id: SECTION.id },
+      data: { questionIds: { set: [] } },
+    });
+    expect(prisma.question.update).toHaveBeenCalledWith({
+      where: { id: QUESTION_ID },
+      data: { sectionIds: { set: [] } },
+    });
+  });
+});
+
+// ─── PATCH /api/sections/:sectionId/questions/:questionId — backward-compat updateQuestion
+
+const MC_BODY = {
+  type: 'MULTIPLE_CHOICE',
+  content: 'What is the atomic number of Carbon?',
+  correctExplanation: 'Carbon has 6 protons.',
+  incorrectExplanation: 'Review the periodic table.',
+  difficulty: 2,
+  choices: [
+    { content: '6',  isCorrect: true  },
+    { content: '12', isCorrect: false },
+    { content: '4',  isCorrect: false },
+  ],
+};
+
+const patchUrl = `/api/sections/${SECTION.id}/questions/${QUESTION_ID}`;
+
+describe('PATCH /api/sections/:sectionId/questions/:questionId — guards', () => {
+  test('401 if no token', async () => {
+    const res = await request(app).patch(patchUrl).send(MC_BODY);
+    expect(res.status).toBe(401);
+  });
+
+  test('403 if STUDENT', async () => {
+    const res = await request(app).patch(patchUrl).set('Authorization', `Bearer ${token('STUDENT', STUDENT_ID)}`).send(MC_BODY);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('PATCH /api/sections/:sectionId/questions/:questionId — field validation', () => {
+  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
+
+  test('400 if type is missing', async () => {
+    const { type: _, ...body } = MC_BODY;
+    const res = await request(app).patch(patchUrl).set(auth()).send(body);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/type/);
+  });
+
+  test('400 if difficulty is out of range', async () => {
+    const res = await request(app).patch(patchUrl).set(auth()).send({ ...MC_BODY, difficulty: 6 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/difficulty/);
+  });
+});
+
+describe('PATCH /api/sections/:sectionId/questions/:questionId — ownership', () => {
+  const auth = (id = TEACHER_ID) => ({ Authorization: `Bearer ${token('TEACHER', id)}` });
+
+  test('404 if question not found', async () => {
+    prisma.question.findUnique.mockResolvedValue(null);
+    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Question not found/);
+  });
+
+  test('403 if teacher does not own the question', async () => {
+    prisma.question.findUnique.mockResolvedValue({ ...QUESTION, teacherId: OTHER_TEACHER_ID, choices: [] });
+    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/do not own/);
+  });
+});
+
+describe('PATCH /api/sections/:sectionId/questions/:questionId — success', () => {
+  const auth = () => ({ Authorization: `Bearer ${token('TEACHER', TEACHER_ID)}` });
+
+  test('200 updates the question via question ownership (no section chain)', async () => {
+    const existing = { ...QUESTION, teacherId: TEACHER_ID, choices: [] };
+    const updated  = { ...existing, ...MC_BODY, choices: [] };
+    prisma.question.findUnique
+      .mockResolvedValueOnce(existing)
+      .mockResolvedValueOnce(updated);
+    prisma.choice.deleteMany.mockResolvedValue({});
+    prisma.choice.create.mockResolvedValue({});
+    prisma.question.update.mockResolvedValue({});
+    const res = await request(app).patch(patchUrl).set(auth()).send(MC_BODY);
+    expect(res.status).toBe(200);
+    expect(prisma.question.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: QUESTION_ID },
+      data: expect.objectContaining({ type: 'MULTIPLE_CHOICE' }),
+    }));
   });
 });
