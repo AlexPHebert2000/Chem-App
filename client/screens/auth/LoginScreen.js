@@ -9,7 +9,7 @@ import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
 
-  const [role, setRole] = useState('TEACHER');
+  const [role, setRole] = useState('STUDENT');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
