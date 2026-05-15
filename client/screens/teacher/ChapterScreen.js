@@ -138,7 +138,6 @@ export default function ChapterScreen() {
                       onPress={() => navigation.navigate('QuestionDetail', { question: q, sectionId: item.id })}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.qNum}>{qi + 1}.</Text>
                       <View style={styles.qBody}>
                         <Text style={styles.qContent} numberOfLines={2}>{q.content}</Text>
                         <View style={styles.qMeta}>
@@ -278,13 +277,10 @@ const styles = StyleSheet.create({
   },
   questionScroll: { maxHeight: 280 },
   questionRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
     paddingHorizontal: spacing[4], paddingVertical: spacing[3],
     borderBottomWidth: 1, borderBottomColor: colors.purple50,
-    gap: spacing[2],
   },
   questionRowLast: { borderBottomWidth: 0 },
-  qNum: { ...typeScale.caption, color: colors.neutral400, width: 20, paddingTop: 1 },
   qBody: { flex: 1 },
   qContent: { ...typeScale.body, color: colors.purple900, marginBottom: 4 },
   qMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
