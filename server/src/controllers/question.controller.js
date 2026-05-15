@@ -10,7 +10,10 @@ const {
 const QUESTION_TYPES = ['MULTIPLE_CHOICE', 'FILL_IN_BLANK', 'DYNAMIC'];
 
 async function ownedQuestion(questionId, teacherId) {
-  const question = await prisma.question.findUnique({ where: { id: questionId }, include: { choices: true } });
+  const question = await prisma.question.findUnique({
+    where: { id: questionId },
+    include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
+  });
   if (!question) return { error: 'Question not found', status: 404 };
   if (question.teacherId !== teacherId) return { error: 'You do not own this question', status: 403 };
   return { question };
@@ -78,7 +81,7 @@ async function getTeacherQuestions(req, res) {
 
   const questions = await prisma.question.findMany({
     where: { teacherId },
-    include: { choices: true },
+    include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
   });
   res.json(questions);
 }
@@ -109,7 +112,8 @@ async function getSectionQuestions(req, res) {
 
 async function createQuestion(req, res) {
   const teacherId = req.user.sub;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount, tagIds } = req.body;
+  const safeTagIds = Array.isArray(tagIds) ? tagIds : [];
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
@@ -133,6 +137,7 @@ async function createQuestion(req, res) {
     const question = await prisma.question.create({
       data: {
         teacherId,
+        tagIds: safeTagIds,
         type,
         content: content.trim(),
         correctExplanation: correctExplanation.trim(),
@@ -141,8 +146,13 @@ async function createQuestion(req, res) {
         answerExpression: answerExpression.trim(),
         ...(distractorCount !== undefined && { distractorCount }),
       },
-      include: { choices: true },
+      include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
     });
+    if (safeTagIds.length) {
+      await Promise.all(safeTagIds.map(tagId =>
+        prisma.questionTag.update({ where: { id: tagId }, data: { questionIds: { push: question.id } } })
+      ));
+    }
     return res.status(201).json(question);
   }
 
@@ -154,6 +164,7 @@ async function createQuestion(req, res) {
   const question = await prisma.question.create({
     data: {
       teacherId,
+      tagIds: safeTagIds,
       type,
       content: content.trim(),
       correctExplanation: correctExplanation.trim(),
@@ -161,15 +172,20 @@ async function createQuestion(req, res) {
       difficulty,
       choices: { create: buildChoices(type, choices) },
     },
-    include: { choices: true },
+    include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
   });
+  if (safeTagIds.length) {
+    await Promise.all(safeTagIds.map(tagId =>
+      prisma.questionTag.update({ where: { id: tagId }, data: { questionIds: { push: question.id } } })
+    ));
+  }
 
   res.status(201).json(question);
 }
 
 async function updateQuestion(req, res) {
   const { questionId } = req.params;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, distractorCount, tagIds } = req.body;
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
@@ -196,12 +212,17 @@ async function updateQuestion(req, res) {
     if (choiceError) return res.status(400).json({ error: choiceError });
   }
 
-  const { error, status } = await ownedQuestion(questionId, req.user.sub);
+  const { error, status, question: existingQ } = await ownedQuestion(questionId, req.user.sub);
   if (error) return res.status(status).json({ error });
 
   try {
     // Always safe — no-op if DYNAMIC (no stored choices)
     await prisma.choice.deleteMany({ where: { questionId } });
+
+    const newTagIds = Array.isArray(tagIds) ? tagIds : (existingQ.tagIds ?? []);
+    const oldTagIds = existingQ.tagIds ?? [];
+    const addedTagIds = newTagIds.filter(id => !oldTagIds.includes(id));
+    const removedTagIds = oldTagIds.filter(id => !newTagIds.includes(id));
 
     const updateData = {
       type,
@@ -209,6 +230,7 @@ async function updateQuestion(req, res) {
       correctExplanation: correctExplanation.trim(),
       incorrectExplanation: incorrectExplanation.trim(),
       difficulty,
+      tagIds: newTagIds,
     };
 
     if (type === 'DYNAMIC') {
@@ -224,9 +246,25 @@ async function updateQuestion(req, res) {
 
     await prisma.question.update({ where: { id: questionId }, data: updateData });
 
+    // Sync bidirectional tag relationship
+    for (const tagId of removedTagIds) {
+      const tag = await prisma.questionTag.findUnique({ where: { id: tagId }, select: { questionIds: true } });
+      if (tag) {
+        await prisma.questionTag.update({
+          where: { id: tagId },
+          data: { questionIds: tag.questionIds.filter(id => id !== questionId) },
+        });
+      }
+    }
+    if (addedTagIds.length) {
+      await Promise.all(addedTagIds.map(tagId =>
+        prisma.questionTag.update({ where: { id: tagId }, data: { questionIds: { push: questionId } } })
+      ));
+    }
+
     const question = await prisma.question.findUnique({
       where: { id: questionId },
-      include: { choices: true },
+      include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
     });
 
     res.json(question);

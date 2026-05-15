@@ -9,6 +9,7 @@ const studyRoutes = require('./routes/study.routes');
 const rewardRoutes = require('./routes/reward.routes');
 const redemptionRoutes = require('./routes/redemption.routes');
 const studentRoutes = require('./routes/student.routes');
+const tagRoutes = require('./routes/tag.routes');
 
 const app = express();
 
@@ -28,5 +29,6 @@ app.use('/api/study', studyRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/redemptions', redemptionRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/tags', tagRoutes);
 
 module.exports = app;

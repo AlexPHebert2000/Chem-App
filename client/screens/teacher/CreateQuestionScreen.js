@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform,
@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
+import TagChip from '../../components/TagChip';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTIES = [1, 2, 3, 4, 5];
@@ -34,8 +35,15 @@ export default function CreateQuestionScreen() {
   const [distractorCount, setDistractorCount] = useState(
     existing?.distractorCount != null ? String(existing.distractorCount) : ''
   );
+  const [selectedTags, setSelectedTags] = useState(existing?.tags ?? []);
+  const [tagInput, setTagInput] = useState('');
+  const [allTags, setAllTags] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+
+  useEffect(() => {
+    api.get('/tags', token).then(setAllTags).catch(() => {});
+  }, [token]);
 
   function setChoiceContent(index, text) {
     setChoices(prev => prev.map((c, i) => i === index ? { ...c, content: text } : c));
@@ -53,6 +61,36 @@ export default function CreateQuestionScreen() {
   function removeChoice(index) {
     if (choices.length <= 2) return;
     setChoices(prev => prev.filter((_, i) => i !== index));
+  }
+
+  const tagSuggestions = tagInput.trim()
+    ? allTags
+        .filter(t =>
+          t.name.toLowerCase().includes(tagInput.trim().toLowerCase()) &&
+          !selectedTags.some(s => s.id === t.id)
+        )
+        .slice(0, 5)
+    : [];
+
+  const showCreateOption = tagInput.trim() &&
+    !allTags.some(t => t.name.toLowerCase() === tagInput.trim().toLowerCase());
+
+  async function handleAddTag(tag) {
+    setSelectedTags(prev => [...prev, tag]);
+    setTagInput('');
+  }
+
+  async function handleCreateTag() {
+    const name = tagInput.trim();
+    if (!name) return;
+    try {
+      const tag = await api.post('/tags', { name }, token);
+      setAllTags(prev => [...prev, tag].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedTags(prev => [...prev, tag]);
+      setTagInput('');
+    } catch {
+      // silently ignore — tag will still save with existing selections
+    }
   }
 
   function isValid() {
@@ -76,6 +114,7 @@ export default function CreateQuestionScreen() {
         correctExplanation: correctExplanation.trim(),
         incorrectExplanation: incorrectExplanation.trim(),
         difficulty,
+        tagIds: selectedTags.map(t => t.id),
       };
 
       let payload;
@@ -278,6 +317,50 @@ export default function CreateQuestionScreen() {
             ))}
           </View>
 
+          {/* Tags */}
+          <Text style={styles.label}>Tags <Text style={styles.hint}>(optional)</Text></Text>
+          {selectedTags.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.tagRow}
+              contentContainerStyle={styles.tagRowContent}
+            >
+              {selectedTags.map(tag => (
+                <TagChip
+                  key={tag.id}
+                  label={tag.name}
+                  color={tag.color}
+                  onRemove={() => setSelectedTags(prev => prev.filter(t => t.id !== tag.id))}
+                />
+              ))}
+            </ScrollView>
+          )}
+          <TextInput
+            style={styles.input}
+            placeholder="Search or create a tag…"
+            placeholderTextColor={colors.neutral400}
+            value={tagInput}
+            onChangeText={setTagInput}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {tagSuggestions.map(tag => (
+            <TouchableOpacity
+              key={tag.id}
+              style={styles.suggestion}
+              onPress={() => handleAddTag(tag)}
+              activeOpacity={0.7}
+            >
+              <TagChip label={tag.name} color={tag.color} />
+            </TouchableOpacity>
+          ))}
+          {showCreateOption && (
+            <TouchableOpacity style={styles.suggestion} onPress={handleCreateTag} activeOpacity={0.7}>
+              <Text style={styles.createTagText}>+ Create tag "{tagInput.trim()}"</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Save error */}
           {saveError && (
             <View style={styles.errorBox}>
@@ -364,6 +447,14 @@ const styles = StyleSheet.create({
   diffBtnActive: { backgroundColor: colors.gold200, borderColor: colors.gold400 },
   diffText: { ...typeScale.label, color: colors.neutral600 },
   diffTextActive: { color: colors.gold800 },
+
+  tagRow: { marginBottom: spacing[2] },
+  tagRowContent: { gap: spacing[2], paddingVertical: 2 },
+  suggestion: {
+    paddingVertical: spacing[2], paddingHorizontal: spacing[3],
+    borderBottomWidth: 1, borderBottomColor: colors.purple50,
+  },
+  createTagText: { ...typeScale.label, color: colors.purple400 },
 
   errorBox: {
     backgroundColor: colors.coral50 ?? '#FFF0EE',
