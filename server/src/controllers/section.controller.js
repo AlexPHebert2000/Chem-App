@@ -86,12 +86,38 @@ async function completeSection(req, res) {
 
   const nextSection = await findNextSection(section.orderIndex, chapter);
 
+  // Streak calculation — compare calendar dates in UTC
+  const todayUTC = new Date(now.toISOString().slice(0, 10));
+  const yesterdayUTC = new Date(todayUTC);
+  yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+  const freshEnrollment = await prisma.studentCourse.findUnique({
+    where: { studentId_courseId: { studentId, courseId } },
+    select: { streak: true, lastActivityDate: true },
+  });
+
+  let newStreak;
+  if (!freshEnrollment.lastActivityDate) {
+    newStreak = 1;
+  } else {
+    const lastUTC = new Date(freshEnrollment.lastActivityDate.toISOString().slice(0, 10));
+    if (lastUTC.getTime() === todayUTC.getTime()) {
+      newStreak = freshEnrollment.streak; // already active today
+    } else if (lastUTC.getTime() === yesterdayUTC.getTime()) {
+      newStreak = freshEnrollment.streak + 1;
+    } else {
+      newStreak = 1; // missed one or more days
+    }
+  }
+
   const updatedEnrollment = await prisma.studentCourse.update({
     where: { studentId_courseId: { studentId, courseId } },
     data: {
       currentPoints: { increment: xpEarned },
       lifetimePoints: { increment: xpEarned },
       currentSectionId: nextSection?.id ?? null,
+      streak: newStreak,
+      lastActivityDate: now,
     },
   });
 
@@ -102,6 +128,7 @@ async function completeSection(req, res) {
     xpEarned,
     nextSectionId: nextSection?.id ?? null,
     currentPoints: updatedEnrollment.currentPoints,
+    streak: updatedEnrollment.streak,
   });
 }
 

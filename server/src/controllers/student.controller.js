@@ -215,13 +215,23 @@ async function getCourseLeaderboard(req, res) {
     include: { student: { omit: { password: true } } },
   });
 
+  const todayUTC = new Date(new Date().toISOString().slice(0, 10));
+  const yesterdayUTC = new Date(todayUTC);
+  yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+  function liveStreak(e) {
+    if (!e.lastActivityDate) return 0;
+    const lastUTC = new Date(e.lastActivityDate.toISOString().slice(0, 10));
+    return lastUTC.getTime() >= yesterdayUTC.getTime() ? e.streak : 0;
+  }
+
   res.json(entries.map((e, i) => ({
     rank: i + 1,
     studentId: e.studentId,
     name: e.student.name,
     currentPoints: e.currentPoints,
     lifetimePoints: e.lifetimePoints,
-    streak: e.streak,
+    streak: liveStreak(e),
   })));
 }
 
