@@ -8,6 +8,10 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
 import TagChip from '../../components/TagChip';
+import QuestionTypeSelector from '../../components/QuestionTypeSelector';
+import DynamicSyntaxGuide from '../../components/DynamicSyntaxGuide';
+import ChoiceEditor from '../../components/ChoiceEditor';
+import ShadowButton from '../../components/ShadowButton';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTIES = [1, 2, 3, 4, 5];
@@ -95,9 +99,7 @@ export default function CreateQuestionScreen() {
 
   function isValid() {
     if (!content.trim() || !correctExplanation.trim() || !incorrectExplanation.trim()) return false;
-    if (type === 'DYNAMIC') {
-      return !!answerExpression.trim();
-    }
+    if (type === 'DYNAMIC') return !!answerExpression.trim();
     const filled = choices.filter(c => c.content.trim());
     if (filled.length < 2) return false;
     return filled.some(c => c.isCorrect);
@@ -152,28 +154,9 @@ export default function CreateQuestionScreen() {
         <ScreenHeader title={isEditing ? 'Edit Question' : 'New Question'} />
 
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* Type toggle */}
           <Text style={styles.label}>Type</Text>
-          <View style={styles.typeRow}>
-            {[
-              { value: 'MULTIPLE_CHOICE', label: 'Multiple Choice' },
-              { value: 'FILL_IN_BLANK',   label: 'Fill in Blank' },
-              { value: 'DYNAMIC',         label: 'Dynamic' },
-            ].map(({ value, label }) => (
-              <TouchableOpacity
-                key={value}
-                style={[styles.typeBtn, type === value && styles.typeBtnActive]}
-                onPress={() => setType(value)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.typeBtnText, type === value && styles.typeBtnTextActive]}>
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <QuestionTypeSelector type={type} onTypeChange={setType} />
 
-          {/* Content */}
           <Text style={styles.label}>Question</Text>
           <TextInput
             style={[styles.input, styles.inputMulti]}
@@ -191,35 +174,9 @@ export default function CreateQuestionScreen() {
             numberOfLines={3}
           />
 
-          {/* DYNAMIC fields */}
           {isDynamic && (
             <>
-              {/* Syntax guide */}
-              <View style={styles.syntaxCard}>
-                <Text style={styles.syntaxTitle}>Template Syntax</Text>
-                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,18).name]</Text>  element name (Z 1–18)</Text>
-                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,118).symbol]</Text>  element symbol</Text>
-                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,118).number]</Text>  atomic number</Text>
-                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[el(1,118).mass]</Text>  atomic mass</Text>
-                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[num(1,100)]</Text>  random integer</Text>
-                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[compound(acids).formula]</Text>  compound</Text>
-                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
-                  <Text style={styles.syntaxCode}>Categories:</Text>  acids · bases · salts · oxides
-                </Text>
-                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
-                  <Text style={styles.syntaxCode}>Cross-ref:</Text>  <Text style={styles.syntaxCode}>[1.symbol]</Text>  slot 1's symbol  ·  <Text style={styles.syntaxCode}>[1]</Text>  slot 1's num value
-                </Text>
-                <Text style={styles.syntaxLine}><Text style={styles.syntaxCode}>[1.number + num(-2,2)]</Text>  computed display</Text>
-                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
-                  <Text style={styles.syntaxCode}>Answer ref:</Text>  <Text style={styles.syntaxCode}>1.number</Text>, <Text style={styles.syntaxCode}>1.mass</Text>, <Text style={styles.syntaxCode}>1+2</Text>, <Text style={styles.syntaxCode}>2*1.number</Text>
-                </Text>
-                <Text style={[styles.syntaxLine, { marginTop: spacing[2] }]}>
-                  <Text style={styles.syntaxCode}>Comparison:</Text>{'  '}<Text style={styles.syntaxCode}>[gt(1.mass,2.mass)]</Text>{'  '}slot with greater value
-                </Text>
-                <Text style={styles.syntaxLine}>
-                  <Text style={styles.syntaxCode}>[lt(1.mass,2.mass)]</Text>{'  '}slot with lesser value
-                </Text>
-              </View>
+              <DynamicSyntaxGuide />
 
               <Text style={styles.label}>Answer Expression</Text>
               <TextInput
@@ -247,38 +204,19 @@ export default function CreateQuestionScreen() {
             </>
           )}
 
-          {/* Choices (MC / FIB only) */}
           {!isDynamic && (
             <>
               <Text style={styles.label}>Answer Choices <Text style={styles.hint}>(tap circle to mark correct)</Text></Text>
-              {choices.map((choice, i) => (
-                <View key={i} style={styles.choiceRow}>
-                  <TouchableOpacity style={[styles.radio, choice.isCorrect && styles.radioActive]} onPress={() => setCorrect(i)} activeOpacity={0.8}>
-                    {choice.isCorrect && <View style={styles.radioDot} />}
-                  </TouchableOpacity>
-                  <TextInput
-                    style={[styles.input, styles.choiceInput]}
-                    placeholder={`Choice ${i + 1}`}
-                    placeholderTextColor={colors.neutral400}
-                    value={choice.content}
-                    onChangeText={text => setChoiceContent(i, text)}
-                  />
-                  {choices.length > 2 && (
-                    <TouchableOpacity onPress={() => removeChoice(i)} style={styles.removeBtn} activeOpacity={0.7}>
-                      <Text style={styles.removeText}>✕</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-              {choices.length < 6 && (
-                <TouchableOpacity onPress={addChoice} style={styles.addChoice} activeOpacity={0.7}>
-                  <Text style={styles.addChoiceText}>+ Add choice</Text>
-                </TouchableOpacity>
-              )}
+              <ChoiceEditor
+                choices={choices}
+                onChoiceChange={setChoiceContent}
+                onSetCorrect={setCorrect}
+                onAddChoice={addChoice}
+                onRemoveChoice={removeChoice}
+              />
             </>
           )}
 
-          {/* Correct Explanation */}
           <Text style={styles.label}>Correct Answer Explanation</Text>
           <TextInput
             style={[styles.input, styles.inputMulti, styles.inputCorrect]}
@@ -290,7 +228,6 @@ export default function CreateQuestionScreen() {
             numberOfLines={3}
           />
 
-          {/* Incorrect Explanation */}
           <Text style={styles.label}>Incorrect Answer Explanation</Text>
           <TextInput
             style={[styles.input, styles.inputMulti, styles.inputIncorrect]}
@@ -302,7 +239,6 @@ export default function CreateQuestionScreen() {
             numberOfLines={3}
           />
 
-          {/* Difficulty */}
           <Text style={styles.label}>Difficulty</Text>
           <View style={styles.diffRow}>
             {DIFFICULTIES.map(d => (
@@ -317,7 +253,6 @@ export default function CreateQuestionScreen() {
             ))}
           </View>
 
-          {/* Tags */}
           <Text style={styles.label}>Tags <Text style={styles.hint}>(optional)</Text></Text>
           {selectedTags.length > 0 && (
             <ScrollView
@@ -361,24 +296,20 @@ export default function CreateQuestionScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Save error */}
           {saveError && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{saveError}</Text>
             </View>
           )}
 
-          {/* Save */}
-          <View style={[styles.saveShadow, (!isValid() || saving) && styles.saveShadowDisabled]}>
-            <TouchableOpacity
-              style={[styles.saveBtn, (!isValid() || saving) && styles.saveBtnDisabled]}
-              onPress={handleSave}
-              activeOpacity={0.85}
-              disabled={!isValid() || saving}
-            >
-              <Text style={styles.saveText}>{saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Save Question'}</Text>
-            </TouchableOpacity>
-          </View>
+          <ShadowButton
+            label={saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Save Question'}
+            onPress={handleSave}
+            disabled={!isValid()}
+            loading={saving}
+            paddingVertical={16}
+            style={styles.saveBtn}
+          />
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
@@ -392,15 +323,6 @@ const styles = StyleSheet.create({
   label: { ...typeScale.label, color: colors.purple800, marginBottom: spacing[2], marginTop: spacing[4] },
   hint: { ...typeScale.caption, color: colors.neutral600 },
 
-  typeRow: { flexDirection: 'row', gap: spacing[2] },
-  typeBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: radius.md,
-    borderWidth: 1.5, borderColor: colors.purple200, alignItems: 'center',
-  },
-  typeBtnActive: { backgroundColor: colors.purple400, borderColor: colors.purple400 },
-  typeBtnText: { ...typeScale.label, color: colors.purple600, textAlign: 'center' },
-  typeBtnTextActive: { color: colors.neutral900 },
-
   input: {
     ...typeScale.body, color: colors.purple900,
     borderWidth: 1.5, borderColor: colors.purple200, borderRadius: radius.md,
@@ -410,34 +332,6 @@ const styles = StyleSheet.create({
   inputShort: { width: 100 },
   inputCorrect: { borderColor: colors.teal400 },
   inputIncorrect: { borderColor: colors.coral400 },
-
-  syntaxCard: {
-    backgroundColor: colors.purple50,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.purple200,
-    padding: spacing[4],
-    marginTop: spacing[3],
-    gap: spacing[1],
-  },
-  syntaxTitle: { ...typeScale.label, color: colors.purple800, marginBottom: spacing[2] },
-  syntaxLine: { ...typeScale.caption, color: colors.neutral700, lineHeight: 18 },
-  syntaxCode: { ...typeScale.caption, color: colors.purple600, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' },
-
-  choiceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginBottom: spacing[2] },
-  radio: {
-    width: 24, height: 24, borderRadius: 12,
-    borderWidth: 2, borderColor: colors.purple300 ?? colors.purple200,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  radioActive: { borderColor: colors.purple400 },
-  radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.purple400 },
-  choiceInput: { flex: 1 },
-  removeBtn: { padding: 6 },
-  removeText: { ...typeScale.label, color: colors.coral400 },
-
-  addChoice: { paddingVertical: spacing[2] },
-  addChoiceText: { ...typeScale.label, color: colors.purple400 },
 
   diffRow: { flexDirection: 'row', gap: spacing[2] },
   diffBtn: {
@@ -457,24 +351,12 @@ const styles = StyleSheet.create({
   createTagText: { ...typeScale.label, color: colors.purple400 },
 
   errorBox: {
-    backgroundColor: colors.coral50 ?? '#FFF0EE',
-    borderWidth: 1.5,
-    borderColor: colors.coral400,
+    backgroundColor: colors.coral50,
+    borderWidth: 1.5, borderColor: colors.coral400,
     borderRadius: radius.md,
-    padding: spacing[3],
-    marginTop: spacing[4],
+    padding: spacing[3], marginTop: spacing[4],
   },
   errorText: { ...typeScale.body, color: colors.coral600 },
 
-  saveShadow: {
-    marginTop: spacing[5],
-    backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }],
-  },
-  saveShadowDisabled: { backgroundColor: colors.purple200 },
-  saveBtn: {
-    backgroundColor: colors.purple400, borderRadius: radius.full,
-    paddingVertical: 16, alignItems: 'center', transform: [{ translateY: -4 }],
-  },
-  saveBtnDisabled: { backgroundColor: colors.purple100 },
-  saveText: { ...typeScale.button, color: colors.neutral900 },
+  saveBtn: { marginTop: spacing[5] },
 });

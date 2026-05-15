@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, Modal,
-  TextInput, StyleSheet, ActivityIndicator, Alert,
+  View, Text, FlatList, TouchableOpacity,
+  StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
+import FormSheet from '../../components/FormSheet';
+import FormInput from '../../components/FormInput';
+import EmptyState from '../../components/EmptyState';
+import ShadowButton from '../../components/ShadowButton';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 export default function ClassScreen() {
@@ -48,6 +52,8 @@ export default function ClassScreen() {
     }
   }
 
+  function closeModal() { setModalVisible(false); setName(''); setDescription(''); }
+
   function renderChapter({ item, index }) {
     return (
       <TouchableOpacity
@@ -67,7 +73,7 @@ export default function ClassScreen() {
     );
   }
 
-  const canSave = name.trim() && description.trim() && !saving;
+  const canSave = !!(name.trim() && description.trim() && !saving);
 
   return (
     <View style={styles.container}>
@@ -81,50 +87,39 @@ export default function ClassScreen() {
           keyExtractor={item => item.id}
           renderItem={renderChapter}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No chapters yet. Add your first one!</Text>}
+          ListEmptyComponent={<EmptyState title="No chapters yet. Add your first one!" />}
         />
       )}
 
-      <View style={styles.fabShadow}>
-        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.85}>
-          <Text style={styles.fabText}>+ Add Chapter</Text>
-        </TouchableOpacity>
-      </View>
+      <ShadowButton
+        label="+ Add Chapter"
+        onPress={() => setModalVisible(true)}
+        style={styles.fab}
+        paddingHorizontal={spacing[6]}
+      />
 
-      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>New Chapter</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Chapter name"
-              placeholderTextColor={colors.neutral400}
-              value={name}
-              onChangeText={setName}
-              autoFocus
-            />
-            <TextInput
-              style={[styles.input, styles.inputMulti]}
-              placeholder="Description"
-              placeholderTextColor={colors.neutral400}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={3}
-            />
-            <View style={styles.sheetActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setModalVisible(false); setName(''); setDescription(''); }} activeOpacity={0.7}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <View style={[styles.saveShadow, !canSave && styles.saveShadowDisabled]}>
-                <TouchableOpacity style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]} onPress={handleCreate} activeOpacity={0.85} disabled={!canSave}>
-                  <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <FormSheet
+        visible={modalVisible}
+        title="New Chapter"
+        onClose={closeModal}
+        onSave={handleCreate}
+        canSave={canSave}
+        isSaving={saving}
+      >
+        <FormInput
+          placeholder="Chapter name"
+          value={name}
+          onChangeText={setName}
+          autoFocus
+        />
+        <FormInput
+          placeholder="Description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={3}
+        />
+      </FormSheet>
     </View>
   );
 }
@@ -155,33 +150,5 @@ const styles = StyleSheet.create({
   cardMeta: { ...typeScale.small, color: colors.neutral600, marginTop: 2 },
   count: { ...typeScale.caption, color: colors.purple400, marginLeft: spacing[2] },
 
-  empty: { ...typeScale.body, color: colors.neutral400, textAlign: 'center', marginTop: spacing[6] },
-
-  fabShadow: {
-    position: 'absolute', bottom: 36, alignSelf: 'center',
-    backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }],
-  },
-  fab: {
-    backgroundColor: colors.purple400, borderRadius: radius.full,
-    paddingVertical: 14, paddingHorizontal: spacing[6], transform: [{ translateY: -4 }],
-  },
-  fabText: { ...typeScale.button, color: colors.neutral900 },
-
-  overlay: { flex: 1, backgroundColor: 'rgba(18,11,53,0.5)', justifyContent: 'center', paddingHorizontal: screenPadding.horizontal },
-  sheet: { backgroundColor: '#fff', borderRadius: radius.xl, padding: spacing[5] },
-  sheetTitle: { ...typeScale.h2, color: colors.purple800, marginBottom: spacing[4] },
-  input: {
-    ...typeScale.body, color: colors.purple900,
-    borderWidth: 1.5, borderColor: colors.purple200, borderRadius: radius.md,
-    paddingHorizontal: spacing[4], paddingVertical: 12, marginBottom: spacing[3],
-  },
-  inputMulti: { height: 80, textAlignVertical: 'top' },
-  sheetActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[3], alignItems: 'center', marginTop: spacing[1] },
-  cancelBtn: { paddingVertical: 10, paddingHorizontal: spacing[4] },
-  cancelText: { ...typeScale.label, color: colors.neutral600 },
-  saveShadow: { backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 3 }] },
-  saveShadowDisabled: { backgroundColor: colors.purple200 },
-  saveBtn: { backgroundColor: colors.purple400, borderRadius: radius.full, paddingVertical: 12, paddingHorizontal: spacing[5], transform: [{ translateY: -3 }] },
-  saveBtnDisabled: { backgroundColor: colors.purple100 },
-  saveText: { ...typeScale.button, color: colors.neutral900 },
+  fab: { position: 'absolute', bottom: 36, alignSelf: 'center' },
 });

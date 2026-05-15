@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { useRoute, useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../../components/ScreenHeader';
 import TagChip from '../../components/TagChip';
+import ChoiceRow from '../../components/ChoiceRow';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
@@ -149,21 +150,6 @@ export default function QuestionDetailScreen() {
   );
 }
 
-function ChoiceRow({ choice, letter }) {
-  const correct = choice.isCorrect;
-  return (
-    <View style={[styles.choiceRow, correct && styles.choiceRowCorrect]}>
-      <View style={[styles.letterBadge, correct && styles.letterBadgeCorrect]}>
-        <Text style={[styles.letterText, correct && styles.letterTextCorrect]}>{letter}</Text>
-      </View>
-      <Text style={[styles.choiceText, correct && styles.choiceTextCorrect]}>
-        {choice.content}
-      </Text>
-      {correct && <Text style={styles.checkmark}>✓</Text>}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral50 },
   scroll: { paddingHorizontal: screenPadding.horizontal, paddingBottom: 48 },
@@ -244,27 +230,6 @@ const styles = StyleSheet.create({
   },
   dynamicChoicesIcon: { fontSize: 20 },
   dynamicChoicesText: { ...typeScale.body, color: colors.purple700, flex: 1, lineHeight: 22 },
-
-  choiceRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing[3],
-    backgroundColor: '#fff', borderRadius: radius.md,
-    borderWidth: 1.5, borderColor: colors.purple100,
-    padding: spacing[3], marginBottom: spacing[2],
-  },
-  choiceRowCorrect: {
-    backgroundColor: colors.teal50, borderColor: colors.teal400,
-  },
-  letterBadge: {
-    width: 28, height: 28, borderRadius: radius.full,
-    backgroundColor: colors.purple100,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  letterBadgeCorrect: { backgroundColor: colors.teal400 },
-  letterText: { ...typeScale.label, color: colors.purple800 },
-  letterTextCorrect: { color: '#fff' },
-  choiceText: { ...typeScale.body, color: colors.purple900, flex: 1 },
-  choiceTextCorrect: { color: colors.teal600 },
-  checkmark: { ...typeScale.h3, color: colors.teal400 },
 
   blankGroup: { marginBottom: spacing[4] },
   blankLabel: { ...typeScale.label, color: colors.purple400, marginBottom: spacing[2] },

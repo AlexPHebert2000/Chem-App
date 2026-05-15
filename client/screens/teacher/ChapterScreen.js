@@ -1,12 +1,16 @@
 import { useState, useCallback, useRef } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, Modal,
-  TextInput, StyleSheet, ActivityIndicator, Alert, ScrollView,
+  View, Text, FlatList, TouchableOpacity,
+  StyleSheet, ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
+import FormSheet from '../../components/FormSheet';
+import FormInput from '../../components/FormInput';
+import EmptyState from '../../components/EmptyState';
+import ShadowButton from '../../components/ShadowButton';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
@@ -27,7 +31,6 @@ export default function ChapterScreen() {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Ref so useFocusEffect can read expandedId without a stale closure
   const expandedIdRef = useRef(null);
 
   const fetchSections = useCallback(async () => {
@@ -53,7 +56,6 @@ export default function ChapterScreen() {
     }
   }, [token]);
 
-  // Refresh sections and re-fetch open drawer on every focus (e.g. return from QuestionPicker)
   useFocusEffect(useCallback(() => {
     fetchSections();
     const id = expandedIdRef.current;
@@ -84,6 +86,8 @@ export default function ChapterScreen() {
       setSaving(false);
     }
   }
+
+  function closeModal() { setModalVisible(false); setName(''); setDescription(''); }
 
   function renderSection({ item, index }) {
     const isExpanded = expandedId === item.id;
@@ -118,16 +122,9 @@ export default function ChapterScreen() {
         {isExpanded && (
           <View style={styles.drawer}>
             {loadingQ ? (
-              <ActivityIndicator
-                color={colors.purple400}
-                style={{ paddingVertical: spacing[4] }}
-              />
+              <ActivityIndicator color={colors.purple400} style={{ paddingVertical: spacing[4] }} />
             ) : (
-              <ScrollView
-                style={styles.questionScroll}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
-              >
+              <ScrollView style={styles.questionScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
                 {questions.length === 0 ? (
                   <Text style={styles.drawerEmpty}>No questions yet.</Text>
                 ) : (
@@ -169,7 +166,7 @@ export default function ChapterScreen() {
     );
   }
 
-  const canSave = name.trim() && description.trim() && !saving;
+  const canSave = !!(name.trim() && description.trim() && !saving);
 
   return (
     <View style={styles.container}>
@@ -183,59 +180,39 @@ export default function ChapterScreen() {
           keyExtractor={item => item.id}
           renderItem={renderSection}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No sections yet. Add your first one!</Text>}
+          ListEmptyComponent={<EmptyState title="No sections yet. Add your first one!" />}
         />
       )}
 
-      <View style={styles.fabShadow}>
-        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.85}>
-          <Text style={styles.fabText}>+ Add Section</Text>
-        </TouchableOpacity>
-      </View>
+      <ShadowButton
+        label="+ Add Section"
+        onPress={() => setModalVisible(true)}
+        style={styles.fab}
+        paddingHorizontal={spacing[6]}
+      />
 
-      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>New Section</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Section name"
-              placeholderTextColor={colors.neutral400}
-              value={name}
-              onChangeText={setName}
-              autoFocus
-            />
-            <TextInput
-              style={[styles.input, styles.inputMulti]}
-              placeholder="Description"
-              placeholderTextColor={colors.neutral400}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={3}
-            />
-            <View style={styles.sheetActions}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => { setModalVisible(false); setName(''); setDescription(''); }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <View style={[styles.saveShadow, !canSave && styles.saveShadowDisabled]}>
-                <TouchableOpacity
-                  style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
-                  onPress={handleCreate}
-                  activeOpacity={0.85}
-                  disabled={!canSave}
-                >
-                  <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <FormSheet
+        visible={modalVisible}
+        title="New Section"
+        onClose={closeModal}
+        onSave={handleCreate}
+        canSave={canSave}
+        isSaving={saving}
+      >
+        <FormInput
+          placeholder="Section name"
+          value={name}
+          onChangeText={setName}
+          autoFocus
+        />
+        <FormInput
+          placeholder="Description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={3}
+        />
+      </FormSheet>
     </View>
   );
 }
@@ -252,9 +229,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.purple100,
     padding: spacing[4],
   },
-  cardOpen: {
-    borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0,
-  },
+  cardOpen: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 },
   cardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing[3] },
   cardRight: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   indexBadge: {
@@ -268,7 +243,6 @@ const styles = StyleSheet.create({
   count: { ...typeScale.caption, color: colors.purple400 },
   chevron: { ...typeScale.caption, color: colors.purple400 },
 
-  // Drawer
   drawer: {
     backgroundColor: '#fff',
     borderWidth: 1, borderTopWidth: 0, borderColor: colors.purple100,
@@ -297,38 +271,9 @@ const styles = StyleSheet.create({
   addFromBank: {
     borderTopWidth: 1, borderTopColor: colors.purple100,
     paddingVertical: spacing[3], paddingHorizontal: spacing[4],
-    alignItems: 'center',
-    backgroundColor: colors.purple50,
+    alignItems: 'center', backgroundColor: colors.purple50,
   },
   addFromBankText: { ...typeScale.label, color: colors.purple600 },
 
-  empty: { ...typeScale.body, color: colors.neutral400, textAlign: 'center', marginTop: spacing[6] },
-
-  fabShadow: {
-    position: 'absolute', bottom: 36, alignSelf: 'center',
-    backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }],
-  },
-  fab: {
-    backgroundColor: colors.purple400, borderRadius: radius.full,
-    paddingVertical: 14, paddingHorizontal: spacing[6], transform: [{ translateY: -4 }],
-  },
-  fabText: { ...typeScale.button, color: colors.neutral900 },
-
-  overlay: { flex: 1, backgroundColor: 'rgba(18,11,53,0.5)', justifyContent: 'center', paddingHorizontal: screenPadding.horizontal },
-  sheet: { backgroundColor: '#fff', borderRadius: radius.xl, padding: spacing[5] },
-  sheetTitle: { ...typeScale.h2, color: colors.purple800, marginBottom: spacing[4] },
-  input: {
-    ...typeScale.body, color: colors.purple900,
-    borderWidth: 1.5, borderColor: colors.purple200, borderRadius: radius.md,
-    paddingHorizontal: spacing[4], paddingVertical: 12, marginBottom: spacing[3],
-  },
-  inputMulti: { height: 80, textAlignVertical: 'top' },
-  sheetActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[3], alignItems: 'center', marginTop: spacing[1] },
-  cancelBtn: { paddingVertical: 10, paddingHorizontal: spacing[4] },
-  cancelText: { ...typeScale.label, color: colors.neutral600 },
-  saveShadow: { backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 3 }] },
-  saveShadowDisabled: { backgroundColor: colors.purple200 },
-  saveBtn: { backgroundColor: colors.purple400, borderRadius: radius.full, paddingVertical: 12, paddingHorizontal: spacing[5], transform: [{ translateY: -3 }] },
-  saveBtnDisabled: { backgroundColor: colors.purple100 },
-  saveText: { ...typeScale.button, color: colors.neutral900 },
+  fab: { position: 'absolute', bottom: 36, alignSelf: 'center' },
 });

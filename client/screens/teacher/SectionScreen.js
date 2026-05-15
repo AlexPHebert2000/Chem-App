@@ -8,6 +8,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
+import EmptyState from '../../components/EmptyState';
+import ShadowButton from '../../components/ShadowButton';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
@@ -65,19 +67,16 @@ export default function SectionScreen() {
           keyExtractor={item => item.id}
           renderItem={renderQuestion}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No questions yet. Add your first one!</Text>}
+          ListEmptyComponent={<EmptyState title="No questions yet. Add your first one!" />}
         />
       )}
 
-      <View style={styles.fabShadow}>
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('QuestionPicker', { sectionId, alreadyAddedIds: questions.map(q => q.id) })}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.fabText}>+ Add from Bank</Text>
-        </TouchableOpacity>
-      </View>
+      <ShadowButton
+        label="+ Add from Bank"
+        onPress={() => navigation.navigate('QuestionPicker', { sectionId, alreadyAddedIds: questions.map(q => q.id) })}
+        style={styles.fab}
+        paddingHorizontal={spacing[6]}
+      />
     </View>
   );
 }
@@ -101,15 +100,5 @@ const styles = StyleSheet.create({
   content: { ...typeScale.body, color: colors.purple900, marginBottom: spacing[2] },
   choiceCount: { ...typeScale.caption, color: colors.neutral600 },
 
-  empty: { ...typeScale.body, color: colors.neutral400, textAlign: 'center', marginTop: spacing[6] },
-
-  fabShadow: {
-    position: 'absolute', bottom: 36, alignSelf: 'center',
-    backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }],
-  },
-  fab: {
-    backgroundColor: colors.purple400, borderRadius: radius.full,
-    paddingVertical: 14, paddingHorizontal: spacing[6], transform: [{ translateY: -4 }],
-  },
-  fabText: { ...typeScale.button, color: colors.neutral900 },
+  fab: { position: 'absolute', bottom: 36, alignSelf: 'center' },
 });

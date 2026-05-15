@@ -1,6 +1,6 @@
 // Font family names match the expo-google-fonts package exports.
 // Load these once in App.js via useFonts() before rendering any UI.
-export const fontFamilies = {
+const fontFamilies = {
   display: 'Nunito_900Black',
   h1: 'Nunito_900Black',
   h2: 'Nunito_800ExtraBold',

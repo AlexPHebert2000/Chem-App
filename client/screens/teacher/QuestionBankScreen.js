@@ -1,18 +1,16 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, FlatList, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, Alert,
+  View, FlatList, StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
-import TagChip from '../../components/TagChip';
-import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
-
-const DIFFICULTY_LABEL = ['', '★', '★★', '★★★', '★★★★', '★★★★★'];
-const TYPE_LABEL = { MULTIPLE_CHOICE: 'Multiple Choice', FILL_IN_BLANK: 'Fill in Blank', DYNAMIC: 'Dynamic' };
+import QuestionCard from '../../components/QuestionCard';
+import EmptyState from '../../components/EmptyState';
+import ShadowButton from '../../components/ShadowButton';
+import { colors, spacing, screenPadding } from '../../theme';
 
 export default function QuestionBankScreen() {
   const { token } = useAuth();
@@ -34,30 +32,6 @@ export default function QuestionBankScreen() {
 
   useFocusEffect(fetchQuestions);
 
-  function renderQuestion({ item, index }) {
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate('QuestionDetail', { question: item })}
-        activeOpacity={0.8}
-      >
-        <View style={styles.cardTop}>
-          <View style={styles.typePill}>
-            <Text style={styles.typeText}>{TYPE_LABEL[item.type]}</Text>
-          </View>
-          <Text style={styles.difficulty}>{DIFFICULTY_LABEL[item.difficulty]}</Text>
-        </View>
-        <Text style={styles.content}>{index + 1}. {item.content}</Text>
-        {item.tags?.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagRow} contentContainerStyle={styles.tagRowContent}>
-            {item.tags.map(tag => <TagChip key={tag.id} label={tag.name} color={tag.color} />)}
-          </ScrollView>
-        )}
-        <Text style={styles.choiceCount}>{item.choices.length} choices</Text>
-      </TouchableOpacity>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <ScreenHeader title="Question Bank" />
@@ -68,21 +42,24 @@ export default function QuestionBankScreen() {
         <FlatList
           data={questions}
           keyExtractor={item => item.id}
-          renderItem={renderQuestion}
+          renderItem={({ item, index }) => (
+            <QuestionCard
+              question={item}
+              index={index}
+              onPress={() => navigation.navigate('QuestionDetail', { question: item })}
+            />
+          )}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No questions yet. Create your first one!</Text>}
+          ListEmptyComponent={<EmptyState title="No questions yet. Create your first one!" />}
         />
       )}
 
-      <View style={styles.fabShadow}>
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('CreateQuestion', {})}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.fabText}>+ New Question</Text>
-        </TouchableOpacity>
-      </View>
+      <ShadowButton
+        label="+ New Question"
+        onPress={() => navigation.navigate('CreateQuestion', {})}
+        style={styles.fab}
+        paddingHorizontal={spacing[6]}
+      />
     </View>
   );
 }
@@ -90,33 +67,5 @@ export default function QuestionBankScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral50 },
   list: { paddingHorizontal: screenPadding.horizontal, paddingBottom: 120 },
-
-  card: {
-    backgroundColor: colors.purple50, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.purple100,
-    padding: spacing[4], marginBottom: spacing[3],
-  },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing[2] },
-  typePill: {
-    backgroundColor: colors.purple100, borderRadius: radius.sm,
-    paddingHorizontal: spacing[2], paddingVertical: 2,
-  },
-  typeText: { ...typeScale.caption, color: colors.purple800 },
-  difficulty: { ...typeScale.caption, color: colors.gold600 },
-  content: { ...typeScale.body, color: colors.purple900, marginBottom: spacing[2] },
-  tagRow: { marginBottom: spacing[2] },
-  tagRowContent: { gap: spacing[2], paddingVertical: 2 },
-  choiceCount: { ...typeScale.caption, color: colors.neutral600 },
-
-  empty: { ...typeScale.body, color: colors.neutral400, textAlign: 'center', marginTop: spacing[6] },
-
-  fabShadow: {
-    position: 'absolute', bottom: 36, alignSelf: 'center',
-    backgroundColor: colors.purple800, borderRadius: radius.full, transform: [{ translateY: 4 }],
-  },
-  fab: {
-    backgroundColor: colors.purple400, borderRadius: radius.full,
-    paddingVertical: 14, paddingHorizontal: spacing[6], transform: [{ translateY: -4 }],
-  },
-  fabText: { ...typeScale.button, color: colors.neutral900 },
+  fab: { position: 'absolute', bottom: 36, alignSelf: 'center' },
 });

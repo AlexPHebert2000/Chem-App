@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
 
-  hint: { ...typeScale.caption, color: colors.neutral600, marginBottom: spacing[3] },
   error: { ...typeScale.small, color: colors.coral600, marginBottom: spacing[3] },
 
   btnShadow: {

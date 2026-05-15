@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
+  View, Text, ScrollView,
   StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import ScreenHeader from '../../components/ScreenHeader';
+import SectionRow from '../../components/SectionRow';
 import { colors, typeScale, spacing, radius, screenPadding } from '../../theme';
 
 export default function CourseScreen() {
@@ -27,7 +28,7 @@ export default function CourseScreen() {
       .finally(() => setLoading(false));
   }, [courseId, token]));
 
-  const totalSections    = chapters.reduce((s, ch) => s + ch.sections.length, 0);
+  const totalSections     = chapters.reduce((s, ch) => s + ch.sections.length, 0);
   const completedSections = chapters.reduce((s, ch) => s + ch.sections.filter(sec => sec.completed).length, 0);
   const pct = totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
 
@@ -45,7 +46,6 @@ export default function CourseScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Progress bar */}
           {totalSections > 0 && (
             <View style={styles.progressCard}>
               <View style={styles.progressHeader}>
@@ -96,29 +96,6 @@ export default function CourseScreen() {
   );
 }
 
-function SectionRow({ section, onPress }) {
-  const completed = section.completed;
-  const score     = section.score;
-
-  return (
-    <TouchableOpacity style={styles.sectionRow} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.statusDot, completed ? styles.statusDotDone : styles.statusDotPending]} />
-      <View style={styles.sectionInfo}>
-        <Text style={styles.sectionName}>{section.name}</Text>
-        <Text style={styles.sectionMeta}>
-          {section.questionCount} question{section.questionCount !== 1 ? 's' : ''}
-          {completed && score != null ? `  ·  ${score}%` : ''}
-        </Text>
-      </View>
-      {completed ? (
-        <Text style={styles.checkmark}>✓</Text>
-      ) : (
-        <Text style={styles.chevron}>›</Text>
-      )}
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.neutral50 },
   scroll:    { paddingHorizontal: screenPadding.horizontal, paddingBottom: 40 },
@@ -144,21 +121,4 @@ const styles = StyleSheet.create({
   chapterName: { ...typeScale.h3, color: colors.purple900, marginBottom: spacing[1], marginTop: spacing[2] },
   chapterDesc: { ...typeScale.caption, color: colors.neutral500, marginBottom: spacing[3] },
   emptyChapter: { ...typeScale.body, color: colors.neutral400, fontStyle: 'italic', paddingLeft: spacing[3] },
-
-  sectionRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing[3],
-    backgroundColor: '#fff', borderRadius: radius.md,
-    borderWidth: 1.5, borderColor: colors.purple100,
-    padding: spacing[4], marginBottom: spacing[2],
-  },
-  statusDot:        { width: 10, height: 10, borderRadius: 5 },
-  statusDotDone:    { backgroundColor: colors.teal400 },
-  statusDotPending: { backgroundColor: colors.purple200 },
-
-  sectionInfo: { flex: 1 },
-  sectionName: { ...typeScale.label, color: colors.purple900 },
-  sectionMeta: { ...typeScale.caption, color: colors.neutral500, marginTop: 2 },
-
-  checkmark: { ...typeScale.body, color: colors.teal500 ?? colors.teal400, fontWeight: 'bold' },
-  chevron:   { ...typeScale.h3, color: colors.purple300 },
 });
