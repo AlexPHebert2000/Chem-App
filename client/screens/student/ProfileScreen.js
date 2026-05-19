@@ -116,10 +116,9 @@ function LeaderRow({ row, rank }) {
 }
 
 // ─── BadgeHex ─────────────────────────────────────────────────────────────────
-const BADGE_ICONS = { flame: '🔥', bolt: '⚡', trophy: '🏆', star: '⭐', atom: '⚛️', flask: '🧪' };
-
 function BadgeHex({ badge }) {
-  const icon = BADGE_ICONS[badge.iconKey] ?? '🎖️';
+  const icon = badge.badge?.icon ?? '🎖️';
+  const name = badge.badge?.name ?? '';
   return (
     <View style={styles.badgeItem}>
       <LinearGradient
@@ -129,15 +128,18 @@ function BadgeHex({ badge }) {
       >
         <Text style={styles.badgeIconText}>{icon}</Text>
       </LinearGradient>
-      <Text style={styles.badgeName} numberOfLines={2}>{badge.name}</Text>
+      <Text style={styles.badgeName} numberOfLines={2}>{name}</Text>
     </View>
   );
 }
 
 // ─── ProgressBadgeRow ─────────────────────────────────────────────────────────
 function ProgressBadgeRow({ badge }) {
-  const icon = BADGE_ICONS[badge.iconKey] ?? '🎖️';
-  const pct = badge.goal > 0 ? Math.min(1, (badge.progress ?? 0) / badge.goal) : 0;
+  const icon = badge.badge?.icon ?? '🎖️';
+  const name = badge.badge?.name ?? '';
+  const goal = badge.badge?.criteriaAmount ?? 0;
+  const progress = badge.progress ?? 0;
+  const pct = goal > 0 ? Math.min(1, progress / goal) : 0;
   return (
     <View style={styles.progressRow}>
       <View style={styles.progressIconWrap}>
@@ -145,8 +147,8 @@ function ProgressBadgeRow({ badge }) {
       </View>
       <View style={{ flex: 1, gap: 4 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={styles.progressName}>{badge.name}</Text>
-          <Text style={styles.progressCount}>{badge.progress ?? 0}/{badge.goal}</Text>
+          <Text style={styles.progressName}>{name}</Text>
+          <Text style={styles.progressCount}>{progress}/{goal}</Text>
         </View>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${pct * 100}%` }]}/>
@@ -214,8 +216,8 @@ export default function ProfileScreen({ navigation }) {
   const inits = initials(student?.name ?? user?.name ?? '');
   const currentXp = enrollment?.currentPoints ?? 0;
   const lifetimeXp = enrollment?.lifetimePoints ?? 0;
-  const earnedBadges = badges.filter(b => b.earnedAt);
-  const progressBadges = badges.filter(b => !b.earnedAt && b.goal);
+  const earnedBadges = badges.filter(b => b.dateAchieved);
+  const progressBadges = badges.filter(b => !b.dateAchieved && b.badge?.criteriaAmount);
   const firstName = (student?.name ?? user?.name ?? 'Student').split(' ')[0];
   const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
@@ -325,7 +327,7 @@ export default function ProfileScreen({ navigation }) {
         {/* Earned badges */}
         {earnedBadges.length > 0 && (
           <View style={styles.section}>
-            <SectionHeader label="Earned badges" action={`${earnedBadges.length} · See all`}/>
+            <SectionHeader label="Earned badges" action={earnedBadges.length > 0 ? `${earnedBadges.length} · See all` : undefined}/>
             <View style={styles.badgeGrid}>
               {earnedBadges.map(b => <BadgeHex key={b.id} badge={b}/>)}
             </View>

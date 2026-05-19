@@ -79,6 +79,7 @@ async function clear() {
   if (chapterIds.length) await prisma.chapter.deleteMany({ where: { id: { in: chapterIds } } });
   if (courseIds.length) await prisma.course.deleteMany({ where: { id: { in: courseIds } } });
   if (teacher) await prisma.teacher.delete({ where: { id: teacher.id } });
+  if (studentIds.length) await prisma.studentBadge.deleteMany({ where: { studentId: { in: studentIds } } });
   if (studentIds.length) await prisma.student.deleteMany({ where: { id: { in: studentIds } } });
 
   console.log('Done.\n');
@@ -469,6 +470,26 @@ async function seed() {
   // ── Streak Badges ──────────────────────────────────────────────────────────
 
   await seedStreakBadges();
+
+  // ── Student Badges ─────────────────────────────────────────────────────────
+
+  const [badge7, badge14, badge21] = await Promise.all([
+    prisma.badge.findFirst({ where: { name: '7-Day Streak' } }),
+    prisma.badge.findFirst({ where: { name: '14-Day Streak' } }),
+    prisma.badge.findFirst({ where: { name: '21-Day Streak' } }),
+  ]);
+
+  if (badge7 && badge14 && badge21) {
+    await Promise.all([
+      // Alice: earned 7-day + 14-day, in-progress on 21-day (18/21)
+      prisma.studentBadge.create({ data: { studentId: alice.id, badgeId: badge7.id,  dateAchieved: new Date('2025-03-01'), progress: 7  } }),
+      prisma.studentBadge.create({ data: { studentId: alice.id, badgeId: badge14.id, dateAchieved: new Date('2025-03-08'), progress: 14 } }),
+      prisma.studentBadge.create({ data: { studentId: alice.id, badgeId: badge21.id, progress: 18 } }),
+      // Bob: earned 7-day, in-progress on 14-day (9/14)
+      prisma.studentBadge.create({ data: { studentId: bob.id, badgeId: badge7.id,  dateAchieved: new Date('2025-03-10'), progress: 7 } }),
+      prisma.studentBadge.create({ data: { studentId: bob.id, badgeId: badge14.id, progress: 9 } }),
+    ]);
+  }
 
   // ── Token ──────────────────────────────────────────────────────────────────
 
