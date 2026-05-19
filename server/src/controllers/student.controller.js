@@ -290,6 +290,33 @@ async function getCourseClassLeaderboard(req, res) {
   })));
 }
 
+async function getStudentMe(req, res) {
+  const studentId = req.user.sub;
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      activeTitle: true,
+      weeklyMinuteGoal: true,
+      enrollments: {
+        select: {
+          courseClassId: true,
+          streak: true,
+          lifetimePoints: true,
+          currentPoints: true,
+          courseClass: { select: { courseId: true, sectionNumber: true } },
+        },
+      },
+    },
+  });
+
+  if (!student) return res.status(404).json({ error: 'Student not found' });
+  res.json(student);
+}
+
 async function setWeeklyGoal(req, res) {
   const studentId = req.user.sub;
   const { weeklyMinuteGoal } = req.body;
@@ -307,4 +334,4 @@ async function setWeeklyGoal(req, res) {
   res.json({ weeklyMinuteGoal: student.weeklyMinuteGoal });
 }
 
-module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard, getCourseClassLeaderboard, patchStudentProfile, setWeeklyGoal };
+module.exports = { getStudentMe, getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard, getCourseClassLeaderboard, patchStudentProfile, setWeeklyGoal };
