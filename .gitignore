@@ -1,6 +1,16 @@
 mongo-keyfile
-.claude
 .env
-.wolf
-CLAUDE.md
 notes
+
+# Claude — ignore local settings only
+.claude/settings.local.json
+
+# OpenWolf — ignore runtime/ephemeral files only
+.wolf/memory.md
+.wolf/daemon.log
+.wolf/cron-state.json
+.wolf/token-ledger.json
+.wolf/designqc-report.json
+.wolf/designqc-captures/
+.wolf/suggestions.json
+.wolf/hooks/_session.json

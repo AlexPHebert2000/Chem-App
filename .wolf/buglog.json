@@ -1,0 +1,1858 @@
+{
+  "version": 1,
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-04-24T16:10:09.087Z",
+      "error_message": "Wrong reference: local should be env",
+      "file": "client/.gitignore",
+      "root_cause": "Used \"local\" instead of \"env\"",
+      "fix": "Changed local → env",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "unknown"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T16:10:09.087Z"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-04-24T00:00:00.000Z",
+      "error_message": "PrismaClientKnownRequestError P2031: Prisma needs to perform transactions, which requires your MongoDB server to be run as a replica set.",
+      "file": "server/.env",
+      "root_cause": "DATABASE_URL had directConnection=true but was missing replicaSet=rs0. Without the explicit replicaSet param, Prisma's topology discovery is bypassed and it cannot confirm it is talking to a replica set, causing all writes to fail.",
+      "fix": "Use replicaSet=rs0 alone — directConnection=true skips the handshake that returns the set name, causing a mismatch. Final URL: mongodb://localhost:27017/chem_app?replicaSet=rs0",
+      "tags": [
+        "prisma",
+        "mongodb",
+        "replica-set",
+        "connection-string"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T00:00:00.000Z"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-04-24T16:58:47.277Z",
+      "error_message": "Incorrect value in code",
+      "file": "README.md",
+      "root_cause": "Had `?directConnection=true`",
+      "fix": "Changed to `127.0.0.1`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T16:58:47.277Z"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-04-24T17:19:19.018Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "server/src/index.js",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T17:19:19.018Z"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-04-24T17:20:51.976Z",
+      "error_message": "Missing await",
+      "file": "server/src/index.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T17:20:51.976Z"
+    },
+    {
+      "id": "bug-006",
+      "timestamp": "2026-04-24T17:32:20.916Z",
+      "error_message": "ExpoSecureStore.default.setValueWithKeyAsync is not a function",
+      "file": "client/context/AuthContext.js",
+      "root_cause": "expo-secure-store v15 is native-only; calling setItemAsync on web tries to invoke a missing native module method",
+      "fix": "Created client/lib/storage.js that uses localStorage on web and SecureStore on native; AuthContext now imports from there",
+      "tags": [
+        "expo-secure-store",
+        "web",
+        "platform-compat",
+        "storage"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T17:32:20.916Z"
+    },
+    {
+      "id": "bug-007",
+      "timestamp": "2026-04-24T17:40:09.585Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/course.controller.js",
+      "root_cause": "No early return/throw for edge case: !name || !name.trim(",
+      "fix": "Added guard clause: if (!name || !name.trim()",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T17:40:09.585Z"
+    },
+    {
+      "id": "bug-008",
+      "timestamp": "2026-04-24T17:42:19.459Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/theme/colors.js",
+      "root_cause": "Had '#6B6491'",
+      "fix": "Changed to '#A9A3C8'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T17:42:19.459Z"
+    },
+    {
+      "id": "bug-009",
+      "timestamp": "2026-04-24T17:42:25.378Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/navigation/MainNavigator.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T17:42:25.378Z"
+    },
+    {
+      "id": "bug-010",
+      "timestamp": "2026-04-24T17:44:14.838Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/controllers/chapter.controller.js",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 19→31 lines (6 removed) | Also: const { name, description, orderIndex } = req.body; const errors = [];",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-04-24T17:44:22.882Z"
+    },
+    {
+      "id": "bug-011",
+      "timestamp": "2026-04-24T17:44:37.321Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "No early return/throw for edge case: error",
+      "fix": "Added guard clause: if (error)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T17:44:37.321Z"
+    },
+    {
+      "id": "bug-012",
+      "timestamp": "2026-04-24T00:00:00.000Z",
+      "error_message": "ReplicaSetNoPrimary / P2031 recurring on Windows Docker Desktop WSL2",
+      "file": "server/.env",
+      "root_cause": "replicaSet=rs0 alone opens a persistent RS monitor whose heartbeat connections are reset by the WSL2 NAT proxy. directConnection=true alone gives Prisma a Single topology which triggers P2031 on all writes.",
+      "fix": "Use replicaSet=rs0&directConnection=true together. directConnection skips the persistent RS monitor (no dropped heartbeats). replicaSet causes the driver to validate setName from the hello handshake so Prisma sees RS topology and does not throw P2031.",
+      "tags": [
+        "mongodb",
+        "replica-set",
+        "windows",
+        "wsl2",
+        "docker",
+        "prisma",
+        "P2031",
+        "connection-string"
+      ],
+      "related_bugs": [
+        "bug-002"
+      ],
+      "occurrences": 3,
+      "last_seen": "2026-04-24T00:00:00.000Z"
+    },
+    {
+      "id": "bug-013",
+      "timestamp": "2026-04-24T00:00:00.000Z",
+      "error_message": "ReplicaSetNoPrimary and 'actual name <none>' — root cause: native Windows MongoDB shadowing Docker port",
+      "file": "server/.env",
+      "root_cause": "A native mongod.exe Windows service was running on 127.0.0.1:27017. Windows routes specific-bind (127.0.0.1:27017) before Docker's wildcard-bind (0.0.0.0:27017), so every connection hit the standalone Windows MongoDB instead of the Docker RS container. The standalone returns hello with no setName, causing all RS connection attempts to fail.",
+      "fix": "Stop and disable the Windows MongoDB service (service name: MongoDB). After that, 127.0.0.1:27017 routes to Docker's port-forwarded RS container and replicaSet=rs0 works correctly.",
+      "tags": [
+        "mongodb",
+        "windows",
+        "service-conflict",
+        "port-shadowing",
+        "replica-set"
+      ],
+      "related_bugs": [
+        "bug-012"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T00:00:00.000Z"
+    },
+    {
+      "id": "bug-014",
+      "timestamp": "2026-04-24T18:30:07.337Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/index.js",
+      "root_cause": "Had 'expo'",
+      "fix": "Changed to 'react-native-gesture-handler'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T18:30:07.337Z"
+    },
+    {
+      "id": "bug-015",
+      "timestamp": "2026-04-24T18:30:10.916Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/App.js",
+      "root_cause": "Had './context/AuthContext'",
+      "fix": "Changed to 'react-native-gesture-handler'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-24T18:30:10.916Z"
+    },
+    {
+      "id": "bug-016",
+      "timestamp": "2026-04-25T00:08:03.630Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 22→15 lines (10 removed) | Also: orderBy: { orderIndex: 'asc' },; include: { choices: { orderBy: { position: 'asc' } | Also: const { type, content, solutionExplanation, diffic; if (!solutionExplanation || !solutionExplanation.t",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-04-25T00:08:18.818Z"
+    },
+    {
+      "id": "bug-017",
+      "timestamp": "2026-04-25T00:08:21.554Z",
+      "error_message": "Wrong reference: attemptQuestion should be updateQuestion",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Used \"attemptQuestion\" instead of \"updateQuestion\"",
+      "fix": "Changed attemptQuestion → updateQuestion",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:08:21.554Z"
+    },
+    {
+      "id": "bug-018",
+      "timestamp": "2026-04-25T00:08:35.628Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/course.controller.js",
+      "root_cause": "No early return/throw for edge case: !original",
+      "fix": "Added guard clause: if (!original)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:08:35.628Z"
+    },
+    {
+      "id": "bug-019",
+      "timestamp": "2026-04-25T00:08:41.292Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/routes/course.routes.js",
+      "root_cause": "Had '/:courseId/join-requests'",
+      "fix": "Changed to '/:courseId/clone'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:08:41.292Z"
+    },
+    {
+      "id": "bug-020",
+      "timestamp": "2026-04-25T00:09:55.121Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "Had `Question ${index + 1}`",
+      "fix": "Changed to \"Question\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:09:55.121Z"
+    },
+    {
+      "id": "bug-021",
+      "timestamp": "2026-04-25T00:10:00.238Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→10 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:10:00.238Z"
+    },
+    {
+      "id": "bug-022",
+      "timestamp": "2026-04-25T00:10:14.618Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:10:14.618Z"
+    },
+    {
+      "id": "bug-023",
+      "timestamp": "2026-04-25T00:10:51.267Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/lib/api.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:10:51.267Z"
+    },
+    {
+      "id": "bug-024",
+      "timestamp": "2026-04-25T00:11:21.694Z",
+      "error_message": "Wrong reference: teal300 should be teal400",
+      "file": "client/screens/teacher/CreateQuestionScreen.js",
+      "root_cause": "Used \"teal300\" instead of \"teal400\"",
+      "fix": "Changed teal300 → teal400",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:11:21.694Z"
+    },
+    {
+      "id": "bug-025",
+      "timestamp": "2026-04-25T00:24:11.669Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionDetailScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:24:11.669Z"
+    },
+    {
+      "id": "bug-026",
+      "timestamp": "2026-04-25T00:24:15.882Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:24:15.882Z"
+    },
+    {
+      "id": "bug-027",
+      "timestamp": "2026-04-25T00:27:43.058Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:27:43.058Z"
+    },
+    {
+      "id": "bug-028",
+      "timestamp": "2026-04-25T00:31:58.984Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/teacher/CreateQuestionScreen.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-25T00:31:58.984Z"
+    },
+    {
+      "id": "bug-029",
+      "timestamp": "2026-04-29T16:38:11.745Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/index.js",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 9→6 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T16:38:11.745Z"
+    },
+    {
+      "id": "bug-030",
+      "timestamp": "2026-04-29T16:59:45.133Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/routes/__tests__/course.routes.test.js",
+      "root_cause": "No early return/throw for edge case: where.id",
+      "fix": "Added guard clause: if (where.id)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T16:59:45.133Z"
+    },
+    {
+      "id": "bug-031",
+      "timestamp": "2026-04-29T17:03:10.376Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/routes/__tests__/course.routes.test.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T17:03:10.376Z"
+    },
+    {
+      "id": "bug-032",
+      "timestamp": "2026-04-29T17:03:35.689Z",
+      "error_message": "Function not marked async",
+      "file": "server/src/routes/__tests__/chapter.routes.test.js",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T17:03:35.689Z"
+    },
+    {
+      "id": "bug-033",
+      "timestamp": "2026-04-29T17:03:55.182Z",
+      "error_message": "Function not marked async",
+      "file": "server/src/routes/__tests__/section.routes.test.js",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-29T17:03:55.182Z"
+    },
+    {
+      "id": "bug-034",
+      "timestamp": "2026-04-30T15:51:37.501Z",
+      "error_message": "Missing import: ../controllers/export.controller",
+      "file": "server/src/routes/course.routes.js",
+      "root_cause": "Module(s) not imported: ../controllers/export.controller",
+      "fix": "Added import(s) for ../controllers/export.controller",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-30T15:51:37.501Z"
+    },
+    {
+      "id": "bug-035",
+      "timestamp": "2026-04-30T16:18:49.792Z",
+      "error_message": "Missing error handling in function",
+      "file": "client/screens/teacher/DashboardScreen.js",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-04-30T16:18:49.792Z"
+    },
+    {
+      "id": "bug-036",
+      "timestamp": "2026-05-01T21:47:27.601Z",
+      "error_message": "Missing import: ./routes/study.routes",
+      "file": "server/src/app.js",
+      "root_cause": "Module(s) not imported: ./routes/study.routes",
+      "fix": "Added import(s) for ./routes/study.routes",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T21:47:27.601Z"
+    },
+    {
+      "id": "bug-037",
+      "timestamp": "2026-05-01T22:16:32.953Z",
+      "error_message": "Missing import: ../services/workSession.service",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Module(s) not imported: ../services/workSession.service",
+      "fix": "Added import(s) for ../services/workSession.service",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T22:16:32.953Z"
+    },
+    {
+      "id": "bug-038",
+      "timestamp": "2026-05-01T22:16:40.770Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 27→35 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T22:16:40.770Z"
+    },
+    {
+      "id": "bug-039",
+      "timestamp": "2026-05-01T22:16:47.156Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/routes/__tests__/question.routes.test.js",
+      "root_cause": "Had 'question-id-2'",
+      "fix": "Changed to 'Carbon has 6 electrons.'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T22:16:47.156Z"
+    },
+    {
+      "id": "bug-040",
+      "timestamp": "2026-05-01T22:16:55.807Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/__tests__/question.routes.test.js",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→28 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T22:16:55.807Z"
+    },
+    {
+      "id": "bug-041",
+      "timestamp": "2026-05-01T22:22:22.491Z",
+      "error_message": "Missing import: ../controllers/section.controller",
+      "file": "server/src/routes/section.routes.js",
+      "root_cause": "Module(s) not imported: ../controllers/section.controller",
+      "fix": "Added import(s) for ../controllers/section.controller",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T22:22:22.491Z"
+    },
+    {
+      "id": "bug-042",
+      "timestamp": "2026-05-01T22:29:48.423Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/__tests__/course.routes.test.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→10 lines (2 removed) | Also: test('403 if requester is a STUDENT', async () => ; expect(res.status).toBe(403);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-01T22:30:29.332Z"
+    },
+    {
+      "id": "bug-043",
+      "timestamp": "2026-05-01T22:30:42.897Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/__tests__/section.routes.test.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→11 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-01T22:30:42.897Z"
+    },
+    {
+      "id": "bug-044",
+      "timestamp": "2026-05-11T16:33:35.989Z",
+      "error_message": "Missing import: ../controllers/reward.controller",
+      "file": "server/src/routes/course.routes.js",
+      "root_cause": "Module(s) not imported: ../controllers/reward.controller",
+      "fix": "Added import(s) for ../controllers/reward.controller",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:33:35.989Z"
+    },
+    {
+      "id": "bug-045",
+      "timestamp": "2026-05-11T16:33:42.109Z",
+      "error_message": "Missing import: ./routes/reward.routes",
+      "file": "server/src/app.js",
+      "root_cause": "Module(s) not imported: ./routes/reward.routes",
+      "fix": "Added import(s) for ./routes/reward.routes",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:33:42.109Z"
+    },
+    {
+      "id": "bug-046",
+      "timestamp": "2026-05-11T16:44:51.042Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/reward.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:44:51.042Z"
+    },
+    {
+      "id": "bug-047",
+      "timestamp": "2026-05-11T16:45:03.606Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/routes/course.routes.js",
+      "root_cause": "Had 'TEACHER'",
+      "fix": "Changed to '/:courseId/redemptions'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:45:03.606Z"
+    },
+    {
+      "id": "bug-048",
+      "timestamp": "2026-05-11T16:45:16.275Z",
+      "error_message": "Missing import: ./routes/redemption.routes",
+      "file": "server/src/app.js",
+      "root_cause": "Module(s) not imported: ./routes/redemption.routes",
+      "fix": "Added import(s) for ./routes/redemption.routes",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:45:16.275Z"
+    },
+    {
+      "id": "bug-049",
+      "timestamp": "2026-05-11T16:51:15.425Z",
+      "error_message": "Missing import: ../services/badge.service",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Module(s) not imported: ../services/badge.service",
+      "fix": "Added import(s) for ../services/badge.service",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:51:15.425Z"
+    },
+    {
+      "id": "bug-050",
+      "timestamp": "2026-05-11T16:51:21.665Z",
+      "error_message": "Missing import: ../services/badge.service",
+      "file": "server/src/controllers/section.controller.js",
+      "root_cause": "Module(s) not imported: ../services/badge.service",
+      "fix": "Added import(s) for ../services/badge.service",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:51:21.665Z"
+    },
+    {
+      "id": "bug-051",
+      "timestamp": "2026-05-11T16:51:25.561Z",
+      "error_message": "Missing await",
+      "file": "server/src/controllers/section.controller.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:51:25.561Z"
+    },
+    {
+      "id": "bug-052",
+      "timestamp": "2026-05-11T16:51:33.130Z",
+      "error_message": "Missing await",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:51:33.130Z"
+    },
+    {
+      "id": "bug-053",
+      "timestamp": "2026-05-11T16:51:40.382Z",
+      "error_message": "Missing import: ./routes/student.routes",
+      "file": "server/src/app.js",
+      "root_cause": "Module(s) not imported: ./routes/student.routes",
+      "fix": "Added import(s) for ./routes/student.routes",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:51:40.382Z"
+    },
+    {
+      "id": "bug-054",
+      "timestamp": "2026-05-11T16:52:07.796Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/routes/__tests__/student.routes.test.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:52:07.796Z"
+    },
+    {
+      "id": "bug-055",
+      "timestamp": "2026-05-11T16:54:06.764Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "No early return/throw for edge case: !course",
+      "fix": "Added guard clause: if (!course)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:54:06.764Z"
+    },
+    {
+      "id": "bug-056",
+      "timestamp": "2026-05-11T16:54:33.049Z",
+      "error_message": "Missing await",
+      "file": "server/src/routes/__tests__/student.routes.test.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: // ─── PATCH /api/students/me ──────────────────────────────; describe('PATCH /api/students/me', () => {",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-11T16:56:16.790Z"
+    },
+    {
+      "id": "bug-057",
+      "timestamp": "2026-05-11T16:55:46.242Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T16:55:46.242Z"
+    },
+    {
+      "id": "bug-058",
+      "timestamp": "2026-05-11T17:35:51.199Z",
+      "error_message": "Missing import: ../lib/questionTemplate",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Module(s) not imported: ../lib/questionTemplate",
+      "fix": "Added import(s) for ../lib/questionTemplate",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T17:35:51.199Z"
+    },
+    {
+      "id": "bug-059",
+      "timestamp": "2026-05-11T17:36:06.249Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: const { type, content, correctExplanation, incorrectExplanat; if (type === 'DYNAMIC') {",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-11T17:36:24.488Z"
+    },
+    {
+      "id": "bug-060",
+      "timestamp": "2026-05-11T17:36:34.136Z",
+      "error_message": "Missing await",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T17:36:34.136Z"
+    },
+    {
+      "id": "bug-061",
+      "timestamp": "2026-05-11T17:36:47.792Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T17:36:47.792Z"
+    },
+    {
+      "id": "bug-062",
+      "timestamp": "2026-05-11T18:19:16.445Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:19:16.445Z"
+    },
+    {
+      "id": "bug-063",
+      "timestamp": "2026-05-11T18:25:33.154Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/controllers/auth.controller.js",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 25→17 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:25:33.154Z"
+    },
+    {
+      "id": "bug-064",
+      "timestamp": "2026-05-11T18:25:53.803Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/__tests__/auth.routes.test.js",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 52→35 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:25:53.803Z"
+    },
+    {
+      "id": "bug-065",
+      "timestamp": "2026-05-11T18:26:10.409Z",
+      "error_message": "Wrong reference: role should be stayLoggedIn",
+      "file": "client/screens/auth/LoginScreen.js",
+      "root_cause": "Used \"role\" instead of \"stayLoggedIn\"",
+      "fix": "Changed role → stayLoggedIn",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:26:10.409Z"
+    },
+    {
+      "id": "bug-066",
+      "timestamp": "2026-05-11T18:33:20.701Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:33:20.701Z"
+    },
+    {
+      "id": "bug-067",
+      "timestamp": "2026-05-11T18:41:29.596Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 36→44 lines (9 removed) | Also: // All slot references must point to valid bracket; const slotRefs = [...answerExpression.matchAll(/(\\",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-11T18:43:44.603Z"
+    },
+    {
+      "id": "bug-068",
+      "timestamp": "2026-05-11T18:41:44.296Z",
+      "error_message": "Wrong condition in logic",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Condition was: if (!/[+\\-*/]/.test(expr)",
+      "fix": "Changed to: if (!/[+\\-*/^]/.test(expr)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:41:44.296Z"
+    },
+    {
+      "id": "bug-069",
+      "timestamp": "2026-05-11T18:41:49.391Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Had 'answerExpression contains invalid characters. Onl",
+      "fix": "Changed to 'answerExpression contains invalid characters. Onl",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:41:49.391Z"
+    },
+    {
+      "id": "bug-070",
+      "timestamp": "2026-05-11T18:43:52.322Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/lib/__tests__/questionTemplate.test.js",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T18:43:52.322Z"
+    },
+    {
+      "id": "bug-071",
+      "timestamp": "2026-05-11T18:57:51.122Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: const bracket = brackets.find(b => b.position === pos) ?? nu; // Follow ref to the source so distractors use the real data",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-11T18:57:57.101Z"
+    },
+    {
+      "id": "bug-072",
+      "timestamp": "2026-05-11T19:18:19.631Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T19:18:19.631Z"
+    },
+    {
+      "id": "bug-073",
+      "timestamp": "2026-05-11T19:18:36.247Z",
+      "error_message": "Wrong condition in logic",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Condition was: if (isArithmetic || !primaryBracket)",
+      "fix": "Changed to: if (isArithmetic || !primaryBracket || primaryBracket.)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T19:18:36.247Z"
+    },
+    {
+      "id": "bug-074",
+      "timestamp": "2026-05-11T19:18:50.338Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "No early return/throw for edge case: b.type === 'expr'",
+      "fix": "Added guard clause: if (b.type === 'expr')",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T19:18:50.338Z"
+    },
+    {
+      "id": "bug-075",
+      "timestamp": "2026-05-11T19:23:46.604Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-11T19:23:46.604Z"
+    },
+    {
+      "id": "bug-076",
+      "timestamp": "2026-05-11T19:36:26.879Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: const precision = primaryBracket.precision ?? 0;; const step = precision > 0 ? Math.pow(10, -precision) : 1;",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-11T19:36:38.007Z"
+    },
+    {
+      "id": "bug-077",
+      "timestamp": "2026-05-13T02:40:07.352Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Had 'el('",
+      "fix": "Changed to 'const'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T02:40:07.352Z"
+    },
+    {
+      "id": "bug-078",
+      "timestamp": "2026-05-13T02:40:24.141Z",
+      "error_message": "Wrong condition in logic",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Condition was: if (isArithmetic || !primaryBracket || primaryBracket.)",
+      "fix": "Changed to: if (isArithmetic || !primaryBracket || primaryBracket.)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T02:40:24.141Z"
+    },
+    {
+      "id": "bug-079",
+      "timestamp": "2026-05-13T02:46:02.422Z",
+      "error_message": "Wrong return value",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Was returning: m ? m[1] : null;",
+      "fix": "Now returns: m ? m[2] : null;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T02:46:02.422Z"
+    },
+    {
+      "id": "bug-080",
+      "timestamp": "2026-05-13T02:48:06.073Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/routes/__tests__/dynamic-question.routes.test.js",
+      "root_cause": "Had '1.number'",
+      "fix": "Changed to '[1.number]'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-13T02:48:32.090Z"
+    },
+    {
+      "id": "bug-081",
+      "timestamp": "2026-05-13T03:09:02.474Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T03:09:02.474Z"
+    },
+    {
+      "id": "bug-082",
+      "timestamp": "2026-05-13T03:09:15.099Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (2 removed) | Also: dynamicNotice: {; backgroundColor: colors.purple50, borderRadius: ra",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-13T03:09:55.536Z"
+    },
+    {
+      "id": "bug-083",
+      "timestamp": "2026-05-13T03:09:24.581Z",
+      "error_message": "Missing error handling in QuestionPreviewScreen",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T03:09:24.581Z"
+    },
+    {
+      "id": "bug-084",
+      "timestamp": "2026-05-13T03:09:45.481Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionPreviewScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T03:09:45.481Z"
+    },
+    {
+      "id": "bug-085",
+      "timestamp": "2026-05-13T03:23:58.564Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T03:23:58.564Z"
+    },
+    {
+      "id": "bug-086",
+      "timestamp": "2026-05-13T03:24:04.047Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/question.routes.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T03:24:04.047Z"
+    },
+    {
+      "id": "bug-087",
+      "timestamp": "2026-05-13T03:38:23.695Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 44→59 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T03:38:23.695Z"
+    },
+    {
+      "id": "bug-088",
+      "timestamp": "2026-05-13T04:15:07.960Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T04:15:07.960Z"
+    },
+    {
+      "id": "bug-089",
+      "timestamp": "2026-05-13T04:15:40.589Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/lib/__tests__/questionTemplate.test.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→27 lines (2 removed) | Also: test('[NA] alone resolves to Avogadro string', () ; const result = evaluateAnswer('[NA]', []);",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-13T04:16:18.457Z"
+    },
+    {
+      "id": "bug-090",
+      "timestamp": "2026-05-13T17:50:02.479Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "No early return/throw for edge case: cmpMatch",
+      "fix": "Added guard clause: if (cmpMatch)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-13T17:50:36.283Z"
+    },
+    {
+      "id": "bug-091",
+      "timestamp": "2026-05-13T17:50:23.538Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T17:50:23.538Z"
+    },
+    {
+      "id": "bug-092",
+      "timestamp": "2026-05-13T17:58:51.021Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/CreateQuestionScreen.js",
+      "root_cause": "Had 'Error'",
+      "fix": "Changed to 'Could not save question.'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T17:58:51.021Z"
+    },
+    {
+      "id": "bug-093",
+      "timestamp": "2026-05-13T17:59:08.433Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/CreateQuestionScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T17:59:08.433Z"
+    },
+    {
+      "id": "bug-094",
+      "timestamp": "2026-05-13T17:59:18.413Z",
+      "error_message": "Wrong reference: coral700 should be coral600",
+      "file": "client/screens/teacher/CreateQuestionScreen.js",
+      "root_cause": "Used \"coral700\" instead of \"coral600\"",
+      "fix": "Changed coral700 → coral600",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T17:59:18.413Z"
+    },
+    {
+      "id": "bug-095",
+      "timestamp": "2026-05-13T18:04:31.553Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/lib/questionTemplate.js",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 18→27 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T18:04:31.553Z"
+    },
+    {
+      "id": "bug-096",
+      "timestamp": "2026-05-13T21:40:24.043Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../Users/alexp/.claude/plans/i-have-changed-the-iterative-meteor.md",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T21:40:24.043Z"
+    },
+    {
+      "id": "bug-097",
+      "timestamp": "2026-05-13T21:42:57.404Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/CreateQuestionScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T21:42:57.404Z"
+    },
+    {
+      "id": "bug-098",
+      "timestamp": "2026-05-13T21:43:20.931Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionDetailScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T21:43:20.931Z"
+    },
+    {
+      "id": "bug-099",
+      "timestamp": "2026-05-13T21:43:23.992Z",
+      "error_message": "Wrong reference: sectionId should be question",
+      "file": "client/screens/teacher/QuestionDetailScreen.js",
+      "root_cause": "Used \"sectionId\" instead of \"question\"",
+      "fix": "Changed sectionId → question",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-13T21:43:23.992Z"
+    },
+    {
+      "id": "bug-100",
+      "timestamp": "2026-05-13T22:34:54.128Z",
+      "error_message": "Significant refactor of ",
+      "file": "TESTS.md",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 18→40 lines (11 removed) | Also: ### `POST /api/courses/:courseId/rewards/:rewardId; - Guards: 401, 403 for TEACHER; 404 course; 403 en | Also: - Guards: 401, 403 for TEACHER; 403 if not enrolle; - 409 if a session is already open for this course",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-13T22:36:22.308Z"
+    },
+    {
+      "id": "bug-101",
+      "timestamp": "2026-05-14T16:32:30.569Z",
+      "error_message": "Missing await",
+      "file": "server/src/routes/__tests__/question.routes.test.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:32:30.569Z"
+    },
+    {
+      "id": "bug-102",
+      "timestamp": "2026-05-14T16:37:02.149Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/routes/__tests__/question.routes.test.js",
+      "root_cause": "Had 'isCorrect'",
+      "fix": "Changed to 'content'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:37:02.150Z"
+    },
+    {
+      "id": "bug-103",
+      "timestamp": "2026-05-14T16:40:25.259Z",
+      "error_message": "Significant refactor of ",
+      "file": "TESTS.md",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 18→3 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-14T16:40:25.259Z"
+    },
+    {
+      "id": "bug-104",
+      "timestamp": "2026-05-15T15:18:07.200Z",
+      "error_message": "Wrong reference: purple500 should be purple600",
+      "file": "client/screens/teacher/ChapterScreen.js",
+      "root_cause": "Used \"purple500\" instead of \"purple600\"",
+      "fix": "Changed purple500 → purple600",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T15:18:10.295Z"
+    },
+    {
+      "id": "bug-105",
+      "timestamp": "2026-05-15T15:54:23.911Z",
+      "error_message": "Missing import: ./routes/tag.routes",
+      "file": "server/src/app.js",
+      "root_cause": "Module(s) not imported: ./routes/tag.routes",
+      "fix": "Added import(s) for ./routes/tag.routes",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T15:54:23.912Z"
+    },
+    {
+      "id": "bug-106",
+      "timestamp": "2026-05-15T15:54:54.589Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 35→47 lines (2 removed) | Also: const { error, status } = await ownedQuestion(ques; include: { choices: true },",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T15:55:13.616Z"
+    },
+    {
+      "id": "bug-107",
+      "timestamp": "2026-05-15T15:56:18.238Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "client/screens/teacher/CreateQuestionScreen.js",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: const tagSuggestions = tagInput.trim(); ? allTags",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-15T15:56:31.959Z"
+    },
+    {
+      "id": "bug-108",
+      "timestamp": "2026-05-15T16:15:14.235Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionBankScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T16:15:14.235Z"
+    },
+    {
+      "id": "bug-109",
+      "timestamp": "2026-05-15T16:21:34.444Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionDetailScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T16:21:34.444Z"
+    },
+    {
+      "id": "bug-110",
+      "timestamp": "2026-05-15T18:07:59.120Z",
+      "error_message": "Wrong reference: hint should be error",
+      "file": "client/screens/auth/SignupScreen.js",
+      "root_cause": "Used \"hint\" instead of \"error\"",
+      "fix": "Changed hint → error",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T18:07:59.120Z"
+    },
+    {
+      "id": "bug-111",
+      "timestamp": "2026-05-15T21:52:08.161Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: updateData.answerUnit = answerUnit?.trim() || null;; updateData.answerUnit = null; | Also: answerUnit: question.answerUnit ?? null,",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-15T21:52:24.213Z"
+    },
+    {
+      "id": "bug-112",
+      "timestamp": "2026-05-15T21:59:04.062Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/auth/LoginScreen.js",
+      "root_cause": "Had 'TEACHER'",
+      "fix": "Changed to 'STUDENT'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T21:59:04.062Z"
+    },
+    {
+      "id": "bug-113",
+      "timestamp": "2026-05-15T22:18:05.262Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "No early return/throw for edge case: !e.lastActivityDate",
+      "fix": "Added guard clause: if (!e.lastActivityDate)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-15T22:18:05.262Z"
+    },
+    {
+      "id": "bug-114",
+      "timestamp": "2026-05-19T16:17:31.122Z",
+      "error_message": "Wrong reference: modalCloseTxt should be modalScroll",
+      "file": "client/components/QuestionView.js",
+      "root_cause": "Used \"modalCloseTxt\" instead of \"modalScroll\"",
+      "fix": "Changed modalCloseTxt → modalScroll",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T16:17:31.122Z"
+    },
+    {
+      "id": "bug-115",
+      "timestamp": "2026-05-19T18:15:54.467Z",
+      "error_message": "Significant refactor of ",
+      "file": ".gitignore",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→16 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "unknown"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:15:54.467Z"
+    }
+  ]
+}
