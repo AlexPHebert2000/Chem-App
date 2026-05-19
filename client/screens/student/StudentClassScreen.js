@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Ellipse, Circle, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -150,6 +151,7 @@ function LeaderRow({ entry, myId, last }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function StudentClassScreen() {
   const { user, token } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [courseName, setCourseName] = useState('');
   const [sectionLabel, setSectionLabel] = useState('');
@@ -213,7 +215,7 @@ export default function StudentClassScreen() {
           colors={[colors.purple800, colors.purple600]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={[styles.hero, { paddingTop: insets.top + 16 }]}
         >
           <AtomOrbit />
           <Text style={styles.heroLabel}>Leaderboard</Text>
@@ -283,7 +285,6 @@ const styles = StyleSheet.create({
   // Hero
   hero: {
     paddingHorizontal: screenPadding.horizontal,
-    paddingTop: 16,
     paddingBottom: 72,
     position: 'relative',
     overflow: 'hidden',
