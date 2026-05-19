@@ -60,9 +60,17 @@ async function clear() {
   }
   if (sessionIds.length) await prisma.session.deleteMany({ where: { id: { in: sessionIds } } });
   if (sectionIds.length) await prisma.studentSection.deleteMany({ where: { sectionId: { in: sectionIds } } });
+  const courseClassIds = courseIds.length
+    ? (await prisma.courseClass.findMany({ where: { courseId: { in: courseIds } }, select: { id: true } })).map(c => c.id)
+    : [];
+
+  if (courseClassIds.length) {
+    await prisma.joinRequest.deleteMany({ where: { courseClassId: { in: courseClassIds } } });
+    await prisma.studentEnrollment.deleteMany({ where: { courseClassId: { in: courseClassIds } } });
+    await prisma.courseClass.deleteMany({ where: { id: { in: courseClassIds } } });
+  }
   if (courseIds.length) {
     await prisma.studentCourse.deleteMany({ where: { courseId: { in: courseIds } } });
-    await prisma.joinRequest.deleteMany({ where: { courseId: { in: courseIds } } });
   }
   if (questionIds.length) await prisma.choice.deleteMany({ where: { questionId: { in: questionIds } } });
   if (questionIds.length) await prisma.question.deleteMany({ where: { id: { in: questionIds } } });
@@ -219,6 +227,18 @@ async function seed() {
       { studentId: alice.id,   courseId: gchem.id, streak: 5, lifetimePoints: 420, currentPoints: 120 },
       { studentId: bob.id,     courseId: gchem.id, streak: 2, lifetimePoints: 210, currentPoints: 60  },
       { studentId: charlie.id, courseId: gchem.id, streak: 0, lifetimePoints: 0,   currentPoints: 0   },
+    ],
+  });
+
+  const gchemClass = await prisma.courseClass.create({
+    data: { courseId: gchem.id, sectionNumber: '001', meetingTimes: 'M W F 10:00am' },
+  });
+
+  await prisma.studentEnrollment.createMany({
+    data: [
+      { studentId: alice.id,   courseClassId: gchemClass.id, streak: 5, lifetimePoints: 420, currentPoints: 120 },
+      { studentId: bob.id,     courseClassId: gchemClass.id, streak: 2, lifetimePoints: 210, currentPoints: 60  },
+      { studentId: charlie.id, courseClassId: gchemClass.id, streak: 0, lifetimePoints: 0,   currentPoints: 0   },
     ],
   });
 
@@ -385,6 +405,17 @@ async function seed() {
     ],
   });
 
+  const ochemClass = await prisma.courseClass.create({
+    data: { courseId: ochem.id, sectionNumber: '001', meetingTimes: 'T Th 2:00pm' },
+  });
+
+  await prisma.studentEnrollment.createMany({
+    data: [
+      { studentId: alice.id, courseClassId: ochemClass.id, streak: 3, lifetimePoints: 180, currentPoints: 80 },
+      { studentId: diana.id, courseClassId: ochemClass.id, streak: 0, lifetimePoints: 0,   currentPoints: 0  },
+    ],
+  });
+
   // ── Alice — 2 completed sessions in Org Chem ───────────────────────────────
   //   Session 1: 25 min, 3 questions
   //   Session 2: 30 min, 2 questions
@@ -418,6 +449,10 @@ async function seed() {
   });
 
   // Diana: enrolled but no sessions, no attempts — all stats will be blank
+
+  // ── Streak Badges ──────────────────────────────────────────────────────────
+
+  await seedStreakBadges();
 
   // ── Token ──────────────────────────────────────────────────────────────────
 
@@ -457,6 +492,27 @@ async function seed() {
   console.log('  Organic Chemistry');
   console.log('    Alice Johnson  2 sessions  avg 27.5 min  total 55m   80.0% correct  1.67 avg attempts');
   console.log('    Diana Walsh    not yet active → all stats blank\n');
+}
+
+// ─── Streak Badges ─────────────────────────────────────────────────────────────
+
+async function seedStreakBadges() {
+  const streakBadges = [
+    { name: '7-Day Streak',   criteriaAmount: 7,  xpReward: 100,  icon: '🔥', color: '#FF6B00' },
+    { name: '14-Day Streak',  criteriaAmount: 14, xpReward: 200,  icon: '🔥', color: '#FF6B00' },
+    { name: '21-Day Streak',  criteriaAmount: 21, xpReward: 400,  icon: '🔥', color: '#FF6B00' },
+    { name: '28-Day Streak',  criteriaAmount: 28, xpReward: 800,  icon: '🔥', color: '#FF6B00' },
+    { name: '1-Month Streak', criteriaAmount: 30, xpReward: 1600, icon: '🔥', color: '#FF8C00' },
+    { name: '2-Month Streak', criteriaAmount: 60, xpReward: 3200, icon: '🏆', color: '#C0C0C0' },
+    { name: '3-Month Streak', criteriaAmount: 90, xpReward: 6400, icon: '🏆', color: '#FFD700' },
+  ];
+
+  for (const b of streakBadges) {
+    const exists = await prisma.badge.findFirst({ where: { name: b.name, badgeType: 'STREAK' } });
+    if (!exists) {
+      await prisma.badge.create({ data: { ...b, badgeType: 'STREAK', criteriaType: 'STREAK_DAYS' } });
+    }
+  }
 }
 
 // ─── Entry point ───────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 const prisma = require('../lib/prisma');
-const { awardBadges } = require('../services/badge.service');
+const { awardBadges, awardStreakBadges } = require('../services/badge.service');
 
 async function findNextSection(sectionOrderIndex, chapter) {
   const nextInChapter = await prisma.section.findFirst({
@@ -30,15 +30,15 @@ async function completeSection(req, res) {
   const chapter = await prisma.chapter.findUnique({ where: { id: section.chapterId } });
   const courseId = chapter.courseId;
 
-  const enrollment = await prisma.studentCourse.findUnique({
-    where: { studentId_courseId: { studentId, courseId } },
+  const enrollment = await prisma.studentEnrollment.findFirst({
+    where: { studentId, courseClass: { courseId } },
   });
   if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
 
   const existing = await prisma.studentSection.findUnique({
     where: { studentId_sectionId: { studentId, sectionId } },
   });
-  if (existing?.completedAt) return res.status(409).json({ error: 'Section already completed' });
+  const isReview = !!existing?.completedAt;
 
   // Aggregate XP from the latest attempt per question
   const questions = await prisma.question.findMany({
@@ -77,10 +77,20 @@ async function completeSection(req, res) {
     ? Math.round((correctCount / questions.length) * 100)
     : 0;
 
+  if (isReview) xpEarned = Math.floor(xpEarned / 2);
+
   const now = new Date();
+
+  await prisma.sectionAttempt.create({
+    data: { studentId, sectionId, completedAt: now, score: sectionScore, xpEarned, isReview },
+  });
+
   const studentSection = await prisma.studentSection.upsert({
     where: { studentId_sectionId: { studentId, sectionId } },
-    update: { completedAt: now, score: sectionScore },
+    update: {
+      completedAt: existing?.completedAt ?? now,
+      ...(sectionScore > (existing?.score ?? -1) && { score: sectionScore }),
+    },
     create: { studentId, sectionId, completedAt: now, score: sectionScore },
   });
 
@@ -91,8 +101,8 @@ async function completeSection(req, res) {
   const yesterdayUTC = new Date(todayUTC);
   yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
 
-  const freshEnrollment = await prisma.studentCourse.findUnique({
-    where: { studentId_courseId: { studentId, courseId } },
+  const freshEnrollment = await prisma.studentEnrollment.findUnique({
+    where: { id: enrollment.id },
     select: { streak: true, lastActivityDate: true },
   });
 
@@ -110,8 +120,8 @@ async function completeSection(req, res) {
     }
   }
 
-  const updatedEnrollment = await prisma.studentCourse.update({
-    where: { studentId_courseId: { studentId, courseId } },
+  const updatedEnrollment = await prisma.studentEnrollment.update({
+    where: { id: enrollment.id },
     data: {
       currentPoints: { increment: xpEarned },
       lifetimePoints: { increment: xpEarned },
@@ -122,10 +132,58 @@ async function completeSection(req, res) {
   });
 
   await awardBadges(studentId);
+  await awardStreakBadges(studentId, newStreak);
+
+  // Check if all sections in the chapter are complete → award chapter badge
+  const chapterSectionIds = (
+    await prisma.section.findMany({ where: { chapterId: chapter.id }, select: { id: true } })
+  ).map(s => s.id);
+
+  const completedInChapter = await prisma.studentSection.count({
+    where: { studentId, sectionId: { in: chapterSectionIds }, completedAt: { not: null } },
+  });
+
+  if (completedInChapter === chapterSectionIds.length && chapterSectionIds.length > 0) {
+    const recentAttempts = await prisma.sectionAttempt.findMany({
+      where: { studentId, sectionId: { in: chapterSectionIds } },
+      orderBy: { completedAt: 'desc' },
+    });
+
+    const latestBySection = new Map();
+    for (const a of recentAttempts) {
+      if (!latestBySection.has(a.sectionId)) latestBySection.set(a.sectionId, a.score);
+    }
+
+    const avgAccuracy = [...latestBySection.values()].reduce((s, v) => s + v, 0) / latestBySection.size;
+
+    const chapterBadges = await prisma.badge.findMany({
+      where: { chapterId: chapter.id, badgeType: 'CHAPTER' },
+      orderBy: { tier: 'desc' },
+    });
+
+    for (const badge of chapterBadges) {
+      if (avgAccuracy >= badge.criteriaAmount) {
+        await prisma.studentBadge.upsert({
+          where: { studentId_badgeId: { studentId, badgeId: badge.id } },
+          update: { dateAchieved: now, progress: Math.round(avgAccuracy) },
+          create: { studentId, badgeId: badge.id, dateAchieved: now, progress: Math.round(avgAccuracy) },
+        });
+
+        if (badge.title) {
+          const student = await prisma.student.findUnique({ where: { id: studentId }, select: { activeTitle: true } });
+          if (!student.activeTitle) {
+            await prisma.student.update({ where: { id: studentId }, data: { activeTitle: badge.title } });
+          }
+        }
+        break;
+      }
+    }
+  }
 
   res.json({
     studentSection,
     xpEarned,
+    isReview,
     nextSectionId: nextSection?.id ?? null,
     currentPoints: updatedEnrollment.currentPoints,
     streak: updatedEnrollment.streak,

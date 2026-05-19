@@ -36,7 +36,56 @@ async function createChapter(req, res) {
     data: { courseId: course.id, name: name.trim(), description: description.trim(), orderIndex },
   });
 
+  await prisma.badge.createMany({
+    data: [
+      { chapterId: chapter.id, badgeType: 'CHAPTER', criteriaType: 'CHAPTER_ACCURACY', criteriaAmount: 1,  tier: 1, name: `${chapter.name} Novice`,  color: '#CD7F32', icon: '⭐' },
+      { chapterId: chapter.id, badgeType: 'CHAPTER', criteriaType: 'CHAPTER_ACCURACY', criteriaAmount: 75, tier: 2, name: `${chapter.name} Skilled`, color: '#C0C0C0', icon: '⭐⭐' },
+      { chapterId: chapter.id, badgeType: 'CHAPTER', criteriaType: 'CHAPTER_ACCURACY', criteriaAmount: 90, tier: 3, name: `${chapter.name} Master`,  color: '#FFD700', icon: '⭐⭐⭐' },
+    ],
+  });
+
   res.status(201).json(chapter);
+}
+
+async function patchChapter(req, res) {
+  const { courseId, chapterId } = req.params;
+  const { name, description, badgeNames, badgeTitles } = req.body;
+
+  const { error, status } = await ownedCourse(courseId, req.user.sub);
+  if (error) return res.status(status).json({ error });
+
+  const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
+  if (!chapter || chapter.courseId !== courseId) return res.status(404).json({ error: 'Chapter not found' });
+
+  const data = {};
+  if (name?.trim()) data.name = name.trim();
+  if (description?.trim()) data.description = description.trim();
+
+  const updatedChapter = Object.keys(data).length
+    ? await prisma.chapter.update({ where: { id: chapterId }, data })
+    : chapter;
+
+  // Update badge names/titles if provided
+  if (badgeNames || badgeTitles) {
+    const badges = await prisma.badge.findMany({
+      where: { chapterId, badgeType: 'CHAPTER' },
+      orderBy: { tier: 'asc' },
+    });
+    const tiers = [1, 2, 3];
+    const tierKey = ['tier1', 'tier2', 'tier3'];
+    for (let i = 0; i < tiers.length; i++) {
+      const badge = badges.find(b => b.tier === tiers[i]);
+      if (!badge) continue;
+      const badgeData = {};
+      if (badgeNames?.[tierKey[i]]) badgeData.name = badgeNames[tierKey[i]];
+      if (badgeTitles?.[tierKey[i]] !== undefined) badgeData.title = badgeTitles[tierKey[i]];
+      if (Object.keys(badgeData).length) {
+        await prisma.badge.update({ where: { id: badge.id }, data: badgeData });
+      }
+    }
+  }
+
+  res.json(updatedChapter);
 }
 
 async function swapChapters(req, res) {
@@ -132,4 +181,4 @@ async function swapSections(req, res) {
   res.json({ sectionIdA, orderIndexA: sectionB.orderIndex, sectionIdB, orderIndexB: sectionA.orderIndex });
 }
 
-module.exports = { getCourseChapters, createChapter, swapChapters, getChapterSections, createSection, swapSections };
+module.exports = { getCourseChapters, createChapter, patchChapter, swapChapters, getChapterSections, createSection, swapSections };

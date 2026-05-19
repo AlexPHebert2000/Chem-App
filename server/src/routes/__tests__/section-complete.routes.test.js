@@ -3,15 +3,22 @@ const jwt = require('jsonwebtoken');
 const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
-  section:         { findUnique: jest.fn(), findFirst: jest.fn() },
-  chapter:         { findUnique: jest.fn(), findFirst: jest.fn() },
-  studentCourse:   { findUnique: jest.fn(), update: jest.fn() },
-  studentSection:  { findUnique: jest.fn(), upsert: jest.fn() },
-  question:        { findMany: jest.fn() },
-  questionAttempt: { findMany: jest.fn() },
+  section:           { findUnique: jest.fn(), findFirst: jest.fn(), findMany: jest.fn() },
+  chapter:           { findUnique: jest.fn(), findFirst: jest.fn() },
+  studentEnrollment: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  studentSection:    { findUnique: jest.fn(), upsert: jest.fn(), count: jest.fn() },
+  sectionAttempt:    { create: jest.fn(), findMany: jest.fn() },
+  question:          { findMany: jest.fn() },
+  questionAttempt:   { findMany: jest.fn() },
+  badge:             { findMany: jest.fn() },
+  studentBadge:      { upsert: jest.fn() },
+  student:           { findUnique: jest.fn(), update: jest.fn() },
 }));
 
-jest.mock('../../services/badge.service', () => ({ awardBadges: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../../services/badge.service', () => ({
+  awardBadges:       jest.fn().mockResolvedValue(undefined),
+  awardStreakBadges:  jest.fn().mockResolvedValue(undefined),
+}));
 
 const prisma = require('../../lib/prisma');
 
@@ -26,9 +33,9 @@ function token(role, id) {
 
 const COURSE      = { id: 'course-id-1' };
 const CHAPTER     = { id: 'chapter-id-1', courseId: COURSE.id, orderIndex: 0 };
-const SECTION     = { id: 'section-id-1', chapterId: CHAPTER.id, orderIndex: 0 };
+const SECTION     = { id: 'section-id-1', chapterId: CHAPTER.id, orderIndex: 0, questionIds: [] };
 const SECTION2    = { id: 'section-id-2', chapterId: CHAPTER.id, orderIndex: 1 };
-const ENROLLMENT  = { studentId: STUDENT_ID, courseId: COURSE.id, currentPoints: 30, lifetimePoints: 30 };
+const ENROLLMENT  = { id: 'enrollment-id-1', studentId: STUDENT_ID, courseClassId: 'class-id-1', currentPoints: 30, lifetimePoints: 30 };
 
 const QUESTIONS = [
   { id: 'q-1', difficulty: 3, type: 'MULTIPLE_CHOICE', choices: [{ blankIndex: 0 }, { blankIndex: 0 }] },
@@ -47,14 +54,19 @@ const url = (sid = SECTION.id) => `/api/sections/${sid}/complete`;
 function mockChain({ attempts = ATTEMPTS_ALL_CORRECT, existingStudentSection = null, nextSection = SECTION2 } = {}) {
   prisma.section.findUnique.mockResolvedValue(SECTION);
   prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
-  prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+  prisma.studentEnrollment.findFirst.mockResolvedValue(ENROLLMENT);
+  prisma.studentEnrollment.findUnique.mockResolvedValue({ streak: 0, lastActivityDate: null });
   prisma.studentSection.findUnique.mockResolvedValue(existingStudentSection);
   prisma.question.findMany.mockResolvedValue(QUESTIONS);
   prisma.questionAttempt.findMany.mockResolvedValue(attempts);
+  prisma.sectionAttempt.create.mockResolvedValue({});
   prisma.studentSection.upsert.mockResolvedValue(STUDENT_SECTION);
   prisma.section.findFirst.mockResolvedValue(nextSection);
   prisma.chapter.findFirst.mockResolvedValue(null);
-  prisma.studentCourse.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 80, lifetimePoints: 80 });
+  prisma.studentEnrollment.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 80, lifetimePoints: 80, streak: 1 });
+  // Chapter badge checks — default: chapter not fully complete (count < total)
+  prisma.section.findMany.mockResolvedValue([{ id: SECTION.id }]);
+  prisma.studentSection.count.mockResolvedValue(0);
 }
 
 // ─── Auth & role guards ───────────────────────────────────────────────────────
@@ -86,17 +98,18 @@ describe('POST /api/sections/:sectionId/complete — resource checks', () => {
   test('403 if not enrolled', async () => {
     prisma.section.findUnique.mockResolvedValue(SECTION);
     prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
-    prisma.studentCourse.findUnique.mockResolvedValue(null);
+    prisma.studentEnrollment.findFirst.mockResolvedValue(null);
     const res = await request(app).post(url()).set(auth()).send();
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/Not enrolled/);
   });
 
-  test('409 if section already completed', async () => {
-    mockChain({ existingStudentSection: { ...STUDENT_SECTION } });
+  test('re-completion is treated as a review (200, isReview: true, half XP)', async () => {
+    mockChain({ existingStudentSection: { ...STUDENT_SECTION, completedAt: new Date() } });
     const res = await request(app).post(url()).set(auth()).send();
-    expect(res.status).toBe(409);
-    expect(res.body.error).toMatch(/already completed/);
+    expect(res.status).toBe(200);
+    expect(res.body.isReview).toBe(true);
+    expect(res.body.xpEarned).toBe(25); // 50 / 2 = 25
   });
 });
 
@@ -129,10 +142,10 @@ describe('POST /api/sections/:sectionId/complete — success', () => {
     expect(res.body.nextSectionId).toBeNull();
   });
 
-  test('updates StudentCourse with xpEarned and nextSectionId', async () => {
+  test('updates StudentEnrollment with xpEarned and nextSectionId', async () => {
     mockChain();
     await request(app).post(url()).set(auth()).send();
-    expect(prisma.studentCourse.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(prisma.studentEnrollment.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         currentPoints: { increment: 50 },
         lifetimePoints: { increment: 50 },
@@ -155,16 +168,20 @@ describe('POST /api/sections/:sectionId/complete — success', () => {
     const dynQuestion = { id: 'q-dyn', difficulty: 4, type: 'DYNAMIC', choices: [] };
     prisma.section.findUnique.mockResolvedValue(SECTION);
     prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
-    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentEnrollment.findFirst.mockResolvedValue(ENROLLMENT);
+    prisma.studentEnrollment.findUnique.mockResolvedValue({ streak: 0, lastActivityDate: null });
     prisma.studentSection.findUnique.mockResolvedValue(null);
     prisma.question.findMany.mockResolvedValue([dynQuestion]);
     prisma.questionAttempt.findMany.mockResolvedValue([
       { questionId: 'q-dyn', score: 1, attemptedAt: new Date() },
     ]);
+    prisma.sectionAttempt.create.mockResolvedValue({});
     prisma.studentSection.upsert.mockResolvedValue(STUDENT_SECTION);
     prisma.section.findFirst.mockResolvedValue(null);
     prisma.chapter.findFirst.mockResolvedValue(null);
-    prisma.studentCourse.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 40 });
+    prisma.studentEnrollment.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 40, streak: 1 });
+    prisma.section.findMany.mockResolvedValue([{ id: SECTION.id }]);
+    prisma.studentSection.count.mockResolvedValue(0);
     const res = await request(app).post(url()).set(auth()).send();
     expect(res.status).toBe(200);
     expect(res.body.xpEarned).toBe(40); // difficulty 4 * 10
@@ -174,17 +191,21 @@ describe('POST /api/sections/:sectionId/complete — success', () => {
     // Two attempts for q-1: earlier wrong, later correct — only the latest should count
     prisma.section.findUnique.mockResolvedValue(SECTION);
     prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
-    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentEnrollment.findFirst.mockResolvedValue(ENROLLMENT);
+    prisma.studentEnrollment.findUnique.mockResolvedValue({ streak: 0, lastActivityDate: null });
     prisma.studentSection.findUnique.mockResolvedValue(null);
     prisma.question.findMany.mockResolvedValue([QUESTIONS[0]]); // q-1, difficulty 3, MC
     prisma.questionAttempt.findMany.mockResolvedValue([
       { questionId: 'q-1', score: 1, attemptedAt: new Date('2026-05-14T10:00:00Z') }, // latest, correct
       { questionId: 'q-1', score: 0, attemptedAt: new Date('2026-05-14T09:00:00Z') }, // earlier, wrong
     ]);
+    prisma.sectionAttempt.create.mockResolvedValue({});
     prisma.studentSection.upsert.mockResolvedValue(STUDENT_SECTION);
     prisma.section.findFirst.mockResolvedValue(null);
     prisma.chapter.findFirst.mockResolvedValue(null);
-    prisma.studentCourse.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 30 });
+    prisma.studentEnrollment.update.mockResolvedValue({ ...ENROLLMENT, currentPoints: 30, streak: 1 });
+    prisma.section.findMany.mockResolvedValue([{ id: SECTION.id }]);
+    prisma.studentSection.count.mockResolvedValue(0);
     const res = await request(app).post(url()).set(auth()).send();
     expect(res.status).toBe(200);
     expect(res.body.xpEarned).toBe(30); // latest attempt is correct: 3 * 10
@@ -195,7 +216,8 @@ describe('POST /api/sections/:sectionId/complete — success', () => {
     const NEXT_CH_SECTION = { id: 'section-id-3', chapterId: NEXT_CHAPTER.id, orderIndex: 0 };
     prisma.section.findUnique.mockResolvedValue(SECTION);
     prisma.chapter.findUnique.mockResolvedValue(CHAPTER);
-    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentEnrollment.findFirst.mockResolvedValue(ENROLLMENT);
+    prisma.studentEnrollment.findUnique.mockResolvedValue({ streak: 0, lastActivityDate: null });
     prisma.studentSection.findUnique.mockResolvedValue(null);
     prisma.question.findMany.mockResolvedValue([]);
     prisma.questionAttempt.findMany.mockResolvedValue([]);
@@ -204,7 +226,10 @@ describe('POST /api/sections/:sectionId/complete — success', () => {
       .mockResolvedValueOnce(null)           // no next section in current chapter
       .mockResolvedValueOnce(NEXT_CH_SECTION); // first section of next chapter
     prisma.chapter.findFirst.mockResolvedValue(NEXT_CHAPTER);
-    prisma.studentCourse.update.mockResolvedValue({ ...ENROLLMENT, currentSectionId: NEXT_CH_SECTION.id });
+    prisma.sectionAttempt.create.mockResolvedValue({});
+    prisma.studentEnrollment.update.mockResolvedValue({ ...ENROLLMENT, currentSectionId: NEXT_CH_SECTION.id, streak: 1 });
+    prisma.section.findMany.mockResolvedValue([{ id: SECTION.id }]);
+    prisma.studentSection.count.mockResolvedValue(0);
     const res = await request(app).post(url()).set(auth()).send();
     expect(res.status).toBe(200);
     expect(res.body.nextSectionId).toBe(NEXT_CH_SECTION.id);

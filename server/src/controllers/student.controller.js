@@ -247,4 +247,47 @@ async function getStudentBadges(req, res) {
   res.json(studentBadges);
 }
 
-module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard, patchStudentProfile };
+async function getCourseClassLeaderboard(req, res) {
+  const { courseId, classId } = req.params;
+  const { sub: userId, role } = req.user;
+
+  const courseClass = await prisma.courseClass.findUnique({ where: { id: classId } });
+  if (!courseClass || courseClass.courseId !== courseId) return res.status(404).json({ error: 'Class not found' });
+
+  if (role === 'TEACHER') {
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (course.teacherId !== userId) return res.status(403).json({ error: 'You do not own this course' });
+  } else {
+    const enrollment = await prisma.studentEnrollment.findUnique({
+      where: { studentId_courseClassId: { studentId: userId, courseClassId: classId } },
+    });
+    if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this class' });
+  }
+
+  const entries = await prisma.studentEnrollment.findMany({
+    where: { courseClassId: classId },
+    orderBy: { currentPoints: 'desc' },
+    include: { student: { omit: { password: true } } },
+  });
+
+  const todayUTC = new Date(new Date().toISOString().slice(0, 10));
+  const yesterdayUTC = new Date(todayUTC);
+  yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+  function liveStreak(e) {
+    if (!e.lastActivityDate) return 0;
+    const lastUTC = new Date(e.lastActivityDate.toISOString().slice(0, 10));
+    return lastUTC.getTime() >= yesterdayUTC.getTime() ? e.streak : 0;
+  }
+
+  res.json(entries.map((e, i) => ({
+    rank: i + 1,
+    studentId: e.studentId,
+    name: e.student.name,
+    currentPoints: e.currentPoints,
+    lifetimePoints: e.lifetimePoints,
+    streak: liveStreak(e),
+  })));
+}
+
+module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard, getCourseClassLeaderboard, patchStudentProfile };

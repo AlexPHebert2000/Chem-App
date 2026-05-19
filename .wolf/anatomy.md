@@ -1,7 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T18:15:54.445Z
-> Files: 140 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T18:43:50.744Z
+> Files: 144 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../Users/alexp/.claude/plans/
+
+- `please-read-the-session-imperative-parasol.md` — Session Plan — May 19 2026 (~3686 tok)
 
 ## ./
 
@@ -161,25 +165,27 @@
 ## server/prisma/
 
 - `export-csv.js` — Declares http (~356 tok)
+- `migrate-course-classes.js` — prisma: main (~416 tok)
 - `migrate-explanations.js` — One-time migration: backfill correctExplanation and incorrectExplanation (~416 tok)
-- `schema.prisma` — Prisma database schema (~2353 tok)
-- `seed.js` — Prisma data access layer (~6035 tok)
+- `schema.prisma` — Declares JoinRequestStatus (~2967 tok)
+- `seed.js` — bcrypt: daysAgo, hoursAgo, minutesAfter, clear, seed (~6786 tok)
 
 ## server/src/
 
-- `app.js` — API routes: GET (1 endpoints) (~349 tok)
+- `app.js` — API routes: GET (1 endpoints) (~376 tok)
 - `index.js` — Declares app (~178 tok)
 
 ## server/src/controllers/
 
 - `auth.controller.js` — bcrypt: signToken, getModel, signup + 4 more (~1117 tok)
-- `chapter.controller.js` — Prisma data access layer (~1689 tok)
-- `course.controller.js` — Prisma data access layer (~1704 tok)
+- `chapter.controller.js` — prisma: ownedCourse, getCourseChapters, createChapter + 5 more (~2320 tok)
+- `course.controller.js` — crypto: generateCode, getTeacherCourses, createCourse + 10 more (~3249 tok)
 - `export.controller.js` — Prisma data access layer (~1910 tok)
 - `question.controller.js` — Prisma data access layer (~5112 tok)
 - `reward.controller.js` — Prisma data access layer (~1569 tok)
-- `section.controller.js` — Prisma data access layer (~2104 tok)
-- `student.controller.js` — Prisma data access layer (~2390 tok)
+- `section.controller.js` — prisma: findNextSection, completeSection, addQuestionToSection, removeQuestionFromSection (~2708 tok)
+- `stats.controller.js` — prisma: getWeekBounds, maxScoreForQuestion, getWeeklyStats, getQuestionStats, getSuggestedReviews (~2058 tok)
+- `student.controller.js` — prisma: getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions + 7 more (~2867 tok)
 - `study.controller.js` — prisma: startWorkSession, endWorkSession (~388 tok)
 - `tag.controller.js` — Prisma data access layer (~271 tok)
 
@@ -201,12 +207,13 @@
 ## server/src/routes/
 
 - `auth.routes.js` — API routes: POST, GET (5 endpoints) (~123 tok)
-- `chapter.routes.js` — API routes: GET, POST, PATCH (3 endpoints) (~163 tok)
-- `course.routes.js` — API routes: GET, POST, PATCH (15 endpoints) (~688 tok)
+- `chapter.routes.js` — API routes: GET, POST, PATCH (4 endpoints) (~196 tok)
+- `course.routes.js` — API routes: GET, POST, PATCH (22 endpoints) (~944 tok)
 - `question.routes.js` — API routes: GET, POST, PATCH (6 endpoints) (~263 tok)
 - `redemption.routes.js` — API routes: PATCH (1 endpoints) (~96 tok)
 - `reward.routes.js` — API routes: POST, DELETE (2 endpoints) (~121 tok)
 - `section.routes.js` — API routes: GET, POST, DELETE, PATCH (5 endpoints) (~383 tok)
+- `stats.routes.js` — API routes: GET (3 endpoints) (~162 tok)
 - `student.routes.js` — API routes: PATCH, GET (2 endpoints) (~123 tok)
 - `study.routes.js` — API routes: POST (2 endpoints) (~119 tok)
 - `tag.routes.js` — API routes: GET, POST (2 endpoints) (~105 tok)
@@ -214,12 +221,12 @@
 ## server/src/routes/__tests__/
 
 - `auth.routes.test.js` — API routes: POST (24 endpoints) (~4003 tok)
-- `chapter.routes.test.js` — Prisma data access layer (~4550 tok)
+- `chapter.routes.test.js` — request: token (~4580 tok)
 - `course.routes.test.js` — API routes: POST (12 endpoints) (~6147 tok)
 - `dynamic-question.routes.test.js` — Prisma data access layer (~2951 tok)
 - `question.routes.test.js` — API routes: GET, POST (18 endpoints) (~8393 tok)
 - `reward.routes.test.js` — API routes: POST, GET, DELETE (28 endpoints) (~4833 tok)
-- `section-complete.routes.test.js` — Prisma data access layer (~2852 tok)
+- `section-complete.routes.test.js` — request: token, mockChain (~3360 tok)
 - `section.routes.test.js` — Prisma data access layer (~3879 tok)
 - `student.routes.test.js` — API routes: GET (3 endpoints) (~5044 tok)
 - `study.routes.test.js` — API routes: POST (14 endpoints) (~1922 tok)
@@ -227,5 +234,5 @@
 ## server/src/services/
 
 - `authSession.service.js` — crypto: hashToken, createAuthSession, validateAuthSession, deleteAuthSession (~373 tok)
-- `badge.service.js` — Prisma data access layer (~428 tok)
+- `badge.service.js` — prisma: computeProgress, awardBadges, awardStreakBadges (~760 tok)
 - `workSession.service.js` — prisma: getOrCreateWorkSession, recordActivity, closeWorkSession (~406 tok)

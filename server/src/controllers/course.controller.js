@@ -175,4 +175,130 @@ async function cloneCourse(req, res) {
   res.status(201).json(clone);
 }
 
-module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests };
+async function createCourseClass(req, res) {
+  const { courseId } = req.params;
+  const { sectionNumber, meetingTimes, archiveDate } = req.body;
+
+  if (!sectionNumber?.trim()) return res.status(400).json({ error: 'sectionNumber is required' });
+  if (!meetingTimes?.trim()) return res.status(400).json({ error: 'meetingTimes is required' });
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const courseClass = await prisma.courseClass.create({
+    data: {
+      courseId,
+      sectionNumber: sectionNumber.trim(),
+      meetingTimes: meetingTimes.trim(),
+      archiveDate: archiveDate ? new Date(archiveDate) : null,
+    },
+  });
+
+  res.status(201).json(courseClass);
+}
+
+async function getCourseClasses(req, res) {
+  const { courseId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const classes = await prisma.courseClass.findMany({
+    where: { courseId },
+    include: { _count: { select: { enrollments: true } } },
+  });
+
+  res.json(classes.map(c => ({
+    id: c.id,
+    courseId: c.courseId,
+    sectionNumber: c.sectionNumber,
+    meetingTimes: c.meetingTimes,
+    archiveDate: c.archiveDate,
+    enrollmentCount: c._count.enrollments,
+  })));
+}
+
+async function patchCourseClass(req, res) {
+  const { courseId, classId } = req.params;
+  const { sectionNumber, meetingTimes, archiveDate } = req.body;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const courseClass = await prisma.courseClass.findUnique({ where: { id: classId } });
+  if (!courseClass || courseClass.courseId !== courseId) return res.status(404).json({ error: 'Class not found' });
+
+  const data = {};
+  if (sectionNumber?.trim()) data.sectionNumber = sectionNumber.trim();
+  if (meetingTimes?.trim()) data.meetingTimes = meetingTimes.trim();
+  if (archiveDate !== undefined) data.archiveDate = archiveDate ? new Date(archiveDate) : null;
+
+  if (!Object.keys(data).length) return res.status(400).json({ error: 'Provide at least one field to update' });
+
+  const updated = await prisma.courseClass.update({ where: { id: classId }, data });
+  res.json(updated);
+}
+
+async function requestJoinClass(req, res) {
+  const { classId } = req.params;
+  const studentId = req.user.sub;
+
+  const courseClass = await prisma.courseClass.findUnique({ where: { id: classId } });
+  if (!courseClass) return res.status(404).json({ error: 'Class not found' });
+
+  const alreadyEnrolled = await prisma.studentEnrollment.findUnique({
+    where: { studentId_courseClassId: { studentId, courseClassId: classId } },
+  });
+  if (alreadyEnrolled) return res.status(409).json({ error: 'Already enrolled in this class' });
+
+  const existing = await prisma.joinRequest.findUnique({
+    where: { studentId_courseClassId: { studentId, courseClassId: classId } },
+  });
+  if (existing) return res.status(409).json({ error: 'Join request already exists' });
+
+  const joinRequest = await prisma.joinRequest.create({
+    data: { studentId, courseClassId: classId },
+  });
+
+  res.status(201).json(joinRequest);
+}
+
+async function getPendingClassJoinRequests(req, res) {
+  const { courseId, classId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const requests = await prisma.joinRequest.findMany({
+    where: { courseClassId: classId, status: 'PENDING' },
+    include: { student: { omit: { password: true } } },
+  });
+
+  res.json(requests);
+}
+
+async function approveJoinClass(req, res) {
+  const { courseId, classId, requestId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const joinRequest = await prisma.joinRequest.findUnique({ where: { id: requestId } });
+  if (!joinRequest || joinRequest.courseClassId !== classId) return res.status(404).json({ error: 'Join request not found' });
+  if (joinRequest.status !== 'PENDING') return res.status(409).json({ error: 'Request already processed' });
+
+  await prisma.joinRequest.update({ where: { id: requestId }, data: { status: 'APPROVED' } });
+
+  const enrollment = await prisma.studentEnrollment.create({
+    data: { studentId: joinRequest.studentId, courseClassId: classId },
+  });
+
+  res.status(201).json(enrollment);
+}
+
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass };

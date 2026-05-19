@@ -1853,6 +1853,182 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-19T18:15:54.467Z"
+    },
+    {
+      "id": "bug-116",
+      "timestamp": "2026-05-19T18:31:20.945Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/services/badge.service.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:31:20.945Z"
+    },
+    {
+      "id": "bug-117",
+      "timestamp": "2026-05-19T18:31:29.856Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/section.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:31:29.856Z"
+    },
+    {
+      "id": "bug-118",
+      "timestamp": "2026-05-19T18:31:33.290Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/chapter.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:31:33.290Z"
+    },
+    {
+      "id": "bug-119",
+      "timestamp": "2026-05-19T18:31:52.705Z",
+      "error_message": "Missing await",
+      "file": "server/prisma/seed.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: // ── Streak Badges ────────────────────────────────────────; await seedStreakBadges();",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T18:31:57.492Z"
+    },
+    {
+      "id": "bug-120",
+      "timestamp": "2026-05-19T18:32:21.421Z",
+      "error_message": "Missing import: ./routes/stats.routes",
+      "file": "server/src/app.js",
+      "root_cause": "Module(s) not imported: ./routes/stats.routes",
+      "fix": "Added import(s) for ./routes/stats.routes",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:32:21.421Z"
+    },
+    {
+      "id": "bug-121",
+      "timestamp": "2026-05-19T18:32:33.530Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/course.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:32:33.530Z"
+    },
+    {
+      "id": "bug-122",
+      "timestamp": "2026-05-19T18:32:39.550Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "No early return/throw for edge case: !courseClass || courseClass.courseId !== courseId",
+      "fix": "Added guard clause: if (!courseClass || courseClass.courseId !==)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:32:39.550Z"
+    },
+    {
+      "id": "bug-123",
+      "timestamp": "2026-05-19T18:32:44.998Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/course.routes.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:32:44.998Z"
+    },
+    {
+      "id": "bug-124",
+      "timestamp": "2026-05-19T18:35:32.278Z",
+      "error_message": "Wrong condition in logic",
+      "file": "server/prisma/seed.js",
+      "root_cause": "Condition was: if (courseIds.length)",
+      "fix": "Changed to: if (courseClassIds.length)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T18:35:32.278Z"
+    },
+    {
+      "id": "bug-125",
+      "timestamp": "2026-05-19T18:42:16.930Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/__tests__/section-complete.routes.test.js",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 10→17 lines (7 removed) | Also: prisma.studentCourse.findUnique.mockResolvedValue(; prisma.studentCourse.update.mockResolvedValue({ ..",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T18:42:31.947Z"
+    },
+    {
+      "id": "bug-126",
+      "timestamp": "2026-05-19T18:42:56.081Z",
+      "error_message": "Wrong reference: studentCourse should be studentEnrollment",
+      "file": "server/src/routes/__tests__/section-complete.routes.test.js",
+      "root_cause": "Used \"studentCourse\" instead of \"studentEnrollment\"",
+      "fix": "Changed studentCourse → studentEnrollment",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-19T18:43:03.518Z"
     }
   ]
 }

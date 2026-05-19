@@ -3,9 +3,10 @@ const jwt = require('jsonwebtoken');
 const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
-  course: { findUnique: jest.fn() },
-  chapter: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
-  section: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+  course:   { findUnique: jest.fn() },
+  chapter:  { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), count: jest.fn() },
+  section:  { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+  badge:    { createMany: jest.fn() },
 }));
 
 const prisma = require('../../lib/prisma');
@@ -72,6 +73,7 @@ describe('POST /api/courses/:courseId/chapters', () => {
     prisma.course.findUnique.mockResolvedValue(COURSE);
     prisma.chapter.count.mockResolvedValue(0);
     prisma.chapter.create.mockResolvedValue(CHAPTER_A);
+    prisma.badge.createMany.mockResolvedValue({ count: 3 });
     const res = await request(app).post(url).set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`).send(validBody);
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ name: CHAPTER_A.name, courseId: COURSE.id, orderIndex: 0 });

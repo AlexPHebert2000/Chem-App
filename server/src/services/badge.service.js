@@ -19,6 +19,14 @@ async function computeProgress(studentId, criteriaType) {
     return prisma.questionAttempt.count({ where: { studentId } });
   }
 
+  if (criteriaType === 'STREAK_DAYS') {
+    const max = await prisma.studentEnrollment.aggregate({
+      where: { studentId },
+      _max: { streak: true },
+    });
+    return max._max.streak ?? 0;
+  }
+
   return 0;
 }
 
@@ -52,4 +60,34 @@ async function awardBadges(studentId) {
   }
 }
 
-module.exports = { awardBadges };
+async function awardStreakBadges(studentId, currentStreak) {
+  const badges = await prisma.badge.findMany({
+    where: { badgeType: 'STREAK', criteriaAmount: { lte: currentStreak } },
+  });
+
+  for (const badge of badges) {
+    const existing = await prisma.studentBadge.findUnique({
+      where: { studentId_badgeId: { studentId, badgeId: badge.id } },
+    });
+
+    if (existing?.dateAchieved) continue;
+
+    await prisma.studentBadge.upsert({
+      where: { studentId_badgeId: { studentId, badgeId: badge.id } },
+      update: { dateAchieved: new Date() },
+      create: { studentId, badgeId: badge.id, dateAchieved: new Date(), progress: currentStreak },
+    });
+
+    if (badge.xpReward > 0) {
+      await prisma.studentEnrollment.updateMany({
+        where: { studentId },
+        data: {
+          currentPoints: { increment: badge.xpReward },
+          lifetimePoints: { increment: badge.xpReward },
+        },
+      });
+    }
+  }
+}
+
+module.exports = { awardBadges, awardStreakBadges };

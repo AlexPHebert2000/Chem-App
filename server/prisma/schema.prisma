@@ -28,19 +28,19 @@ model Course {
   rewards      Reward[]
   sessions     Session[]
   students     StudentCourse[]
-  joinRequests JoinRequest[]
+  classes      CourseClass[]
 }
 
 model JoinRequest {
-  id        String            @id @default(auto()) @map("_id") @db.ObjectId
-  studentId String            @db.ObjectId
-  courseId  String            @db.ObjectId
-  status    JoinRequestStatus @default(PENDING)
-  createdAt DateTime          @default(now())
-  student   Student           @relation(fields: [studentId], references: [id])
-  course    Course            @relation(fields: [courseId], references: [id])
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  studentId     String            @db.ObjectId
+  courseClassId String            @db.ObjectId
+  status        JoinRequestStatus @default(PENDING)
+  createdAt     DateTime          @default(now())
+  student       Student           @relation(fields: [studentId], references: [id])
+  courseClass   CourseClass       @relation(fields: [courseClassId], references: [id])
 
-  @@unique([studentId, courseId])
+  @@unique([studentId, courseClassId])
 }
 
 enum JoinRequestStatus {
@@ -57,19 +57,22 @@ model Chapter {
   orderIndex  Int
   course      Course    @relation(fields: [courseId], references: [id])
   sections    Section[]
+  badges      Badge[]
 }
 
 model Section {
-  id              String           @id @default(auto()) @map("_id") @db.ObjectId
-  chapterId       String           @db.ObjectId
-  questionIds     String[]         @db.ObjectId
-  name            String
-  description     String
-  orderIndex      Int
-  chapter         Chapter          @relation(fields: [chapterId], references: [id])
-  questions       Question[]       @relation(fields: [questionIds], references: [id])
-  studentSections StudentSection[]
-  currentFor      StudentCourse[]  @relation("CurrentSection")
+  id               String             @id @default(auto()) @map("_id") @db.ObjectId
+  chapterId        String             @db.ObjectId
+  questionIds      String[]           @db.ObjectId
+  name             String
+  description      String
+  orderIndex       Int
+  chapter          Chapter            @relation(fields: [chapterId], references: [id])
+  questions        Question[]         @relation(fields: [questionIds], references: [id])
+  studentSections  StudentSection[]
+  sectionAttempts  SectionAttempt[]
+  currentFor       StudentCourse[]    @relation("CurrentSection")
+  currentForEnroll StudentEnrollment[] @relation("CurrentSectionEnroll")
 }
 
 model Question {
@@ -137,20 +140,24 @@ model AttemptAnswer {
 // ─── Student & Enrollment ─────────────────────────────────────────────────────
 
 model Student {
-  id           String            @id @default(auto()) @map("_id") @db.ObjectId
-  email        String            @unique
-  name         String
-  password     String
-  profileImage String?
-  courses      StudentCourse[]
-  sessions     Session[]
-  sections     StudentSection[]
-  badges       StudentBadge[]
-  rewards      StudentReward[]
-  attempts     QuestionAttempt[]
-  joinRequests JoinRequest[]
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
+  email           String             @unique
+  name            String
+  password        String
+  profileImage    String?
+  activeTitle     String?
+  courses         StudentCourse[]
+  enrollments     StudentEnrollment[]
+  sessions        Session[]
+  sections        StudentSection[]
+  sectionAttempts SectionAttempt[]
+  badges          StudentBadge[]
+  rewards         StudentReward[]
+  attempts        QuestionAttempt[]
+  joinRequests    JoinRequest[]
 }
 
+// Legacy enrollment model — kept for backward compat during migration
 model StudentCourse {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   studentId        String   @db.ObjectId
@@ -158,13 +165,41 @@ model StudentCourse {
   currentPoints    Int      @default(0)
   lifetimePoints   Int      @default(0)
   streak           Int      @default(0)
-  currentSectionId   String?   @db.ObjectId
-  lastActivityDate   DateTime?
-  student            Student   @relation(fields: [studentId], references: [id])
-  course             Course    @relation(fields: [courseId], references: [id])
+  currentSectionId String?  @db.ObjectId
+  lastActivityDate DateTime?
+  student          Student  @relation(fields: [studentId], references: [id])
+  course           Course   @relation(fields: [courseId], references: [id])
   currentSection   Section? @relation("CurrentSection", fields: [currentSectionId], references: [id])
 
   @@unique([studentId, courseId])
+}
+
+model CourseClass {
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  courseId      String             @db.ObjectId
+  sectionNumber String
+  meetingTimes  String
+  archiveDate   DateTime?
+  course        Course             @relation(fields: [courseId], references: [id])
+  enrollments   StudentEnrollment[]
+  joinRequests  JoinRequest[]
+  sessions      Session[]
+}
+
+model StudentEnrollment {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  studentId        String      @db.ObjectId
+  courseClassId    String      @db.ObjectId
+  currentPoints    Int         @default(0)
+  lifetimePoints   Int         @default(0)
+  streak           Int         @default(0)
+  currentSectionId String?     @db.ObjectId
+  lastActivityDate DateTime?
+  student          Student     @relation(fields: [studentId], references: [id])
+  courseClass      CourseClass @relation(fields: [courseClassId], references: [id])
+  currentSection   Section?    @relation("CurrentSectionEnroll", fields: [currentSectionId], references: [id])
+
+  @@unique([studentId, courseClassId])
 }
 
 model AuthSession {
@@ -178,16 +213,18 @@ model AuthSession {
 }
 
 model Session {
-  id                String            @id @default(auto()) @map("_id") @db.ObjectId
-  studentId         String            @db.ObjectId
-  courseId          String            @db.ObjectId
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  studentId         String          @db.ObjectId
+  courseId          String          @db.ObjectId
+  courseClassId     String?         @db.ObjectId
   startedAt         DateTime
   endedAt           DateTime?
   lastActivityAt    DateTime?
-  questionsAnswered Int               @default(0)
-  pointsEarned      Int               @default(0)
-  student           Student           @relation(fields: [studentId], references: [id])
-  course            Course            @relation(fields: [courseId], references: [id])
+  questionsAnswered Int             @default(0)
+  pointsEarned      Int             @default(0)
+  student           Student         @relation(fields: [studentId], references: [id])
+  course            Course          @relation(fields: [courseId], references: [id])
+  courseClass       CourseClass?    @relation(fields: [courseClassId], references: [id])
   attempts          QuestionAttempt[]
 }
 
@@ -201,6 +238,18 @@ model StudentSection {
   section     Section   @relation(fields: [sectionId], references: [id])
 
   @@unique([studentId, sectionId])
+}
+
+model SectionAttempt {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String   @db.ObjectId
+  sectionId   String   @db.ObjectId
+  completedAt DateTime
+  score       Int
+  xpEarned    Int
+  isReview    Boolean  @default(false)
+  student     Student  @relation(fields: [studentId], references: [id])
+  section     Section  @relation(fields: [sectionId], references: [id])
 }
 
 model QuestionResolution {
@@ -220,8 +269,15 @@ model Badge {
   id             String         @id @default(auto()) @map("_id") @db.ObjectId
   name           String
   color          String
+  icon           String?
   criteriaType   String
   criteriaAmount Int
+  badgeType      String         @default("GENERAL")
+  chapterId      String?        @db.ObjectId
+  tier           Int?
+  xpReward       Int?
+  title          String?
+  chapter        Chapter?       @relation(fields: [chapterId], references: [id])
   students       StudentBadge[]
 }
 
