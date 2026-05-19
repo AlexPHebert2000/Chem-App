@@ -333,6 +333,7 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 14,
     marginTop: -52,
+    zIndex: 1,
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1.5,
