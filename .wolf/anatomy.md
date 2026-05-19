@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T18:43:50.744Z
-> Files: 144 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T18:52:31.613Z
+> Files: 145 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -154,6 +154,7 @@
 ## notes/sessions/
 
 - `2026-05-18.md` — Session Notes - May 18 2026 (~1364 tok)
+- `2026-05-19.md` — Session Notes - May 19 2026 (~1373 tok)
 
 ## server/
 
