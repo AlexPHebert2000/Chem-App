@@ -77,23 +77,34 @@ function SettingsCard({ title, accent, children }) {
 }
 
 // ─── Row ─────────────────────────────────────────────────────────────────────
-function Row({ emoji, iconBg, label, sublabel, right, onPress, last }) {
+function Row({ emoji, iconBg, label, sublabel, right, onPress, last, disabled }) {
   const content = (
-    <View style={[styles.row, last && styles.rowLast]}>
-      <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
-        <Text style={styles.rowIconEmoji}>{emoji}</Text>
+    <View style={[styles.row, last && styles.rowLast, disabled && styles.rowDisabled]}>
+      <View style={[styles.rowIcon, { backgroundColor: disabled ? colors.neutral100 : iconBg }]}>
+        <Text style={[styles.rowIconEmoji, disabled && { opacity: 0.4 }]}>{emoji}</Text>
       </View>
       <View style={styles.rowBody}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.rowSublabel} numberOfLines={1}>{sublabel}</Text> : null}
+        <View style={styles.rowLabelRow}>
+          <Text style={[styles.rowLabel, disabled && styles.rowLabelDisabled]}>{label}</Text>
+          {disabled && (
+            <View style={styles.comingSoonPill}>
+              <Text style={styles.comingSoonText}>coming soon</Text>
+            </View>
+          )}
+        </View>
+        {sublabel ? (
+          <Text style={[styles.rowSublabel, disabled && { color: colors.neutral400 }]} numberOfLines={1}>
+            {sublabel}
+          </Text>
+        ) : null}
       </View>
-      <View style={styles.rowRight}>
+      <View style={[styles.rowRight, disabled && { opacity: 0.3 }]}>
         {right}
         {onPress ? <Text style={styles.rowChevron}>›</Text> : null}
       </View>
     </View>
   );
-  if (onPress) return <Pressable onPress={onPress}>{content}</Pressable>;
+  if (onPress && !disabled) return <Pressable onPress={onPress}>{content}</Pressable>;
   return content;
 }
 
@@ -119,11 +130,6 @@ export default function SettingsScreen({ navigation }) {
   const [weeklyGoal, setWeeklyGoal] = useState(60);
   const [originalGoal, setOriginalGoal] = useState(60);
 
-  // local-only prefs
-  const [pushOn, setPushOn] = useState(true);
-  const [remindersOn, setRemindersOn] = useState(true);
-  const [soundOn, setSoundOn] = useState(true);
-  const [hapticsOn, setHapticsOn] = useState(true);
   const [theme, setTheme] = useState('light');
   const [textSize, setTextSize] = useState('regular');
 
@@ -258,10 +264,10 @@ export default function SettingsScreen({ navigation }) {
           <SettingsCard title="Notifications" accent={colors.gold600}>
             <Row emoji="🔔" iconBg={colors.gold50} label="Push notifications"
               sublabel="Streak alerts, badge unlocks, weekly recap"
-              right={<Toggle value={pushOn} onChange={setPushOn}/>}/>
+              right={<Toggle value={false} onChange={() => {}}/>} disabled/>
             <Row emoji="🕐" iconBg={colors.gold50} label="Study reminder"
-              sublabel={remindersOn ? 'Daily at 7:00 PM' : 'Off'}
-              right={<Toggle value={remindersOn} onChange={setRemindersOn}/>} last/>
+              sublabel="Daily reminder"
+              right={<Toggle value={false} onChange={() => {}}/>} disabled last/>
           </SettingsCard>
 
           {/* LEARNING */}
@@ -282,47 +288,57 @@ export default function SettingsScreen({ navigation }) {
             </View>
             <Row emoji="⚡" iconBg={colors.teal50} label="Sound effects"
               sublabel="XP chimes, correct answer sounds"
-              right={<Toggle value={soundOn} onChange={setSoundOn}/>}/>
+              right={<Toggle value={false} onChange={() => {}}/>} disabled/>
             <Row emoji="🔥" iconBg={colors.teal50} label="Haptic feedback"
               sublabel="Vibrations on taps and streaks"
-              right={<Toggle value={hapticsOn} onChange={setHapticsOn}/>} last/>
+              right={<Toggle value={false} onChange={() => {}}/>} disabled last/>
           </SettingsCard>
 
           {/* APPEARANCE */}
           <SettingsCard title="Appearance" accent={colors.coral600}>
-            <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.neutral100 }]}>
-              <View style={[styles.rowIcon, { backgroundColor: colors.coral50 }]}>
-                <Text style={styles.rowIconEmoji}>☀️</Text>
+            <View style={[styles.row, styles.rowDisabled, { borderBottomWidth: 1, borderBottomColor: colors.neutral100 }]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.neutral100 }]}>
+                <Text style={[styles.rowIconEmoji, { opacity: 0.4 }]}>☀️</Text>
               </View>
               <View style={styles.rowBody}>
-                <Text style={styles.rowLabel}>Theme</Text>
+                <View style={styles.rowLabelRow}>
+                  <Text style={[styles.rowLabel, styles.rowLabelDisabled]}>Theme</Text>
+                  <View style={styles.comingSoonPill}>
+                    <Text style={styles.comingSoonText}>coming soon</Text>
+                  </View>
+                </View>
               </View>
-              <SegControl
-                value={theme}
-                onChange={setTheme}
-                options={[
-                  { value: 'light', label: 'Light' },
-                  { value: 'dark',  label: 'Dark' },
-                  { value: 'auto',  label: 'Auto' },
-                ]}
-              />
+              <View style={{ opacity: 0.3 }}>
+                <SegControl value={theme} onChange={() => {}}
+                  options={[
+                    { value: 'light', label: 'Light' },
+                    { value: 'dark',  label: 'Dark' },
+                    { value: 'auto',  label: 'Auto' },
+                  ]}
+                />
+              </View>
             </View>
-            <View style={styles.row}>
-              <View style={[styles.rowIcon, { backgroundColor: colors.coral50 }]}>
-                <Text style={[styles.rowIconEmoji, { fontSize: 14, fontFamily: 'Nunito_900Black' }]}>Aa</Text>
+            <View style={[styles.row, styles.rowDisabled]}>
+              <View style={[styles.rowIcon, { backgroundColor: colors.neutral100 }]}>
+                <Text style={[styles.rowIconEmoji, { fontSize: 14, fontFamily: 'Nunito_900Black', opacity: 0.4 }]}>Aa</Text>
               </View>
               <View style={styles.rowBody}>
-                <Text style={styles.rowLabel}>Text size</Text>
+                <View style={styles.rowLabelRow}>
+                  <Text style={[styles.rowLabel, styles.rowLabelDisabled]}>Text size</Text>
+                  <View style={styles.comingSoonPill}>
+                    <Text style={styles.comingSoonText}>coming soon</Text>
+                  </View>
+                </View>
               </View>
-              <SegControl
-                value={textSize}
-                onChange={setTextSize}
-                options={[
-                  { value: 'small',   label: 'S' },
-                  { value: 'regular', label: 'M' },
-                  { value: 'large',   label: 'L' },
-                ]}
-              />
+              <View style={{ opacity: 0.3 }}>
+                <SegControl value={textSize} onChange={() => {}}
+                  options={[
+                    { value: 'small',   label: 'S' },
+                    { value: 'regular', label: 'M' },
+                    { value: 'large',   label: 'L' },
+                  ]}
+                />
+              </View>
             </View>
           </SettingsCard>
 
@@ -556,16 +572,33 @@ const styles = StyleSheet.create({
   },
   rowIconEmoji: { fontSize: 16 },
   rowBody: { flex: 1, minWidth: 0 },
+  rowLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rowLabel: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 13.5,
     color: colors.neutral900,
   },
+  rowLabelDisabled: { color: colors.neutral400 },
+  rowDisabled: { opacity: 0.75 },
   rowSublabel: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 11.5,
     color: colors.neutral600,
     marginTop: 1,
+  },
+  comingSoonPill: {
+    backgroundColor: colors.neutral100,
+    borderRadius: 999,
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    borderWidth: 1,
+    borderColor: colors.neutral200,
+  },
+  comingSoonText: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 9,
+    color: colors.neutral400,
+    letterSpacing: 0.3,
   },
   rowRight: {
     flexDirection: 'row',
