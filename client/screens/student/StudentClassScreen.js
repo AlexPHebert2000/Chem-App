@@ -203,32 +203,31 @@ export default function StudentClassScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Hero */}
-      <LinearGradient
-        colors={[colors.purple800, colors.purple600]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
-        <AtomOrbit />
-        <Text style={styles.heroLabel}>Leaderboard</Text>
-        <Text style={styles.heroTitle}>{courseName || 'Your Class'}</Text>
-        {!!sectionLabel && (
-          <View style={styles.heroMeta}>
-            <Ionicons name="person" size={12} color="rgba(255,255,255,0.85)" />
-            <Text style={styles.heroMetaText}>
-              {sectionLabel} · {leaderboard.length} students
-            </Text>
-          </View>
-        )}
-      </LinearGradient>
-
       <ScrollView
-        style={{ flex: 1 }}
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.purple400} />}
         showsVerticalScrollIndicator={false}
       >
+        {/* Hero inside scroll so the card can overlap it in the same stacking context */}
+        <LinearGradient
+          colors={[colors.purple800, colors.purple600]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <AtomOrbit />
+          <Text style={styles.heroLabel}>Leaderboard</Text>
+          <Text style={styles.heroTitle}>{courseName || 'Your Class'}</Text>
+          {!!sectionLabel && (
+            <View style={styles.heroMeta}>
+              <Ionicons name="person" size={12} color="rgba(255,255,255,0.85)" />
+              <Text style={styles.heroMetaText}>
+                {sectionLabel} · {leaderboard.length} students
+              </Text>
+            </View>
+          )}
+        </LinearGradient>
+
         {/* Overlapping white card */}
         <View style={styles.card}>
           {loading ? (
