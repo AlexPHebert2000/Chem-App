@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import TabBar from '../components/base/TabBar';
 
 // Student screens
-import DashboardScreen from '../screens/student/DashboardScreen';
 import CourseTrailScreen from '../screens/student/CourseTrailScreen';
+import StudentClassScreen from '../screens/student/StudentClassScreen';
 import SectionScreen from '../screens/student/SectionScreen';
 import ProfileScreen from '../screens/student/ProfileScreen';
 import SettingsScreen from '../screens/student/SettingsScreen';
@@ -27,9 +27,9 @@ function StudentTabNavigator() {
       tabBar={props => <TabBar {...props} role="STUDENT" />}
       screenOptions={{ headerShown: false }}
     >
-      <StudentTab.Screen name="Dashboard" component={DashboardScreen} />
-      <StudentTab.Screen name="Trail"     component={CourseTrailScreen} />
-      <StudentTab.Screen name="Profile"   component={ProfileScreen} />
+      <StudentTab.Screen name="Home"    component={CourseTrailScreen} />
+      <StudentTab.Screen name="Class"   component={StudentClassScreen} />
+      <StudentTab.Screen name="Profile" component={ProfileScreen} />
     </StudentTab.Navigator>
   );
 }

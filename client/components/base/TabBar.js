@@ -4,8 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typeScale } from '../../theme';
 
 const STUDENT_TABS = [
-  { id: 'Home',    label: 'Home',    icon: 'home',        iconActive: 'home' },
-  { id: 'Trail',   label: 'Trail',   icon: 'map-outline', iconActive: 'map' },
+  { id: 'Home',    label: 'Home',    icon: 'home-outline',  iconActive: 'home' },
+  { id: 'Class',   label: 'Class',   icon: 'medal-outline', iconActive: 'medal' },
   { id: 'Profile', label: 'Profile', icon: 'person-outline', iconActive: 'person' },
 ];
 

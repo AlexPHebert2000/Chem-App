@@ -434,14 +434,14 @@ export default function ProfileScreen({ navigation }) {
 
         {/* ── THIS WEEK ── */}
         <View style={styles.section}>
-          <SectionHeader label="This week" action="See stats"/>
+          <SectionHeader label="This week"/>
           <WeeklyGoalCard weekly={weekly}/>
         </View>
 
         {/* ── LEADERBOARD ── */}
         {leaderboard.length > 0 && (
           <View style={styles.section}>
-            <SectionHeader label="Leaderboard" action="Full board"/>
+            <SectionHeader label="Leaderboard"/>
             <LeaderboardCard rows={leaderboard} sectionLabel={sectionLabel}/>
           </View>
         )}
@@ -466,17 +466,6 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </View>
         )}
-
-        {/* ── MENU ── */}
-        <View style={[styles.section, { gap: 8 }]}>
-          <Pressable style={styles.menuRow} onPress={() => navigation.navigate('Settings')}>
-            <Text style={styles.menuLabel}>⚙️  Weekly goal settings</Text>
-            <Text style={styles.menuChevron}>›</Text>
-          </Pressable>
-          <Pressable style={[styles.menuRow, styles.logoutRow]} onPress={logout}>
-            <Text style={styles.logoutLabel}>Sign out</Text>
-          </Pressable>
-        </View>
       </ScrollView>
     </View>
   );
