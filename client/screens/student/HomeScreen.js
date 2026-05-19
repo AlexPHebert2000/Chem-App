@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { ScreenSurface, StreakBadge, XpBadge } from '../../components/base';
@@ -11,8 +12,30 @@ import { colors, typeScale, screenPadding } from '../../theme';
 
 const CHAPTER_THEMES = ['purple', 'teal', 'coral', 'gold'];
 
-function PathLine() {
-  return <View style={styles.pathLine} />;
+// Must match NODE_OFFSETS in SectionNode.js so the curve starts/ends at each node center
+const NODE_OFFSETS = [0, 44, -44, 28, -28, 0];
+const CONNECTOR_W = 220;
+const CONNECTOR_H = 72;
+
+function PathConnector({ fromIndex, toIndex }) {
+  const fromOff = NODE_OFFSETS[fromIndex % NODE_OFFSETS.length];
+  const toOff   = NODE_OFFSETS[toIndex   % NODE_OFFSETS.length];
+  const x1 = CONNECTOR_W / 2 + fromOff;
+  const x2 = CONNECTOR_W / 2 + toOff;
+  // Cubic bezier: control points pulled to the opposite side for the S shape
+  const d = `M ${x1} 0 C ${x1} ${CONNECTOR_H * 0.5}, ${x2} ${CONNECTOR_H * 0.5}, ${x2} ${CONNECTOR_H}`;
+  return (
+    <Svg width="100%" height={CONNECTOR_H} viewBox={`0 0 ${CONNECTOR_W} ${CONNECTOR_H}`} preserveAspectRatio="none">
+      <Path
+        d={d}
+        fill="none"
+        stroke={colors.neutral200}
+        strokeWidth={3}
+        strokeDasharray="6 8"
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
 }
 
 export default function HomeScreen({ navigation, route }) {
@@ -119,7 +142,7 @@ export default function HomeScreen({ navigation, route }) {
                     : 'locked';
                   return (
                     <View key={section.id}>
-                      {si > 0 && <PathLine />}
+                      {si > 0 && <PathConnector fromIndex={si - 1} toIndex={si} />}
                       <SectionNode
                         section={{ ...section, status, bestScore: section.score }}
                         theme={theme}
@@ -191,17 +214,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   nodesContainer: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingHorizontal: screenPadding.horizontal,
     alignItems: 'center',
-  },
-  pathLine: {
-    width: 3,
-    height: 28,
-    backgroundColor: colors.neutral200,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginVertical: 2,
   },
   empty: {
     padding: 40,
