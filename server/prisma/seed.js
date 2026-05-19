@@ -59,6 +59,7 @@ async function clear() {
     await prisma.questionAttempt.deleteMany({ where: { id: { in: attemptIds } } });
   }
   if (sessionIds.length) await prisma.session.deleteMany({ where: { id: { in: sessionIds } } });
+  if (sectionIds.length) await prisma.sectionAttempt.deleteMany({ where: { sectionId: { in: sectionIds } } });
   if (sectionIds.length) await prisma.studentSection.deleteMany({ where: { sectionId: { in: sectionIds } } });
   const courseClassIds = courseIds.length
     ? (await prisma.courseClass.findMany({ where: { courseId: { in: courseIds } }, select: { id: true } })).map(c => c.id)
@@ -250,12 +251,12 @@ async function seed() {
 
   const aS1t = daysAgo(2);
   const aliceS1 = await prisma.session.create({
-    data: { studentId: alice.id, courseId: gchem.id, startedAt: aS1t, endedAt: minutesAfter(aS1t, 20), questionsAnswered: 5 },
+    data: { studentId: alice.id, courseId: gchem.id, courseClassId: gchemClass.id, startedAt: aS1t, endedAt: minutesAfter(aS1t, 20), questionsAnswered: 5 },
   });
 
   const aS2t = daysAgo(1);
   const aliceS2 = await prisma.session.create({
-    data: { studentId: alice.id, courseId: gchem.id, startedAt: aS2t, endedAt: minutesAfter(aS2t, 15), questionsAnswered: 3 },
+    data: { studentId: alice.id, courseId: gchem.id, courseClassId: gchemClass.id, startedAt: aS2t, endedAt: minutesAfter(aS2t, 15), questionsAnswered: 3 },
   });
 
   // Session 1: Q1✓ Q2✗ Q3½(1/2) Q4✓ Q5✓  → score 4 / max 6
@@ -280,6 +281,13 @@ async function seed() {
     ],
   });
 
+  await prisma.sectionAttempt.createMany({
+    data: [
+      { studentId: alice.id, sectionId: nucleus.id,   score: 75,  xpEarned: 30, isReview: false, completedAt: daysAgo(2) },
+      { studentId: alice.id, sectionId: electrons.id, score: 100, xpEarned: 40, isReview: false, completedAt: daysAgo(1) },
+    ],
+  });
+
   // ── Bob — 2 completed sessions ─────────────────────────────────────────────
   //   Session 1: 30 min, 4 questions
   //   Session 2: 10 min, 2 questions
@@ -288,12 +296,12 @@ async function seed() {
 
   const bS1t = daysAgo(5);
   const bobS1 = await prisma.session.create({
-    data: { studentId: bob.id, courseId: gchem.id, startedAt: bS1t, endedAt: minutesAfter(bS1t, 30), questionsAnswered: 4 },
+    data: { studentId: bob.id, courseId: gchem.id, courseClassId: gchemClass.id, startedAt: bS1t, endedAt: minutesAfter(bS1t, 30), questionsAnswered: 4 },
   });
 
   const bS2t = daysAgo(3);
   const bobS2 = await prisma.session.create({
-    data: { studentId: bob.id, courseId: gchem.id, startedAt: bS2t, endedAt: minutesAfter(bS2t, 10), questionsAnswered: 2 },
+    data: { studentId: bob.id, courseId: gchem.id, courseClassId: gchemClass.id, startedAt: bS2t, endedAt: minutesAfter(bS2t, 10), questionsAnswered: 2 },
   });
 
   // Session 1: Q1✗ Q1✓(retry) Q2✓ Q4✗  → score 2 / max 4
@@ -313,11 +321,15 @@ async function seed() {
     data: { studentId: bob.id, sectionId: nucleus.id, score: 5, completedAt: daysAgo(5) },
   });
 
+  await prisma.sectionAttempt.create({
+    data: { studentId: bob.id, sectionId: nucleus.id, score: 60, xpEarned: 15, isReview: false, completedAt: daysAgo(5) },
+  });
+
   // ── Charlie — 1 abandoned session, no attempts, no sections ───────────────
   //   Exercises the "0 completed sessions → blank stats" path
 
   await prisma.session.create({
-    data: { studentId: charlie.id, courseId: gchem.id, startedAt: daysAgo(10), questionsAnswered: 0 },
+    data: { studentId: charlie.id, courseId: gchem.id, courseClassId: gchemClass.id, startedAt: daysAgo(10), questionsAnswered: 0 },
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -424,12 +436,12 @@ async function seed() {
 
   const aOrgS1t = daysAgo(1);
   const aliceOrgS1 = await prisma.session.create({
-    data: { studentId: alice.id, courseId: ochem.id, startedAt: aOrgS1t, endedAt: minutesAfter(aOrgS1t, 25), questionsAnswered: 3 },
+    data: { studentId: alice.id, courseId: ochem.id, courseClassId: ochemClass.id, startedAt: aOrgS1t, endedAt: minutesAfter(aOrgS1t, 25), questionsAnswered: 3 },
   });
 
   const aOrgS2t = hoursAgo(6);
   const aliceOrgS2 = await prisma.session.create({
-    data: { studentId: alice.id, courseId: ochem.id, startedAt: aOrgS2t, endedAt: minutesAfter(aOrgS2t, 30), questionsAnswered: 2 },
+    data: { studentId: alice.id, courseId: ochem.id, courseClassId: ochemClass.id, startedAt: aOrgS2t, endedAt: minutesAfter(aOrgS2t, 30), questionsAnswered: 2 },
   });
 
   // Session 1: Q6✓ Q7✓ Q8✗  → score 2 / max 3
@@ -446,6 +458,10 @@ async function seed() {
 
   await prisma.studentSection.create({
     data: { studentId: alice.id, sectionId: alkanes.id, score: 7, completedAt: aOrgS1t },
+  });
+
+  await prisma.sectionAttempt.create({
+    data: { studentId: alice.id, sectionId: alkanes.id, score: 85, xpEarned: 25, isReview: false, completedAt: aOrgS1t },
   });
 
   // Diana: enrolled but no sessions, no attempts — all stats will be blank
