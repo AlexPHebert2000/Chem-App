@@ -2029,6 +2029,102 @@
       "related_bugs": [],
       "occurrences": 3,
       "last_seen": "2026-05-19T18:43:03.518Z"
+    },
+    {
+      "id": "bug-127",
+      "timestamp": "2026-05-19T20:32:41.477Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../Users/alexp/.claude/plans/please-read-the-session-imperative-parasol.md",
+      "root_cause": "47 lines replaced/restructured",
+      "fix": "Rewrote 70→31 lines (47 removed) | Also: - Where data is missing, pass `null` or `undefined; - Components must handle `null` gracefully — show  | Also: 1. `DashboardScreen` — weekly stats card, suggeste; 4. `ProfileScreen` — AvatarCircle, LevelBadge, act",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-05-19T20:34:40.427Z"
+    },
+    {
+      "id": "bug-128",
+      "timestamp": "2026-05-19T20:32:54.405Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../Users/alexp/.claude/plans/please-read-the-session-imperative-parasol.md",
+      "root_cause": "Had `LevelBadge`",
+      "fix": "Changed to `StreakBadge`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:32:54.406Z"
+    },
+    {
+      "id": "bug-129",
+      "timestamp": "2026-05-19T20:38:26.160Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/prisma/schema.prisma",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "prisma"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:38:26.160Z"
+    },
+    {
+      "id": "bug-130",
+      "timestamp": "2026-05-19T20:38:31.435Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/stats.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:38:31.435Z"
+    },
+    {
+      "id": "bug-131",
+      "timestamp": "2026-05-19T20:38:36.049Z",
+      "error_message": "Missing await",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:38:36.049Z"
+    },
+    {
+      "id": "bug-132",
+      "timestamp": "2026-05-19T20:38:42.848Z",
+      "error_message": "Incorrect value in code",
+      "file": "server/src/routes/student.routes.js",
+      "root_cause": "Had '/me/badges'",
+      "fix": "Changed to '/me/goal'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T20:38:42.848Z"
     }
   ]
 }
