@@ -268,8 +268,6 @@ export default function StudentClassScreen() {
             </>
           )}
         </View>
-
-        <Text style={styles.footer}>Resets every Sunday at midnight</Text>
       </ScrollView>
     </View>
   );
@@ -343,7 +341,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 18,
     elevation: 8,
-    overflow: 'hidden',
+    overflow: 'show',
   },
 
   // Podium
@@ -352,7 +350,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     paddingHorizontal: 14,
-    paddingTop: 20,
+    paddingTop: 15,
     paddingBottom: 8,
     gap: 8,
   },
