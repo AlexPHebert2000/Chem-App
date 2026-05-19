@@ -16,9 +16,10 @@ function PathLine() {
 }
 
 export default function HomeScreen({ navigation, route }) {
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const courseId = route?.params?.courseId;
 
+  const [courseName, setCourseName] = useState('');
   const [enrollment, setEnrollment] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [completedIds, setCompletedIds] = useState(new Set());
@@ -28,20 +29,29 @@ export default function HomeScreen({ navigation, route }) {
 
   const load = useCallback(async () => {
     try {
-      const me = await api.get('/students/me', token);
+      const [me, courses] = await Promise.all([
+        api.get('/students/me', token),
+        api.get('/courses', token),
+      ]);
+
       const enroll = me.enrollments?.[0];
       setEnrollment(enroll);
 
-      if (!courseId && !enroll) return;
       const cid = courseId ?? enroll?.courseClass?.courseId;
       if (!cid) return;
 
-      const [chaptersData, sectionsData] = await Promise.all([
-        api.get(`/courses/${cid}/chapters`, token),
-        api.get('/students/me/sections', token).catch(() => []),
-      ]);
+      const enrolled = courses?.find(c => c.id === cid) ?? courses?.[0];
+      setCourseName(enrolled?.name ?? '');
+
+      const chaptersData = await api.get(`/courses/${cid}/chapters`, token);
       setChapters(chaptersData ?? []);
-      setCompletedIds(new Set((sectionsData ?? []).map(s => s.sectionId ?? s.id)));
+
+      // Completion data is embedded in the chapters response — no separate call needed
+      const ids = new Set();
+      (chaptersData ?? []).forEach(ch =>
+        (ch.sections ?? []).forEach(s => { if (s.completed) ids.add(s.id); })
+      );
+      setCompletedIds(ids);
     } catch (e) {
       console.warn('HomeScreen load error:', e.message);
     } finally {
@@ -55,14 +65,9 @@ export default function HomeScreen({ navigation, route }) {
 
   const getSectionStatus = (section, chapterSections) => {
     if (completedIds.has(section.id)) return 'done';
-    // Find the first incomplete section
     const firstIncomplete = chapterSections.find(s => !completedIds.has(s.id));
     if (firstIncomplete?.id === section.id) return 'next';
     return 'locked';
-  };
-
-  const handleSectionPress = (section) => {
-    setSheetSection(section);
   };
 
   const startSection = () => {
@@ -73,9 +78,12 @@ export default function HomeScreen({ navigation, route }) {
 
   return (
     <ScreenSurface>
-      {/* Mini header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Course Trail</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          {!!courseName && (
+            <Text style={styles.headerTitle} numberOfLines={1}>{courseName}</Text>
+          )}
+        </View>
         <View style={styles.headerPills}>
           <StreakBadge streak={enrollment?.streak ?? 0} />
           <XpBadge xp={enrollment?.currentPoints ?? 0} />
@@ -85,6 +93,7 @@ export default function HomeScreen({ navigation, route }) {
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
       >
         {chapters.map((chapter, ci) => {
           const sections = chapter.sections ?? [];
@@ -112,10 +121,10 @@ export default function HomeScreen({ navigation, route }) {
                     <View key={section.id}>
                       {si > 0 && <PathLine />}
                       <SectionNode
-                        section={{ ...section, status }}
+                        section={{ ...section, status, bestScore: section.score }}
                         theme={theme}
                         index={si}
-                        onPress={handleSectionPress}
+                        onPress={s => setSheetSection({ ...s, chapterTheme: theme })}
                       />
                     </View>
                   );
@@ -132,7 +141,6 @@ export default function HomeScreen({ navigation, route }) {
         )}
       </ScrollView>
 
-      {/* Section detail bottom sheet */}
       <BottomSheet
         visible={!!sheetSection}
         onClose={() => setSheetSection(null)}
@@ -140,15 +148,15 @@ export default function HomeScreen({ navigation, route }) {
       >
         {sheetSection && (
           <View style={{ gap: 12, paddingTop: 4 }}>
-            <Text style={styles.sheetSub}>{sheetSection.description}</Text>
-            {sheetSection.questionIds?.length > 0 && (
-              <Text style={styles.sheetMeta}>
-                ~{sheetSection.questionIds.length * 2} min · {sheetSection.questionIds.length} questions
-              </Text>
+            {!!sheetSection.description && (
+              <Text style={styles.sheetSub}>{sheetSection.description}</Text>
             )}
+            <Text style={styles.sheetMeta}>
+              ~{sheetSection.questionCount * 2} min · {sheetSection.questionCount} questions
+            </Text>
             <ShadowButton
               label={completedIds.has(sheetSection.id) ? 'Practice again' : 'Start lesson'}
-              variant={completedIds.has(sheetSection.id) ? 'ghost' : 'primary'}
+              preset={completedIds.has(sheetSection.id) ? 'secondary' : 'primary'}
               onPress={startSection}
             />
           </View>
@@ -164,10 +172,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: screenPadding.horizontal,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: colors.neutral200,
+    gap: 10,
   },
   headerTitle: {
     ...typeScale.h2,
@@ -176,6 +185,7 @@ const styles = StyleSheet.create({
   headerPills: {
     flexDirection: 'row',
     gap: 6,
+    flexShrink: 0,
   },
   scroll: {
     paddingBottom: 40,
