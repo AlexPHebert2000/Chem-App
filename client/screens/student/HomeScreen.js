@@ -15,7 +15,7 @@ function PathLine() {
   return <View style={styles.pathLine} />;
 }
 
-export default function CourseTrailScreen({ navigation, route }) {
+export default function HomeScreen({ navigation, route }) {
   const { user, token } = useAuth();
   const courseId = route?.params?.courseId;
 
@@ -43,7 +43,7 @@ export default function CourseTrailScreen({ navigation, route }) {
       setChapters(chaptersData ?? []);
       setCompletedIds(new Set((sectionsData ?? []).map(s => s.sectionId ?? s.id)));
     } catch (e) {
-      console.warn('CourseTrailScreen load error:', e.message);
+      console.warn('HomeScreen load error:', e.message);
     } finally {
       setLoading(false);
       setRefreshing(false);

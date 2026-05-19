@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import TabBar from '../components/base/TabBar';
 
 // Student screens
-import CourseTrailScreen from '../screens/student/CourseTrailScreen';
+import HomeScreen from '../screens/student/HomeScreen';
 import StudentClassScreen from '../screens/student/StudentClassScreen';
 import SectionScreen from '../screens/student/SectionScreen';
 import ProfileScreen from '../screens/student/ProfileScreen';
@@ -27,7 +27,7 @@ function StudentTabNavigator() {
       tabBar={props => <TabBar {...props} role="STUDENT" />}
       screenOptions={{ headerShown: false }}
     >
-      <StudentTab.Screen name="Home"    component={CourseTrailScreen} />
+      <StudentTab.Screen name="Home"    component={HomeScreen} />
       <StudentTab.Screen name="Class"   component={StudentClassScreen} />
       <StudentTab.Screen name="Profile" component={ProfileScreen} />
     </StudentTab.Navigator>

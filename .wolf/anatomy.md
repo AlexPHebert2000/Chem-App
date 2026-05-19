@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T23:22:29.507Z
-> Files: 47 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T23:25:42.846Z
+> Files: 48 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -61,7 +61,7 @@
 
 ## client/navigation/
 
-- `MainNavigator.js` — Student screens (~789 tok)
+- `MainNavigator.js` — Student screens (~783 tok)
 
 ## client/screens/auth/
 
@@ -72,6 +72,7 @@
 
 - `CourseTrailScreen.js` — API routes: GET (3 endpoints) (~1953 tok)
 - `DashboardScreen.js` — API routes: GET (4 endpoints) (~1806 tok)
+- `HomeScreen.js` — API routes: GET (3 endpoints) (~1949 tok)
 - `ProfileScreen.js` — initials: resolveBadgeTheme, badgeDesc, DonutChart + 9 more (~7893 tok)
 - `SectionScreen.js` — API routes: GET, POST (4 endpoints) (~2352 tok)
 - `SettingsScreen.js` — API routes: GET, PATCH (2 endpoints) (~7021 tok)
