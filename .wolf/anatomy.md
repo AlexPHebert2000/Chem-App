@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T20:51:55.436Z
-> Files: 43 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T22:17:19.828Z
+> Files: 45 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -65,6 +65,8 @@
 
 ## client/screens/auth/
 
+- `LoginScreen.js` — Declares LoginScreen (~2121 tok)
+- `SignupScreen.js` — Declares SignupScreen (~2060 tok)
 
 ## client/screens/student/
 
