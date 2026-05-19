@@ -67,7 +67,24 @@ async function getWeeklyStats(req, res) {
     ? Math.round((correctCount / questionsAttempted) * 100)
     : 0;
 
-  res.json({ minutesActive, xpEarned, questionsAttempted, percentCorrect, firstTryCorrect });
+  const perfectQuizzes = await prisma.sectionAttempt.count({
+    where: { studentId, completedAt: { gte: weekStart, lt: weekEnd }, score: 100 },
+  });
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { weeklyMinuteGoal: true },
+  });
+
+  res.json({
+    minutesActive,
+    xpEarned,
+    questionsAttempted,
+    percentCorrect,
+    firstTryCorrect,
+    perfectQuizzes,
+    weeklyMinuteGoal: student?.weeklyMinuteGoal ?? 60,
+  });
 }
 
 async function getQuestionStats(req, res) {

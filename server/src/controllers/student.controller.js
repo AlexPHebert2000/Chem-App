@@ -290,4 +290,21 @@ async function getCourseClassLeaderboard(req, res) {
   })));
 }
 
-module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard, getCourseClassLeaderboard, patchStudentProfile };
+async function setWeeklyGoal(req, res) {
+  const studentId = req.user.sub;
+  const { weeklyMinuteGoal } = req.body;
+
+  if (!Number.isInteger(weeklyMinuteGoal) || weeklyMinuteGoal < 1) {
+    return res.status(400).json({ error: 'weeklyMinuteGoal must be a positive integer' });
+  }
+
+  const student = await prisma.student.update({
+    where: { id: studentId },
+    data: { weeklyMinuteGoal },
+    select: { weeklyMinuteGoal: true },
+  });
+
+  res.json({ weeklyMinuteGoal: student.weeklyMinuteGoal });
+}
+
+module.exports = { getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions, getStudentCourseChapters, getStudentBadges, getCourseLeaderboard, getCourseClassLeaderboard, patchStudentProfile, setWeeklyGoal };

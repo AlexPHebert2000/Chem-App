@@ -144,9 +144,10 @@ model Student {
   email           String             @unique
   name            String
   password        String
-  profileImage    String?
-  activeTitle     String?
-  courses         StudentCourse[]
+  profileImage     String?
+  activeTitle      String?
+  weeklyMinuteGoal Int                @default(60)
+  courses          StudentCourse[]
   enrollments     StudentEnrollment[]
   sessions        Session[]
   sections        StudentSection[]

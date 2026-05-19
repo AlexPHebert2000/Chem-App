@@ -210,13 +210,25 @@ async function getCourseClasses(req, res) {
     include: { _count: { select: { enrollments: true } } },
   });
 
-  res.json(classes.map(c => ({
+  const todayUTC = new Date(new Date().toISOString().slice(0, 10));
+
+  const activeTodayCounts = await Promise.all(
+    classes.map(c =>
+      prisma.session.groupBy({
+        by: ['studentId'],
+        where: { courseClassId: c.id, startedAt: { gte: todayUTC } },
+      }).then(rows => rows.length)
+    )
+  );
+
+  res.json(classes.map((c, i) => ({
     id: c.id,
     courseId: c.courseId,
     sectionNumber: c.sectionNumber,
     meetingTimes: c.meetingTimes,
     archiveDate: c.archiveDate,
     enrollmentCount: c._count.enrollments,
+    activeToday: activeTodayCounts[i],
   })));
 }
 
