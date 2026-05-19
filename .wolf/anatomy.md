@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T22:17:19.828Z
-> Files: 45 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-19T23:22:29.507Z
+> Files: 47 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -49,7 +49,7 @@
 - `SectionDivider.js` — Declares SectionDivider (~265 tok)
 - `ShadowButton.js` — SHADOW_OFFSET: ShadowButton (~658 tok)
 - `StreakBadge.js` — Declares StreakBadge (~222 tok)
-- `TabBar.js` — STUDENT_TABS: TabBar (~716 tok)
+- `TabBar.js` — STUDENT_TABS: TabBar (~718 tok)
 - `TodoPlaceholder.js` — Declares TodoPlaceholder (~214 tok)
 - `XpBadge.js` — Declares XpBadge (~204 tok)
 
@@ -61,7 +61,7 @@
 
 ## client/navigation/
 
-- `MainNavigator.js` — Student screens (~560 tok)
+- `MainNavigator.js` — Student screens (~789 tok)
 
 ## client/screens/auth/
 
@@ -72,9 +72,10 @@
 
 - `CourseTrailScreen.js` — API routes: GET (3 endpoints) (~1953 tok)
 - `DashboardScreen.js` — API routes: GET (4 endpoints) (~1806 tok)
-- `ProfileScreen.js` — API routes: GET (2 endpoints) (~1575 tok)
+- `ProfileScreen.js` — initials: resolveBadgeTheme, badgeDesc, DonutChart + 9 more (~7893 tok)
 - `SectionScreen.js` — API routes: GET, POST (4 endpoints) (~2352 tok)
-- `SettingsScreen.js` — API routes: GET, PATCH (2 endpoints) (~1048 tok)
+- `SettingsScreen.js` — API routes: GET, PATCH (2 endpoints) (~7021 tok)
+- `StudentClassScreen.js` — Declares StudentClassScreen (~147 tok)
 
 ## client/screens/teacher/
 
@@ -112,6 +113,7 @@
 ## server/prisma/
 
 - `schema.prisma` — Declares JoinRequestStatus (~2982 tok)
+- `seed.js` — bcrypt: daysAgo, hoursAgo, minutesAfter, clear, seed (~7431 tok)
 
 ## server/src/
 
@@ -120,7 +122,7 @@
 
 - `course.controller.js` — crypto: generateCode, getTeacherCourses, createCourse + 10 more (~3354 tok)
 - `stats.controller.js` — prisma: getWeekBounds, maxScoreForQuestion, getWeeklyStats, getQuestionStats, getSuggestedReviews (~2166 tok)
-- `student.controller.js` — prisma: getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions + 8 more (~3014 tok)
+- `student.controller.js` — prisma: getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions + 9 more (~3203 tok)
 
 ## server/src/lib/
 
@@ -133,7 +135,7 @@
 
 ## server/src/routes/
 
-- `student.routes.js` — API routes: PATCH, GET (3 endpoints) (~150 tok)
+- `student.routes.js` — API routes: GET, PATCH (4 endpoints) (~174 tok)
 
 ## server/src/routes/__tests__/
 

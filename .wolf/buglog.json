@@ -2125,6 +2125,86 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-19T20:38:42.848Z"
+    },
+    {
+      "id": "bug-133",
+      "timestamp": "2026-05-19T22:22:31.607Z",
+      "error_message": "Wrong reference: studentSection should be sectionAttempt",
+      "file": "server/prisma/seed.js",
+      "root_cause": "Used \"studentSection\" instead of \"sectionAttempt\"",
+      "fix": "Changed studentSection → sectionAttempt",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T22:22:31.607Z"
+    },
+    {
+      "id": "bug-134",
+      "timestamp": "2026-05-19T22:27:39.050Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "No early return/throw for edge case: !student",
+      "fix": "Added guard clause: if (!student)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T22:27:39.050Z"
+    },
+    {
+      "id": "bug-135",
+      "timestamp": "2026-05-19T23:04:01.818Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/student/SettingsScreen.js",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 20→31 lines (8 removed) | Also: <View style={[styles.row, { borderBottomWidth: 1, ; <View style={[styles.rowIcon, { backgroundColor: c",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T23:05:31.574Z"
+    },
+    {
+      "id": "bug-136",
+      "timestamp": "2026-05-19T23:08:42.835Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/student/ProfileScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: const icon = badge.badge?.icon ?? '🎖️';; const name = badge.badge?.name ?? '';",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T23:08:56.707Z"
+    },
+    {
+      "id": "bug-137",
+      "timestamp": "2026-05-19T23:22:25.449Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/navigation/MainNavigator.js",
+      "root_cause": "Had '../screens/student/DashboardScreen'",
+      "fix": "Changed to '../screens/student/CourseTrailScreen'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-19T23:22:29.525Z"
     }
   ]
 }
