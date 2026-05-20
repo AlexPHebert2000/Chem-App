@@ -407,21 +407,22 @@ const styles = StyleSheet.create({
     color: colors.neutral600,
   },
   fitBtn: {
+    width: 52,
     height: 36,
-    minWidth: 52,
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.neutral200,
     backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    overflow: 'hidden',
   },
   fitBtnText: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 11,
     color: colors.neutral900,
     textAlign: 'center',
+    width: 48,
     padding: 0,
     margin: 0,
   },
@@ -435,9 +436,9 @@ const styles = StyleSheet.create({
   legendContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 5,
   },
   legendItem: {
     flexDirection: 'row',
@@ -445,15 +446,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 2,
   },
   legendLabel: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 10,
     color: colors.neutral600,
-    whiteSpace: 'nowrap',
   },
 
   // Stage
