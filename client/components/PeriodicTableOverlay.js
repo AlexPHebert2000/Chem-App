@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, Modal, Pressable, ScrollView, StyleSheet, TextInput,
+  View, Text, Modal, Pressable, ScrollView, StyleSheet,
 } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, useAnimatedProps,
-  useDerivedValue, withTiming,
+  useSharedValue, useAnimatedStyle, useAnimatedReaction, runOnJS, withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius } from '../theme';
-
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 // ─── Element data ─────────────────────────────────────────────────────────────
 // [symbol, atomicNum, name, mass, group(col 1-18), period(row 1-7,9=lant,10=act), category]
@@ -201,6 +198,7 @@ function DetailCard({ el, onDismiss }) {
 export default function PeriodicTableOverlay({ open, onClose }) {
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState(null);
+  const [scaleLabel, setScaleLabel] = useState('35%');
   const stageDims = useRef({ w: 0, h: 0 });
 
   // Transform state: desiredTx/Ty = intended screen position of table's top-left
@@ -243,9 +241,11 @@ export default function PeriodicTableOverlay({ open, onClose }) {
     ],
   }));
 
-  // Scale percentage display (animated text)
-  const scalePercent = useDerivedValue(() => `${Math.round(tableScale.value * 100)}%`);
-  const scaleTextProps = useAnimatedProps(() => ({ value: scalePercent.value }));
+  // Scale percentage display — bridge animated value to JS state
+  useAnimatedReaction(
+    () => Math.round(tableScale.value * 100),
+    (pct) => runOnJS(setScaleLabel)(`${pct}%`),
+  );
 
   // ── Gestures ────────────────────────────────────────────────────────────────
 
@@ -310,11 +310,7 @@ export default function PeriodicTableOverlay({ open, onClose }) {
             <Ionicons name="remove" size={14} color={colors.neutral900} />
           </Pressable>
           <Pressable onPress={handleFit} style={styles.fitBtn}>
-            <AnimatedTextInput
-              editable={false}
-              animatedProps={scaleTextProps}
-              style={styles.fitBtnText}
-            />
+            <Text style={styles.fitBtnText}>{scaleLabel}</Text>
           </Pressable>
           <Pressable onPress={() => zoomBy(1.18)} style={styles.squareBtn}>
             <Ionicons name="add" size={14} color={colors.neutral900} />
