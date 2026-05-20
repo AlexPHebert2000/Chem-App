@@ -113,7 +113,7 @@ async function seed() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   const gchem = await prisma.course.create({
-    data: { name: 'General Chemistry I', teacherId: teacher.id, code: 'GCHEM01' },
+    data: { name: 'General Chemistry I', teacherId: teacher.id },
   });
 
   const gchemCh1 = await prisma.chapter.create({
@@ -233,7 +233,7 @@ async function seed() {
   });
 
   const gchemClass = await prisma.courseClass.create({
-    data: { courseId: gchem.id, sectionNumber: '001', meetingTimes: 'M W F 10:00am' },
+    data: { courseId: gchem.id, sectionNumber: '001', meetingTimes: 'M W F 10:00am', code: 'GCHEM001' },
   });
 
   await prisma.studentEnrollment.createMany({
@@ -338,7 +338,7 @@ async function seed() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   const ochem = await prisma.course.create({
-    data: { name: 'Organic Chemistry', teacherId: teacher.id, code: 'OCHEM01' },
+    data: { name: 'Organic Chemistry', teacherId: teacher.id },
   });
 
   const ochemCh1 = await prisma.chapter.create({
@@ -419,7 +419,7 @@ async function seed() {
   });
 
   const ochemClass = await prisma.courseClass.create({
-    data: { courseId: ochem.id, sectionNumber: '001', meetingTimes: 'T Th 2:00pm' },
+    data: { courseId: ochem.id, sectionNumber: '001', meetingTimes: 'T Th 2:00pm', code: 'OCHEM001' },
   });
 
   await prisma.studentEnrollment.createMany({
