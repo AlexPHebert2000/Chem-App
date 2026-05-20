@@ -23,8 +23,8 @@ function McChoiceRow({ choice, index, onChange, onRemove, canRemove }) {
       </Pressable>
       <TextInput
         style={styles.choiceInput}
-        value={choice.text}
-        onChangeText={t => onChange({ ...choice, text: t })}
+        value={choice.content ?? ''}
+        onChangeText={t => onChange({ ...choice, content: t })}
         placeholder={`Choice ${String.fromCharCode(65 + index)}`}
         placeholderTextColor={colors.neutral400}
       />
@@ -37,6 +37,13 @@ function McChoiceRow({ choice, index, onChange, onRemove, canRemove }) {
   );
 }
 
+const BLANK_CHOICES = [
+  { content: '', isCorrect: false, blankIndex: 0 },
+  { content: '', isCorrect: false, blankIndex: 0 },
+  { content: '', isCorrect: false, blankIndex: 0 },
+  { content: '', isCorrect: false, blankIndex: 0 },
+];
+
 export default function QuestionEditorScreen({ navigation, route }) {
   const { token } = useAuth();
   const { questionId, courseId } = route.params ?? {};
@@ -44,13 +51,10 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
   const [type, setType] = useState('MULTIPLE_CHOICE');
   const [difficulty, setDifficulty] = useState(2);
-  const [text, setText] = useState('');
-  const [choices, setChoices] = useState([
-    { text: '', isCorrect: false, blankIndex: 0 },
-    { text: '', isCorrect: false, blankIndex: 0 },
-    { text: '', isCorrect: false, blankIndex: 0 },
-    { text: '', isCorrect: false, blankIndex: 0 },
-  ]);
+  const [content, setContent] = useState('');
+  const [correctExplanation, setCorrectExplanation] = useState('');
+  const [incorrectExplanation, setIncorrectExplanation] = useState('');
+  const [choices, setChoices] = useState(BLANK_CHOICES);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -60,24 +64,28 @@ export default function QuestionEditorScreen({ navigation, route }) {
         if (!q) return;
         setType(q.type ?? 'MULTIPLE_CHOICE');
         setDifficulty(q.difficulty ?? 2);
-        setText(q.text ?? '');
+        setContent(q.content ?? '');
+        setCorrectExplanation(q.correctExplanation ?? '');
+        setIncorrectExplanation(q.incorrectExplanation ?? '');
         if (q.choices?.length) setChoices(q.choices);
       })
       .catch(() => {});
   }, [questionId, token]);
 
   const updateChoice = (i, val) => setChoices(prev => prev.map((c, idx) => idx === i ? val : c));
-  const addChoice = () => setChoices(prev => [...prev, { text: '', isCorrect: false, blankIndex: 0 }]);
+  const addChoice = () => setChoices(prev => [...prev, { content: '', isCorrect: false, blankIndex: 0 }]);
   const removeChoice = (i) => setChoices(prev => prev.filter((_, idx) => idx !== i));
 
   const save = async () => {
-    if (!text.trim()) { Alert.alert('Missing', 'Question text is required.'); return; }
+    if (!content.trim()) { Alert.alert('Missing', 'Question text is required.'); return; }
+    if (!correctExplanation.trim()) { Alert.alert('Missing', 'Correct explanation is required.'); return; }
+    if (!incorrectExplanation.trim()) { Alert.alert('Missing', 'Incorrect explanation is required.'); return; }
     if (type === 'MULTIPLE_CHOICE' && !choices.some(c => c.isCorrect)) {
       Alert.alert('Missing', 'Mark at least one correct answer.'); return;
     }
     setSaving(true);
     try {
-      const body = { type, difficulty, text: text.trim(), choices };
+      const body = { type, difficulty, content: content.trim(), correctExplanation: correctExplanation.trim(), incorrectExplanation: incorrectExplanation.trim(), choices };
       if (isEdit) {
         await api.patch(`/questions/${questionId}`, body, token);
       } else {
@@ -93,7 +101,6 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
   return (
     <ScreenSurface>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={colors.neutral900} />
@@ -135,8 +142,8 @@ export default function QuestionEditorScreen({ navigation, route }) {
         <Text style={styles.fieldLabel}>Question</Text>
         <TextInput
           style={styles.textArea}
-          value={text}
-          onChangeText={setText}
+          value={content}
+          onChangeText={setContent}
           multiline
           numberOfLines={4}
           placeholder="Enter your question…"
@@ -182,6 +189,31 @@ export default function QuestionEditorScreen({ navigation, route }) {
             </Text>
           </View>
         )}
+
+        {/* Feedback */}
+        <Text style={styles.fieldLabel}>Correct answer feedback</Text>
+        <TextInput
+          style={styles.textArea}
+          value={correctExplanation}
+          onChangeText={setCorrectExplanation}
+          multiline
+          numberOfLines={3}
+          placeholder="Explain why the correct answer is right…"
+          placeholderTextColor={colors.neutral400}
+          textAlignVertical="top"
+        />
+
+        <Text style={styles.fieldLabel}>Incorrect answer feedback</Text>
+        <TextInput
+          style={styles.textArea}
+          value={incorrectExplanation}
+          onChangeText={setIncorrectExplanation}
+          multiline
+          numberOfLines={3}
+          placeholder="Explain why common wrong answers are incorrect…"
+          placeholderTextColor={colors.neutral400}
+          textAlignVertical="top"
+        />
 
         <ShadowButton
           label={saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create question'}
@@ -298,14 +330,14 @@ const styles = StyleSheet.create({
     color: colors.purple600,
   },
   infoBox: {
-    backgroundColor: colors.blue50,
+    backgroundColor: colors.neutral50,
     borderRadius: radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: colors.blue400,
+    borderColor: colors.neutral200,
   },
   infoText: {
     ...typeScale.small,
-    color: colors.blue600,
+    color: colors.neutral600,
   },
 });
