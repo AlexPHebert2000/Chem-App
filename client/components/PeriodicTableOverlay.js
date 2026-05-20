@@ -430,6 +430,7 @@ const styles = StyleSheet.create({
   // Legend
   legendScroll: {
     flexShrink: 0,
+    height: 26,
     borderBottomWidth: 1,
     borderBottomColor: colors.neutral100,
   },
@@ -438,7 +439,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 5,
   },
   legendItem: {
     flexDirection: 'row',
