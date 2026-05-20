@@ -2397,6 +2397,183 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-20T00:49:42.735Z"
+    },
+    {
+      "id": "bug-150",
+      "timestamp": "2026-05-20T00:00:00.000Z",
+      "error_message": "No sections in this chapter — ChapterDetailScreen always shows empty list",
+      "file": "client/screens/teacher/ChapterDetailScreen.js",
+      "root_cause": "getCourseChapters only returns _count: { sections } not actual section records. ChapterDetailScreen was reading ch.sections which was always undefined.",
+      "fix": "Updated ChapterDetailScreen to also call GET /api/chapters/:chapterId/sections in parallel and use that response for the sections list.",
+      "tags": [
+        "teacher",
+        "chapters",
+        "sections",
+        "empty-list"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:00:00.000Z"
+    },
+    {
+      "id": "bug-151",
+      "timestamp": "2026-05-20T15:36:09.861Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/navigation/MainNavigator.js",
+      "root_cause": "Had '../screens/teacher/ClassDetailScreen'",
+      "fix": "Changed to '../screens/teacher/CourseDetailScreen'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T15:36:32.418Z"
+    },
+    {
+      "id": "bug-152",
+      "timestamp": "2026-05-20T15:36:25.262Z",
+      "error_message": "Wrong reference: ClassDetailScreen should be CourseDetailScreen",
+      "file": "client/screens/teacher/CourseDetailScreen.js",
+      "root_cause": "Used \"ClassDetailScreen\" instead of \"CourseDetailScreen\"",
+      "fix": "Changed ClassDetailScreen → CourseDetailScreen",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T15:36:25.262Z"
+    },
+    {
+      "id": "bug-153",
+      "timestamp": "2026-05-20T15:36:28.693Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/CourseDetailScreen.js",
+      "root_cause": "Had 'ClassDetailScreen load error:'",
+      "fix": "Changed to 'CourseDetailScreen load error:'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T15:36:28.693Z"
+    },
+    {
+      "id": "bug-154",
+      "timestamp": "2026-05-20T15:36:40.100Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/TeacherHomeScreen.js",
+      "root_cause": "Had 'ClassDetail'",
+      "fix": "Changed to 'CourseDetail'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T15:36:40.100Z"
+    },
+    {
+      "id": "bug-155",
+      "timestamp": "2026-05-20T15:49:40.033Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/course.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T15:49:40.033Z"
+    },
+    {
+      "id": "bug-156",
+      "timestamp": "2026-05-20T16:00:02.027Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/teacher/QuestionBankScreen.js",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 23→15 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:00:02.027Z"
+    },
+    {
+      "id": "bug-157",
+      "timestamp": "2026-05-20T16:00:06.000Z",
+      "error_message": "Wrong reference: text should be content",
+      "file": "client/screens/teacher/QuestionBankScreen.js",
+      "root_cause": "Used \"text\" instead of \"content\"",
+      "fix": "Changed text → content",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:00:06.000Z"
+    },
+    {
+      "id": "bug-158",
+      "timestamp": "2026-05-20T16:00:10.366Z",
+      "error_message": "Wrong reference: text should be content",
+      "file": "client/components/QuestionBankItem.js",
+      "root_cause": "Used \"text\" instead of \"content\"",
+      "fix": "Changed text → content",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:00:10.366Z"
+    },
+    {
+      "id": "bug-159",
+      "timestamp": "2026-05-20T16:02:22.100Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:02:22.100Z"
+    },
+    {
+      "id": "bug-160",
+      "timestamp": "2026-05-20T16:29:54.901Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/components/base/ProgressBar.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 22→34 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:29:54.901Z"
     }
   ]
 }

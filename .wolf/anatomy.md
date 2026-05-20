@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-20T00:51:37.639Z
-> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-20T16:38:43.958Z
+> Files: 24 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -24,9 +24,14 @@
 ## client/components/
 
 - `ClassCard.js` — ACCENT: MicroStat, ClassCard (~1578 tok)
+- `FeedbackBar.js` — Declares FeedbackBar (~759 tok)
+- `PeriodicTableOverlay.js` — AnimatedTextInput: ElementCell, SeriesMarkerCell, DetailCard, PeriodicTableOverlay (~5842 tok)
+- `QuestionBankItem.js` — TYPE_LABELS: QuestionBankItem (~485 tok)
+- `QuestionCard.js` — Declares QuestionCard (~293 tok)
 
 ## client/components/base/
 
+- `ProgressBar.js` — Declares ProgressBar (~401 tok)
 
 ## client/context/
 
@@ -36,6 +41,7 @@
 
 ## client/navigation/
 
+- `MainNavigator.js` — Student screens (~784 tok)
 
 ## client/screens/auth/
 
@@ -43,12 +49,17 @@
 ## client/screens/student/
 
 - `HomeScreen.js` — API routes: GET (3 endpoints) (~2274 tok)
+- `SectionScreen.js` — API routes: GET, POST (3 endpoints) (~2758 tok)
 - `StudentClassScreen.js` — API routes: GET (3 endpoints) (~4355 tok)
 
 ## client/screens/teacher/
 
+- `ChapterDetailScreen.js` — Sheet: OptionRow, Stars, TypeChip + 6 more (~8152 tok)
 - `ClassDetailScreen.js` — Sheet: OptionRow, FormField, StatCell, ChapterCard (~7098 tok)
-- `TeacherHomeScreen.js` — API routes: GET, POST (3 endpoints) (~9480 tok)
+- `CourseDetailScreen.js` — Sheet: OptionRow, FormField, StatCell, ChapterCard (~7177 tok)
+- `QuestionBankScreen.js` — API routes: GET (1 endpoints) (~5658 tok)
+- `QuestionEditorScreen.js` — API routes: GET (2 endpoints) (~8211 tok)
+- `TeacherHomeScreen.js` — API routes: GET, POST (3 endpoints) (~9481 tok)
 
 ## client/theme/
 
@@ -77,14 +88,15 @@
 ## server/prisma/
 
 - `schema.prisma` — Declares JoinRequestStatus (~2983 tok)
-- `seed.js` — bcrypt: daysAgo, hoursAgo, minutesAfter, clear, seed (~7432 tok)
+- `seed.js` — bcrypt: daysAgo, hoursAgo, minutesAfter, clear, seed (~8093 tok)
 
 ## server/src/
 
 
 ## server/src/controllers/
 
-- `course.controller.js` — crypto: generateCode, getTeacherCourses, createCourse + 11 more (~3866 tok)
+- `course.controller.js` — crypto: generateCode, getTeacherCourses, createCourse + 11 more (~4797 tok)
+- `question.controller.js` — prisma: ownedQuestion, validateMultipleChoice, validateFillInBlank + 7 more (~5283 tok)
 - `student.controller.js` — prisma: getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions + 9 more (~3196 tok)
 
 ## server/src/lib/
@@ -98,7 +110,7 @@
 
 ## server/src/routes/
 
-- `course.routes.js` — API routes: GET, POST, PATCH (23 endpoints) (~982 tok)
+- `course.routes.js` — API routes: GET, POST, PATCH (24 endpoints) (~1025 tok)
 
 ## server/src/routes/__tests__/
 

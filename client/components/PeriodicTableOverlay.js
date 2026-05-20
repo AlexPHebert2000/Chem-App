@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, Pressable, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View, Text, Modal, Pressable, ScrollView, StyleSheet, TextInput,
+} from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, useAnimatedProps,
+  useDerivedValue, withTiming,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius } from '../theme';
 
-// [symbol, atomicNum, name, mass, group(col 1-18), period(row 1-7, 9=lanthanides, 10=actinides), category]
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+// ─── Element data ─────────────────────────────────────────────────────────────
+// [symbol, atomicNum, name, mass, group(col 1-18), period(row 1-7,9=lant,10=act), category]
 const ELEMENTS = [
   ['H',1,'Hydrogen',1.008,1,1,'nonmetal'],['He',2,'Helium',4.003,18,1,'noble'],
   ['Li',3,'Lithium',6.94,1,2,'alkali'],['Be',4,'Beryllium',9.012,2,2,'alkaline'],
@@ -68,197 +79,510 @@ const ELEMENTS = [
   ['Lr',103,'Lawrencium',262,17,10,'actinide'],
 ];
 
-const CATEGORY_COLORS = {
-  'nonmetal':        { bg: colors.green50,   border: colors.green400,  text: colors.green600 },
-  'noble':           { bg: colors.blue50,    border: colors.blue400,   text: colors.blue600 },
-  'alkali':          { bg: colors.coral50,   border: colors.coral400,  text: colors.coral600 },
-  'alkaline':        { bg: colors.gold50,    border: colors.gold400,   text: colors.gold800 },
-  'transition':      { bg: colors.purple50,  border: colors.purple200, text: colors.purple600 },
-  'post-transition': { bg: colors.neutral100,border: colors.neutral200,text: colors.neutral600 },
-  'metalloid':       { bg: colors.teal50,    border: colors.teal400,   text: colors.teal600 },
-  'halogen':         { bg: colors.coral50,   border: colors.coral400,  text: colors.coral600 },
-  'lanthanide':      { bg: colors.purple50,  border: colors.purple100, text: colors.purple800 },
-  'actinide':        { bg: colors.gold50,    border: colors.gold100,   text: colors.gold800 },
+const SERIES_MARKERS = [
+  { col: 3, row: 6, label: '57–71' },
+  { col: 3, row: 7, label: '89–103' },
+];
+
+// ─── Category colors (exact from design) ─────────────────────────────────────
+const CAT_COLORS = {
+  'alkali':          { bg: '#FF8B6E', fg: '#5A1A0C' },
+  'alkaline':        { bg: '#FFD580', fg: '#5A3C00' },
+  'transition':      { bg: '#8FCFEF', fg: '#0D3856' },
+  'post-transition': { bg: '#C4B6FF', fg: '#2C1A60' },
+  'metalloid':       { bg: '#A8E59A', fg: '#1E4A0E' },
+  'nonmetal':        { bg: '#C9F0EA', fg: '#0A4940' },
+  'halogen':         { bg: '#FFE066', fg: '#5A4200' },
+  'noble':           { bg: '#B58CFF', fg: '#1F0858' },
+  'lanthanide':      { bg: '#FFB8E2', fg: '#5A0D38' },
+  'actinide':        { bg: '#FFB098', fg: '#5A1A0A' },
 };
 
-const CELL_SIZE = 52;
+const LEGEND_CATS = [
+  ['alkali', 'Alkali metal'],
+  ['alkaline', 'Alkaline earth'],
+  ['transition', 'Transition'],
+  ['post-transition', 'Post-transition'],
+  ['metalloid', 'Metalloid'],
+  ['nonmetal', 'Nonmetal'],
+  ['halogen', 'Halogen'],
+  ['noble', 'Noble gas'],
+  ['lanthanide', 'Lanthanide'],
+  ['actinide', 'Actinide'],
+];
+
+const CELL = 56;
 const GAP = 2;
+const TABLE_W = 18 * (CELL + GAP);  // 1044
+const TABLE_H = 10 * (CELL + GAP);  // 580
+const MIN_SCALE = 0.3;
+const MAX_SCALE = 3.0;
+
+// ─── Element cell ─────────────────────────────────────────────────────────────
 
 function ElementCell({ el, onPress }) {
-  const [sym, num, name, mass, col, row, cat] = el;
-  const c = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS['nonmetal'];
+  const [sym, num, name, , col, row, cat] = el;
+  const c = CAT_COLORS[cat] ?? CAT_COLORS['nonmetal'];
+  // Row 9 (lanthanides) and 10 (actinides) sit at y-index 8 and 9
+  const yIndex = row <= 7 ? row - 1 : row - 1; // y=9 → index 8, y=10 → index 9
   return (
     <Pressable
-      onPress={() => onPress?.(el)}
-      style={[styles.cell, { backgroundColor: c.bg, borderColor: c.border }]}
+      onPress={() => onPress(el)}
+      style={[
+        styles.cell,
+        {
+          backgroundColor: c.bg,
+          left: (col - 1) * (CELL + GAP),
+          top: yIndex * (CELL + GAP),
+        },
+      ]}
     >
-      <Text style={[styles.cellNum, { color: c.text }]}>{num}</Text>
-      <Text style={[styles.cellSym, { color: c.text }]}>{sym}</Text>
-      <Text style={[styles.cellMass, { color: c.text }]}>{mass}</Text>
+      <Text style={[styles.cellNum, { color: c.fg }]}>{num}</Text>
+      <Text style={[styles.cellSym, { color: c.fg }]}>{sym}</Text>
+      <Text style={[styles.cellName, { color: c.fg }]} numberOfLines={1}>{name}</Text>
     </Pressable>
   );
 }
 
+function SeriesMarkerCell({ col, row, label }) {
+  return (
+    <View style={[
+      styles.cell,
+      styles.markerCell,
+      { left: (col - 1) * (CELL + GAP), top: (row - 1) * (CELL + GAP) },
+    ]}>
+      <Text style={styles.markerText}>{label}</Text>
+    </View>
+  );
+}
+
+// ─── Selected element detail card ─────────────────────────────────────────────
+
+function DetailCard({ el, onDismiss }) {
+  const [sym, num, name, mass, col, row, cat] = el;
+  const c = CAT_COLORS[cat] ?? CAT_COLORS['nonmetal'];
+  const period = row <= 7 ? row : row === 9 ? '—' : '—';
+  const slideY = useSharedValue(20);
+
+  useEffect(() => {
+    slideY.value = withTiming(0, { duration: 200 });
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideY.value }],
+  }));
+
+  return (
+    <Animated.View style={[styles.detailCard, { borderColor: c.bg }, animStyle]}>
+      <View style={[styles.detailBadge, { backgroundColor: c.bg }]}>
+        <Text style={[styles.detailBadgeNum, { color: c.fg }]}>{num}</Text>
+        <Text style={[styles.detailBadgeSym, { color: c.fg }]}>{sym}</Text>
+      </View>
+      <View style={styles.detailInfo}>
+        <Text style={styles.detailName}>{name}</Text>
+        <Text style={styles.detailMeta}>
+          Atomic mass {mass} · Group {col} · Period {period}
+        </Text>
+        <View style={[styles.catPill, { backgroundColor: c.bg }]}>
+          <Text style={[styles.catPillText, { color: c.fg }]}>
+            {cat.replace('-', ' ').toUpperCase()}
+          </Text>
+        </View>
+      </View>
+      <Pressable onPress={onDismiss} style={styles.detailClose}>
+        <Ionicons name="close" size={12} color={colors.neutral800} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ─── Main overlay ─────────────────────────────────────────────────────────────
+
 export default function PeriodicTableOverlay({ open, onClose }) {
+  const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState(null);
+  const stageDims = useRef({ w: 0, h: 0 });
 
-  // Build grid: 18 columns × 10 rows
-  const grid = {};
-  for (const el of ELEMENTS) {
-    const [, , , , col, row] = el;
-    const r = row === 9 ? 9 : row === 10 ? 10 : row;
-    grid[`${col},${r}`] = el;
-  }
+  // Transform state: desiredTx/Ty = intended screen position of table's top-left
+  const desiredTx = useSharedValue(0);
+  const desiredTy = useSharedValue(0);
+  const tableScale = useSharedValue(0.35);
 
-  const ROWS = [1, 2, 3, 4, 5, 6, 7, 9, 10];
-  const COLS = Array.from({ length: 18 }, (_, i) => i + 1);
+  // Gesture base snapshots
+  const baseTx = useSharedValue(0);
+  const baseTy = useSharedValue(0);
+  const baseScale = useSharedValue(0.35);
+
+  const fitToStage = useCallback((w, h) => {
+    if (w === 0 || h === 0) return;
+    const s = Math.max(MIN_SCALE, Math.min(MAX_SCALE, Math.min(w / TABLE_W, h / TABLE_H) * 0.95));
+    tableScale.value = s;
+    desiredTx.value = (w - TABLE_W * s) / 2;
+    desiredTy.value = (h - TABLE_H * s) / 2;
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setSelected(null);
+      fitToStage(stageDims.current.w, stageDims.current.h);
+    }
+  }, [open]);
+
+  const onStageLayout = useCallback((e) => {
+    const { width, height } = e.nativeEvent.layout;
+    stageDims.current = { w: width, h: height };
+    if (open) fitToStage(width, height);
+  }, [open, fitToStage]);
+
+  // Animated transform — compensates for RN's center-based scale
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: desiredTx.value + (tableScale.value - 1) * TABLE_W / 2 },
+      { translateY: desiredTy.value + (tableScale.value - 1) * TABLE_H / 2 },
+      { scale: tableScale.value },
+    ],
+  }));
+
+  // Scale percentage display (animated text)
+  const scalePercent = useDerivedValue(() => `${Math.round(tableScale.value * 100)}%`);
+  const scaleTextProps = useAnimatedProps(() => ({ value: scalePercent.value }));
+
+  // ── Gestures ────────────────────────────────────────────────────────────────
+
+  const panGesture = Gesture.Pan()
+    .minPointers(1).maxPointers(1)
+    .onStart(() => {
+      baseTx.value = desiredTx.value;
+      baseTy.value = desiredTy.value;
+    })
+    .onUpdate((e) => {
+      desiredTx.value = baseTx.value + e.translationX;
+      desiredTy.value = baseTy.value + e.translationY;
+    });
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      baseScale.value = tableScale.value;
+      baseTx.value = desiredTx.value;
+      baseTy.value = desiredTy.value;
+    })
+    .onUpdate((e) => {
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, baseScale.value * e.scale));
+      const ratio = newScale / baseScale.value;
+      // Keep pinch focal point stationary
+      desiredTx.value = e.focalX - (e.focalX - baseTx.value) * ratio;
+      desiredTy.value = e.focalY - (e.focalY - baseTy.value) * ratio;
+      tableScale.value = newScale;
+    });
+
+  const composed = Gesture.Simultaneous(panGesture, pinchGesture);
+
+  // ── Zoom controls (JS thread) ────────────────────────────────────────────────
+
+  const zoomBy = (factor) => {
+    const { w, h } = stageDims.current;
+    const cx = w / 2, cy = h / 2;
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, tableScale.value * factor));
+    const ratio = newScale / tableScale.value;
+    desiredTx.value = cx - (cx - desiredTx.value) * ratio;
+    desiredTy.value = cy - (cy - desiredTy.value) * ratio;
+    tableScale.value = newScale;
+  };
+
+  const handleFit = () => fitToStage(stageDims.current.w, stageDims.current.h);
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <Modal visible={open} animationType="slide" presentationStyle="fullScreen">
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Periodic Table</Text>
-          <Pressable onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={20} color={colors.neutral900} />
+          <Pressable onPress={() => { setSelected(null); onClose(); }} style={styles.squareBtn}>
+            <Ionicons name="close" size={16} color={colors.neutral900} />
+          </Pressable>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Periodic table</Text>
+            <Text style={styles.headerSub}>Pinch to zoom · drag to pan</Text>
+          </View>
+          <Pressable onPress={() => zoomBy(0.85)} style={styles.squareBtn}>
+            <Ionicons name="remove" size={14} color={colors.neutral900} />
+          </Pressable>
+          <Pressable onPress={handleFit} style={styles.fitBtn}>
+            <AnimatedTextInput
+              editable={false}
+              animatedProps={scaleTextProps}
+              style={styles.fitBtnText}
+            />
+          </Pressable>
+          <Pressable onPress={() => zoomBy(1.18)} style={styles.squareBtn}>
+            <Ionicons name="add" size={14} color={colors.neutral900} />
           </Pressable>
         </View>
 
-        {/* Selected element info */}
-        {selected && (
-          <View style={styles.infoBar}>
-            <Text style={styles.infoSym}>{selected[0]}</Text>
-            <View>
-              <Text style={styles.infoName}>{selected[2]}</Text>
-              <Text style={styles.infoDetail}>#{selected[1]} · {selected[3]} u · {selected[6]}</Text>
+        {/* Legend */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.legendScroll}
+          contentContainerStyle={styles.legendContent}
+        >
+          {LEGEND_CATS.map(([cat, label]) => (
+            <View key={cat} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: CAT_COLORS[cat].bg }]} />
+              <Text style={styles.legendLabel}>{label}</Text>
             </View>
-          </View>
-        )}
-
-        {/* Scrollable grid */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
-            {ROWS.map(row => (
-              <View key={row} style={styles.tableRow}>
-                {row === 9 && <View style={styles.rowSpacer} />}
-                {COLS.map(col => {
-                  const el = grid[`${col},${row}`];
-                  if (!el) {
-                    // Skip column 3 in rows 6-7 (lanthanide/actinide placeholder)
-                    if (col >= 3 && col <= 3 && (row === 6 || row === 7)) {
-                      return <View key={col} style={[styles.cell, styles.cellPlaceholder]} />;
-                    }
-                    return <View key={col} style={styles.cellEmpty} />;
-                  }
-                  return <ElementCell key={col} el={el} onPress={setSelected} />;
-                })}
-              </View>
-            ))}
-          </ScrollView>
+          ))}
         </ScrollView>
+
+        {/* Stage */}
+        <GestureDetector gesture={composed}>
+          <View style={styles.stage} onLayout={onStageLayout}>
+            <Animated.View style={[styles.tableContainer, animatedStyle]}>
+              {SERIES_MARKERS.map(m => (
+                <SeriesMarkerCell key={m.label} {...m} />
+              ))}
+              {ELEMENTS.map(el => (
+                <ElementCell key={el[1]} el={el} onPress={setSelected} />
+              ))}
+            </Animated.View>
+
+            {selected && (
+              <DetailCard
+                key={selected[1]}
+                el={selected}
+                onDismiss={() => setSelected(null)}
+              />
+            )}
+          </View>
+        </GestureDetector>
+
       </View>
     </Modal>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.neutral50,
+    backgroundColor: '#FFF',
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 52,
-    paddingBottom: 12,
-    backgroundColor: '#FFFFFF',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: colors.neutral200,
+    borderBottomColor: colors.neutral100,
   },
-  headerTitle: {
-    fontFamily: 'Nunito_900Black',
-    fontSize: 20,
-    color: colors.neutral900,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.neutral100,
+  squareBtn: {
+    width: 36, height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  infoBar: {
+  headerText: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 18,
+    color: colors.neutral900,
+    lineHeight: 22,
+  },
+  headerSub: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 11,
+    color: colors.neutral600,
+  },
+  fitBtn: {
+    height: 36,
+    minWidth: 52,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  fitBtnText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 11,
+    color: colors.neutral900,
+    textAlign: 'center',
+    padding: 0,
+    margin: 0,
+  },
+
+  // Legend
+  legendScroll: {
+    flexShrink: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral100,
+  },
+  legendContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: colors.purple50,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.purple100,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  infoSym: {
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+  },
+  legendLabel: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 10,
+    color: colors.neutral600,
+    whiteSpace: 'nowrap',
+  },
+
+  // Stage
+  stage: {
+    flex: 1,
+    backgroundColor: colors.neutral50,
+    overflow: 'hidden',
+  },
+
+  // Table container (absolutely positioned, transformed)
+  tableContainer: {
+    position: 'absolute',
+    width: TABLE_W,
+    height: TABLE_H,
+  },
+
+  // Element cell
+  cell: {
+    position: 'absolute',
+    width: CELL,
+    height: CELL,
+    borderRadius: 6,
+    padding: 3,
+    justifyContent: 'space-between',
+  },
+  cellNum: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 9,
+    lineHeight: 11,
+  },
+  cellSym: {
     fontFamily: 'Nunito_900Black',
-    fontSize: 32,
-    color: colors.purple600,
-    width: 48,
+    fontSize: 20,
+    lineHeight: 22,
     textAlign: 'center',
   },
-  infoName: {
+  cellName: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 7,
+    lineHeight: 9,
+    textAlign: 'center',
+  },
+
+  // Series marker
+  markerCell: {
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.2)',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 9,
+    color: 'rgba(0,0,0,0.55)',
+  },
+
+  // Detail card
+  detailCard: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 12,
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderRadius: radius.lg,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  detailBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  detailBadgeNum: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 10,
+    lineHeight: 12,
+  },
+  detailBadgeSym: {
+    fontFamily: 'Nunito_900Black',
+    fontSize: 24,
+    lineHeight: 26,
+  },
+  detailInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailName: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 16,
     color: colors.neutral900,
   },
-  infoDetail: {
+  detailMeta: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 12,
     color: colors.neutral600,
     marginTop: 2,
   },
-  tableRow: {
-    flexDirection: 'row',
-    gap: GAP,
-    marginBottom: GAP,
+  catPill: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 999,
   },
-  rowSpacer: {
-    height: 8,
-    position: 'absolute',
+  catPillText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 0.4,
   },
-  cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
-  },
-  cellPlaceholder: {
+  detailClose: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.neutral100,
-    borderColor: colors.neutral200,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cellEmpty: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-  },
-  cellNum: {
-    fontFamily: 'Outfit_500Medium',
-    fontSize: 8,
-    lineHeight: 10,
-  },
-  cellSym: {
-    fontFamily: 'Nunito_900Black',
-    fontSize: 16,
-    lineHeight: 18,
-  },
-  cellMass: {
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 7,
-    lineHeight: 9,
+    flexShrink: 0,
   },
 });
