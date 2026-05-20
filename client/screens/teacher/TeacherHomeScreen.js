@@ -8,6 +8,8 @@ import Svg, { Ellipse, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { ScreenSurface } from '../../components/base';
@@ -446,7 +448,7 @@ function DrawerItem({ icon, label, sublabel, primary, subdued, onPress }) {
   );
 }
 
-function Drawer({ visible, onClose, teacher, navigation, onSignOut, onCreateCourse, onCreateSection }) {
+function Drawer({ visible, onClose, teacher, navigation, onSignOut, onCreateCourse, onCreateSection, onExport, exporting }) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(DRAWER_W)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -522,9 +524,9 @@ function Drawer({ visible, onClose, teacher, navigation, onSignOut, onCreateCour
           />
           <DrawerItem
             icon="download-outline"
-            label="Export student report"
-            sublabel="CSV · scoped by class and date"
-            onPress={() => close()}
+            label={exporting ? 'Exporting…' : 'Export student report'}
+            sublabel="CSV of all student progress"
+            onPress={() => close(onExport)}
           />
           <DrawerItem
             icon="library-outline"
@@ -625,6 +627,7 @@ export default function TeacherHomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sheet, setSheet] = useState(null); // 'createCourse' | 'createSection' | null
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -651,6 +654,36 @@ export default function TeacherHomeScreen({ navigation }) {
 
   useEffect(() => { load(); }, [load]);
   const onRefresh = () => { setRefreshing(true); load(); };
+
+  const exportCsv = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+      const res = await fetch(`${BASE_URL}/api/courses/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+      const csv = await res.text();
+
+      const date = new Date().toISOString().slice(0, 10);
+      const path = `${FileSystem.cacheDirectory}student-report-${date}.csv`;
+      await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(path, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Save student report',
+          UTI: 'public.comma-separated-values-text',
+        });
+      }
+    } catch (e) {
+      console.warn('Export error:', e.message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const allSections = courses.flatMap((c, ci) =>
     (classMap[c.id] ?? []).map(cls => ({
@@ -758,6 +791,8 @@ export default function TeacherHomeScreen({ navigation }) {
         onSignOut={logout}
         onCreateCourse={() => setSheet('createCourse')}
         onCreateSection={() => setSheet('createSection')}
+        onExport={exportCsv}
+        exporting={exporting}
       />
 
       <CreateCourseSheet
