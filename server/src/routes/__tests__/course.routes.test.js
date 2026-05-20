@@ -60,18 +60,7 @@ describe('POST /api/courses', () => {
     expect(res.body.error).toMatch(/name/);
   });
 
-  test('500 if no unique course code can be generated after 10 attempts', async () => {
-    prisma.course.findUnique.mockResolvedValue({ id: 'existing', code: 'TAKEN001' });
-    const res = await request(app)
-      .post('/api/courses')
-      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`)
-      .send({ name: 'General Chemistry I' });
-    expect(res.status).toBe(500);
-    expect(res.body.error).toMatch(/unique course code/);
-  });
-
   test('201 with created course on success', async () => {
-    prisma.course.findUnique.mockResolvedValue(null);
     prisma.course.create.mockResolvedValue(COURSE);
     const res = await request(app)
       .post('/api/courses')
@@ -325,12 +314,11 @@ const RICH_ORIGINAL = {
   }],
 };
 
-const CLONE = { id: 'clone-id-1', name: 'Gen Chem I (Copy)', teacherId: TEACHER_ID, code: 'NEW10001' };
+const CLONE = { id: 'clone-id-1', name: 'Gen Chem I (Copy)', teacherId: TEACHER_ID };
 
 function mockClone(original = ORIGINAL) {
   prisma.course.findUnique.mockImplementation(({ where }) => {
     if (where.id) return Promise.resolve(original);
-    if (where.code) return Promise.resolve(null); // code is available
     return Promise.resolve(null);
   });
   prisma.course.create.mockResolvedValue(CLONE);
@@ -367,19 +355,6 @@ describe('POST /api/courses/:courseId/clone', () => {
       .set('Authorization', `Bearer ${token('TEACHER', OTHER_TEACHER_ID)}`);
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/do not own/);
-  });
-
-  test('500 if no unique code can be generated after 10 attempts', async () => {
-    prisma.course.findUnique.mockImplementation(({ where }) => {
-      if (where.id) return Promise.resolve(ORIGINAL);
-      if (where.code) return Promise.resolve({ id: 'existing', code: where.code });
-      return Promise.resolve(null);
-    });
-    const res = await request(app)
-      .post(cloneUrl)
-      .set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
-    expect(res.status).toBe(500);
-    expect(res.body.error).toMatch(/unique course code/);
   });
 
   test('201 with cloned course name suffixed with (Copy)', async () => {

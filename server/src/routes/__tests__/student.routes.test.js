@@ -88,7 +88,6 @@ describe('GET /api/courses — STUDENT', () => {
     expect(res.body[0]).toMatchObject({
       id: COURSE.id,
       name: COURSE.name,
-      code: COURSE.code,
       currentPoints: ENROLLMENT.currentPoints,
       lifetimePoints: ENROLLMENT.lifetimePoints,
       streak: ENROLLMENT.streak,

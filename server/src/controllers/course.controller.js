@@ -20,16 +20,8 @@ async function createCourse(req, res) {
     return res.status(400).json({ error: 'name is required' });
   }
 
-  let code;
-  for (let i = 0; i < 10; i++) {
-    const candidate = generateCode();
-    const existing = await prisma.course.findUnique({ where: { code: candidate } });
-    if (!existing) { code = candidate; break; }
-  }
-  if (!code) return res.status(500).json({ error: 'Could not generate unique course code' });
-
   const course = await prisma.course.create({
-    data: { name: name.trim(), teacherId: req.user.sub, code },
+    data: { name: name.trim(), teacherId: req.user.sub },
   });
 
   res.status(201).json(course);
@@ -126,19 +118,10 @@ async function cloneCourse(req, res) {
   if (!original) return res.status(404).json({ error: 'Course not found' });
   if (original.teacherId !== teacherId) return res.status(403).json({ error: 'You do not own this course' });
 
-  let code;
-  for (let i = 0; i < 10; i++) {
-    const candidate = generateCode();
-    const existing = await prisma.course.findUnique({ where: { code: candidate } });
-    if (!existing) { code = candidate; break; }
-  }
-  if (!code) return res.status(500).json({ error: 'Could not generate unique course code' });
-
   const clone = await prisma.course.create({
     data: {
       teacherId,
       name: `${original.name} (Copy)`,
-      code,
       chapters: {
         create: original.chapters.map(ch => ({
           name: ch.name,

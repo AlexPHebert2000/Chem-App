@@ -19,7 +19,6 @@ async function getStudentCourses(req, res) {
   res.json(enrollments.map(e => ({
     id: e.course.id,
     name: e.course.name,
-    code: e.course.code,
     currentPoints: e.currentPoints,
     lifetimePoints: e.lifetimePoints,
     streak: e.streak,
