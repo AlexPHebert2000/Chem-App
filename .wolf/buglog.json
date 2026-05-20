@@ -2269,6 +2269,22 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-05-19T23:40:19.082Z"
+    },
+    {
+      "id": "bug-142",
+      "timestamp": "2026-05-19T23:53:36.480Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/student/StudentClassScreen.js",
+      "root_cause": "Had 'expo-linear-gradient'",
+      "fix": "Changed to 'react-native-safe-area-context'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-19T23:53:36.480Z"
     }
   ]
 }
