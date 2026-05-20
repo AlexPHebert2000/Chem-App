@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { authenticate, requireRole } = require('../middleware/auth.middleware');
-const { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass } = require('../controllers/course.controller');
+const { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, getClassChapterStats } = require('../controllers/course.controller');
 const { getCourseChapters, createChapter, swapChapters } = require('../controllers/chapter.controller');
 const { exportStudentsCsv } = require('../controllers/export.controller');
 const { getStudentCourses, getStudentCourseProgress, getStudentCourseChapters, getCourseLeaderboard, getCourseClassLeaderboard } = require('../controllers/student.controller');
@@ -38,5 +38,6 @@ router.post('/:courseId/classes/:classId/join-requests', authenticate, requireRo
 router.get('/:courseId/classes/:classId/join-requests', authenticate, requireRole('TEACHER'), getPendingClassJoinRequests);
 router.post('/:courseId/classes/:classId/join-requests/:requestId/approve', authenticate, requireRole('TEACHER'), approveJoinClass);
 router.get('/:courseId/classes/:classId/leaderboard', authenticate, getCourseClassLeaderboard);
+router.get('/:courseId/classes/:classId/stats', authenticate, requireRole('TEACHER'), getClassChapterStats);
 
 module.exports = router;

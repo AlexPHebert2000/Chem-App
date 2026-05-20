@@ -2285,6 +2285,118 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-19T23:53:36.480Z"
+    },
+    {
+      "id": "bug-143",
+      "timestamp": "2026-05-20T00:10:13.179Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/teacher/TeacherHomeScreen.js",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 8→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:10:13.179Z"
+    },
+    {
+      "id": "bug-144",
+      "timestamp": "2026-05-20T00:18:56.981Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/controllers/course.controller.js",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 11→3 lines (8 removed) | Also: let code;; for (let i = 0; i < 10; i++) {",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T00:19:00.610Z"
+    },
+    {
+      "id": "bug-145",
+      "timestamp": "2026-05-20T00:27:24.757Z",
+      "error_message": "Wrong reference: purple500 should be purple600",
+      "file": "client/screens/teacher/TeacherHomeScreen.js",
+      "root_cause": "Used \"purple500\" instead of \"purple600\"",
+      "fix": "Changed purple500 → purple600",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:27:24.757Z"
+    },
+    {
+      "id": "bug-146",
+      "timestamp": "2026-05-20T00:29:51.084Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/teacher/TeacherHomeScreen.js",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→14 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:29:51.084Z"
+    },
+    {
+      "id": "bug-147",
+      "timestamp": "2026-05-20T00:31:56.273Z",
+      "error_message": "Missing error handling in Sheet",
+      "file": "client/screens/teacher/TeacherHomeScreen.js",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: const exportCsv = async () => {; if (exporting) return;",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-20T00:36:18.823Z"
+    },
+    {
+      "id": "bug-148",
+      "timestamp": "2026-05-20T00:32:21.293Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/TeacherHomeScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:32:21.293Z"
+    },
+    {
+      "id": "bug-149",
+      "timestamp": "2026-05-20T00:49:42.735Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/course.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T00:49:42.735Z"
     }
   ]
 }

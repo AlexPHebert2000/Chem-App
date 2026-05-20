@@ -756,8 +756,13 @@ export default function TeacherHomeScreen({ navigation }) {
                   courseName={section.courseName}
                   accentIndex={section.courseAccentIndex}
                   onPress={() => navigation.navigate('ClassDetail', {
-                    classId: section.id,
+                    mode: 'section',
+                    courseId: section.courseId,
+                    courseClassId: section.id,
                     courseName: section.courseName,
+                    sectionNumber: section.sectionNumber,
+                    code: section.code,
+                    enrollmentCount: section.enrollmentCount,
                   })}
                 />
               ))}
@@ -785,7 +790,11 @@ export default function TeacherHomeScreen({ navigation }) {
                   course={course}
                   sectionCount={(classMap[course.id] ?? []).length}
                   accentIndex={ci}
-                  onPress={() => {}}
+                  onPress={() => navigation.navigate('ClassDetail', {
+                    mode: 'course',
+                    courseId: course.id,
+                    courseName: course.name,
+                  })}
                 />
               ))}
             </View>

@@ -306,4 +306,60 @@ async function approveJoinClass(req, res) {
   res.status(201).json(enrollment);
 }
 
-module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass };
+async function getClassChapterStats(req, res) {
+  const { courseId, classId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const courseClass = await prisma.courseClass.findUnique({ where: { id: classId } });
+  if (!courseClass || courseClass.courseId !== courseId) {
+    return res.status(404).json({ error: 'Class not found' });
+  }
+
+  const enrollments = await prisma.studentEnrollment.findMany({
+    where: { courseClassId: classId },
+    select: { studentId: true },
+  });
+  const studentIds = enrollments.map(e => e.studentId);
+  const total = studentIds.length;
+
+  const chapters = await prisma.chapter.findMany({
+    where: { courseId },
+    orderBy: { orderIndex: 'asc' },
+    include: { sections: { select: { id: true } } },
+  });
+
+  const chapterStats = await Promise.all(chapters.map(async ch => {
+    const sectionIds = ch.sections.map(s => s.id);
+
+    if (!sectionIds.length || !studentIds.length) {
+      return { chapterId: ch.id, completedCount: 0, avgScore: null };
+    }
+
+    const completions = await prisma.studentSection.groupBy({
+      by: ['studentId'],
+      where: {
+        sectionId: { in: sectionIds },
+        studentId: { in: studentIds },
+        completedAt: { not: null },
+      },
+      _count: { sectionId: true },
+    });
+    const completedCount = completions.filter(c => c._count.sectionId === sectionIds.length).length;
+
+    const agg = await prisma.sectionAttempt.aggregate({
+      where: { sectionId: { in: sectionIds }, studentId: { in: studentIds } },
+      _avg: { score: true },
+      _count: { id: true },
+    });
+    const avgScore = agg._count.id > 0 ? Math.round(agg._avg.score ?? 0) : null;
+
+    return { chapterId: ch.id, completedCount, avgScore };
+  }));
+
+  res.json({ total, chapters: chapterStats });
+}
+
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, getClassChapterStats };
