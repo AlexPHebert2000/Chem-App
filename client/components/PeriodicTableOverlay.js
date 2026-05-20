@@ -322,19 +322,20 @@ export default function PeriodicTableOverlay({ open, onClose }) {
         </View>
 
         {/* Legend */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.legendScroll}
-          contentContainerStyle={styles.legendContent}
-        >
-          {LEGEND_CATS.map(([cat, label]) => (
-            <View key={cat} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: CAT_COLORS[cat].bg }]} />
-              <Text style={styles.legendLabel}>{label}</Text>
-            </View>
-          ))}
-        </ScrollView>
+        <View style={styles.legendWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.legendContent}
+          >
+            {LEGEND_CATS.map(([cat, label]) => (
+              <View key={cat} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: CAT_COLORS[cat].bg }]} />
+                <Text style={styles.legendLabel}>{label}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
 
         {/* Stage */}
         <GestureDetector gesture={composed}>
@@ -428,9 +429,10 @@ const styles = StyleSheet.create({
   },
 
   // Legend
-  legendScroll: {
+  legendWrapper: {
+    height: 28,
     flexShrink: 0,
-    height: 26,
+    overflow: 'hidden',
     borderBottomWidth: 1,
     borderBottomColor: colors.neutral100,
   },
@@ -439,6 +441,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 14,
+    height: 27,
   },
   legendItem: {
     flexDirection: 'row',
