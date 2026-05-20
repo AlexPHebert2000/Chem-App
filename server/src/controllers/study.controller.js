@@ -7,8 +7,8 @@ async function startWorkSession(req, res) {
 
   if (!courseId) return res.status(400).json({ error: 'courseId is required' });
 
-  const enrollment = await prisma.studentCourse.findUnique({
-    where: { studentId_courseId: { studentId, courseId } },
+  const enrollment = await prisma.studentEnrollment.findFirst({
+    where: { studentId, courseClass: { courseId } },
   });
   if (!enrollment) return res.status(403).json({ error: 'Student is not enrolled in this course' });
 

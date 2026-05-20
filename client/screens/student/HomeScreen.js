@@ -43,6 +43,7 @@ export default function HomeScreen({ navigation, route }) {
   const courseId = route?.params?.courseId;
 
   const [courseName, setCourseName] = useState('');
+  const [activeCourseId, setActiveCourseId] = useState(null);
   const [enrollment, setEnrollment] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [completedIds, setCompletedIds] = useState(new Set());
@@ -62,6 +63,7 @@ export default function HomeScreen({ navigation, route }) {
 
       const cid = courseId ?? enroll?.courseClass?.courseId;
       if (!cid) return;
+      setActiveCourseId(cid);
 
       const enrolled = courses?.find(c => c.id === cid) ?? courses?.[0];
       setCourseName(enrolled?.name ?? '');
@@ -96,7 +98,7 @@ export default function HomeScreen({ navigation, route }) {
   const startSection = () => {
     if (!sheetSection) return;
     setSheetSection(null);
-    navigation.navigate('StudentSection', { sectionId: sheetSection.id });
+    navigation.navigate('StudentSection', { sectionId: sheetSection.id, courseId: activeCourseId });
   };
 
   return (

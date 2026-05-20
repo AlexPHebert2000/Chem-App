@@ -15,17 +15,20 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function SectionScreen({ navigation, route }) {
   const { token } = useAuth();
-  const { sectionId } = route.params;
+  const { sectionId, courseId } = route.params;
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState(null);
   const [checked, setChecked] = useState(false);
   const [result, setResult] = useState(null);
+  const [correctChoiceIds, setCorrectChoiceIds] = useState([]);
+  const [explanation, setExplanation] = useState(null);
   const [ptOpen, setPtOpen] = useState(false);
   const [xpGained, setXpGained] = useState(0);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState(null);
 
   useEffect(() => {
     api.get(`/sections/${sectionId}/questions`, token)
@@ -34,30 +37,40 @@ export default function SectionScreen({ navigation, route }) {
       .finally(() => setLoading(false));
   }, [sectionId, token]);
 
+  useEffect(() => {
+    if (!courseId) return;
+    api.post('/study/start', { courseId }, token)
+      .then(r => setSessionId(r.sessionId))
+      .catch(e => console.warn('Session start error:', e.message));
+  }, [courseId, token]);
+
   const q = questions[currentIndex];
   const mcChoices = q?.choices?.filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i) ?? [];
-  const correctChoice = mcChoices.find(c => c.isCorrect);
+  const correctChoice = mcChoices.find(c => correctChoiceIds.includes(c.id));
   const xp = q ? (q.difficulty ?? 1) * 10 : 0;
   const progress = questions.length > 0 ? currentIndex / questions.length : 0;
 
   const optionState = (choice) => {
     if (!checked) return selected?.id === choice.id ? 'selected' : 'idle';
-    if (choice.isCorrect) return 'correct';
-    if (selected?.id === choice.id && !choice.isCorrect) return 'wrong';
+    if (correctChoiceIds.includes(choice.id)) return 'correct';
+    if (selected?.id === choice.id) return 'wrong';
     return 'muted';
   };
 
   const handleCheck = async () => {
     if (!selected || checked || !q) return;
     setChecked(true);
-    setResult(selected.isCorrect ? 'correct' : 'wrong');
     try {
-      await api.post(`/questions/${q.id}/attempts`, {
-        sectionId,
-        answers: [{ choiceId: selected.id }],
+      const res = await api.post(`/questions/${q.id}/attempt`, {
+        sessionId,
+        choiceIds: [selected.id],
       }, token);
+      setResult(res.isCorrect ? 'correct' : 'wrong');
+      setCorrectChoiceIds(res.correctChoiceIds ?? []);
+      setExplanation(res.explanation ?? null);
     } catch (e) {
       console.warn('attempt submit error:', e.message);
+      setResult('wrong');
     }
   };
 
@@ -67,6 +80,8 @@ export default function SectionScreen({ navigation, route }) {
       setSelected(null);
       setChecked(false);
       setResult(null);
+      setCorrectChoiceIds([]);
+      setExplanation(null);
     } else {
       completeSection();
     }
@@ -84,8 +99,8 @@ export default function SectionScreen({ navigation, route }) {
   };
 
   const feedbackMessage = result === 'correct'
-    ? `+${xp} XP${q?.correctExplanation ? ` — ${q.correctExplanation}` : ''}`
-    : correctChoice ? `Correct answer: ${correctChoice.content}` : null;
+    ? `+${xp} XP${explanation ? ` — ${explanation}` : ''}`
+    : correctChoice ? `Correct answer: ${correctChoice.content}` : (explanation ?? null);
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {

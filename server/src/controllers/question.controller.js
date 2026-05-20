@@ -323,8 +323,8 @@ async function attemptQuestion(req, res) {
     return res.status(403).json({ error: 'Question does not belong to the session course' });
   }
 
-  const enrollment = await prisma.studentCourse.findUnique({
-    where: { studentId_courseId: { studentId, courseId: session.courseId } },
+  const enrollment = await prisma.studentEnrollment.findFirst({
+    where: { studentId, courseClass: { courseId: session.courseId } },
   });
   if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
 
@@ -354,11 +354,13 @@ async function attemptQuestion(req, res) {
     });
     await recordActivity(sessionId, xpDelta);
     await awardBadges(studentId);
+    const dynamicCorrectId = dynamicChoices.find(c => c.isCorrect)?.id;
     return res.status(201).json({
       attempt,
       isCorrect,
       explanation: isCorrect ? question.correctExplanation : question.incorrectExplanation,
       xpDelta,
+      correctChoiceIds: dynamicCorrectId ? [dynamicCorrectId] : [],
     });
   }
 
@@ -423,11 +425,14 @@ async function attemptQuestion(req, res) {
   await recordActivity(sessionId, xpDelta);
   await awardBadges(studentId);
 
+  const correctChoiceIds = question.choices.filter(c => c.isCorrect).map(c => c.id);
+
   res.status(201).json({
     attempt,
     isCorrect,
     explanation: isCorrect ? question.correctExplanation : question.incorrectExplanation,
     xpDelta,
+    correctChoiceIds,
   });
 }
 
