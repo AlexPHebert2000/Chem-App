@@ -2,7 +2,7 @@ const prisma = require('../lib/prisma');
 
 const INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hour
 
-async function getOrCreateWorkSession(studentId, courseId) {
+async function getOrCreateWorkSession(studentId, courseId, courseClassId = null) {
   const existing = await prisma.session.findFirst({
     where: { studentId, courseId, endedAt: null },
     orderBy: { startedAt: 'desc' },
@@ -14,7 +14,6 @@ async function getOrCreateWorkSession(studentId, courseId) {
 
     if (!inactive) return { session: existing, isNew: false };
 
-    // Stale session — close it before opening a new one
     await prisma.session.update({
       where: { id: existing.id },
       data: { endedAt: new Date() },
@@ -23,7 +22,13 @@ async function getOrCreateWorkSession(studentId, courseId) {
 
   const now = new Date();
   const session = await prisma.session.create({
-    data: { studentId, courseId, startedAt: now, lastActivityAt: now },
+    data: {
+      studentId,
+      courseId,
+      startedAt: now,
+      lastActivityAt: now,
+      ...(courseClassId && { courseClassId }),
+    },
   });
   return { session, isNew: true };
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator
 } from 'react-native';
@@ -29,6 +29,7 @@ export default function SectionScreen({ navigation, route }) {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState(null);
+  const sessionRef = useRef(null);
 
   useEffect(() => {
     api.get(`/sections/${sectionId}/questions`, token)
@@ -40,8 +41,15 @@ export default function SectionScreen({ navigation, route }) {
   useEffect(() => {
     if (!courseId) return;
     api.post('/study/start', { courseId }, token)
-      .then(r => setSessionId(r.sessionId))
+      .then(r => { setSessionId(r.sessionId); sessionRef.current = r.sessionId; })
       .catch(e => console.warn('Session start error:', e.message));
+
+    return () => {
+      if (sessionRef.current) {
+        api.post('/study/end', { sessionId: sessionRef.current }, token).catch(() => {});
+        sessionRef.current = null;
+      }
+    };
   }, [courseId, token]);
 
   const q = questions[currentIndex];
@@ -88,6 +96,11 @@ export default function SectionScreen({ navigation, route }) {
   };
 
   const completeSection = async () => {
+    if (sessionRef.current) {
+      api.post('/study/end', { sessionId: sessionRef.current }, token).catch(() => {});
+      sessionRef.current = null;
+      setSessionId(null);
+    }
     try {
       const res = await api.post(`/sections/${sectionId}/complete`, {}, token);
       setXpGained(res.xpEarned ?? 0);

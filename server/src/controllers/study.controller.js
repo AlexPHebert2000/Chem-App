@@ -12,7 +12,9 @@ async function startWorkSession(req, res) {
   });
   if (!enrollment) return res.status(403).json({ error: 'Student is not enrolled in this course' });
 
-  const { session, isNew } = await workSessionService.getOrCreateWorkSession(studentId, courseId);
+  const { session, isNew } = await workSessionService.getOrCreateWorkSession(
+    studentId, courseId, enrollment.courseClassId
+  );
   res.json({ sessionId: session.id, isNew, startedAt: session.startedAt });
 }
 
