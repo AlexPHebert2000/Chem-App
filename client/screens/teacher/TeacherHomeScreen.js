@@ -1,16 +1,164 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   Pressable, ActivityIndicator, TouchableOpacity,
+  Modal, Animated, Dimensions,
 } from 'react-native';
-import Svg, { Ellipse } from 'react-native-svg';
+import Svg, { Ellipse, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { ScreenSurface } from '../../components/base';
 import ClassCard from '../../components/ClassCard';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
+
+const SCREEN_W = Dimensions.get('window').width;
+const DRAWER_W = Math.min(SCREEN_W * 0.78, 320);
+
+// ─── Drawer ───────────────────────────────────────────────────────────────────
+
+function initials(name = '') {
+  return name.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
+}
+
+function DrawerItem({ icon, label, sublabel, primary, subdued, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.drawerItem,
+        primary && styles.drawerItemPrimary,
+        pressed && styles.drawerItemPressed,
+      ]}
+    >
+      <View style={[
+        styles.drawerIconBox,
+        primary && styles.drawerIconBoxPrimary,
+        subdued && styles.drawerIconBoxSubdued,
+      ]}>
+        <Ionicons
+          name={icon}
+          size={18}
+          color={primary ? '#fff' : subdued ? colors.neutral600 : colors.purple600}
+        />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.drawerLabel, subdued && styles.drawerLabelSubdued]}>
+          {label}
+        </Text>
+        {!!sublabel && (
+          <Text style={styles.drawerSublabel} numberOfLines={1}>{sublabel}</Text>
+        )}
+      </View>
+      {!subdued && (
+        <Ionicons name="chevron-forward" size={14} color={colors.neutral300} />
+      )}
+    </Pressable>
+  );
+}
+
+function Drawer({ visible, onClose, teacher, navigation, onSignOut }) {
+  const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(DRAWER_W)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 0, duration: 260, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: DRAWER_W, duration: 220, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const close = (action) => {
+    onClose();
+    if (action) setTimeout(action, 280);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      {/* Backdrop */}
+      <Animated.View style={[styles.drawerBackdrop, { opacity: fadeAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+
+      {/* Panel */}
+      <Animated.View
+        style={[
+          styles.drawerPanel,
+          { paddingTop: insets.top, transform: [{ translateX: slideAnim }] },
+        ]}
+        pointerEvents="box-none"
+      >
+        {/* Purple header */}
+        <LinearGradient
+          colors={[colors.purple800, colors.purple600]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.drawerHeader, { paddingTop: Math.max(insets.top, 16) + 16 }]}
+        >
+          <View style={styles.drawerAvatar}>
+            <Text style={styles.drawerAvatarText}>{initials(teacher?.name)}</Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.drawerName}>{teacher?.name ?? 'Professor'}</Text>
+            <Text style={styles.drawerRole}>Teacher</Text>
+          </View>
+          <Pressable onPress={onClose} style={styles.drawerClose} hitSlop={8}>
+            <Ionicons name="close" size={16} color="#fff" />
+          </Pressable>
+        </LinearGradient>
+
+        {/* Items */}
+        <View style={styles.drawerBody}>
+          <DrawerItem
+            icon="add-circle"
+            label="Create class"
+            sublabel="Set up a new class and get a join code"
+            primary
+            onPress={() => close(() => navigation.navigate('CreateClass'))}
+          />
+          <DrawerItem
+            icon="download-outline"
+            label="Export student report"
+            sublabel="CSV · scoped by class and date"
+            onPress={() => close()}
+          />
+          <DrawerItem
+            icon="library-outline"
+            label="Question Bank"
+            sublabel="Create and manage reusable questions"
+            onPress={() => close(() => navigation.navigate('QuestionBank'))}
+          />
+          <DrawerItem
+            icon="settings-outline"
+            label="Settings"
+            sublabel="Profile, notifications, grading"
+            onPress={() => close()}
+          />
+        </View>
+
+        {/* Footer — sign out */}
+        <View style={[styles.drawerFooter, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
+          <DrawerItem
+            icon="log-out-outline"
+            label="Sign out"
+            subdued
+            onPress={() => close(onSignOut)}
+          />
+        </View>
+      </Animated.View>
+    </Modal>
+  );
+}
 
 // ─── Question Bank hero card ──────────────────────────────────────────────────
 function QuestionBankCard({ onPress }) {
@@ -22,29 +170,25 @@ function QuestionBankCard({ onPress }) {
         end={{ x: 1, y: 1 }}
         style={styles.qbGradient}
       >
-        {/* atom watermark */}
         <Svg viewBox="0 0 100 100" width={110} height={110} style={styles.qbAtom}>
           <Ellipse cx="50" cy="50" rx="40" ry="14" fill="none" stroke="#fff" strokeWidth="2"/>
           <Ellipse cx="50" cy="50" rx="40" ry="14" fill="none" stroke="#fff" strokeWidth="2" rotation="60" originX="50" originY="50"/>
           <Ellipse cx="50" cy="50" rx="40" ry="14" fill="none" stroke="#fff" strokeWidth="2" rotation="120" originX="50" originY="50"/>
         </Svg>
-
         <View style={styles.qbIconBox}>
           <Ionicons name="library" size={28} color="#fff" />
         </View>
-
         <View style={styles.qbText}>
           <Text style={styles.qbTitle}>Question Bank</Text>
           <Text style={styles.qbSub}>Create and manage reusable questions</Text>
         </View>
-
         <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
       </LinearGradient>
     </Pressable>
   );
 }
 
-// ─── Course card (for the "Courses" section) ──────────────────────────────────
+// ─── Course card ──────────────────────────────────────────────────────────────
 const ACCENT = [
   { stripe: colors.purple600, text: colors.purple600 },
   { stripe: colors.teal600,   text: colors.teal600 },
@@ -68,7 +212,7 @@ function CourseCard({ course, sectionCount, accentIndex, onPress }) {
   );
 }
 
-// ─── Divider with label ───────────────────────────────────────────────────────
+// ─── List header ──────────────────────────────────────────────────────────────
 function ListHeader({ label, meta }) {
   return (
     <View style={styles.listHeader}>
@@ -80,11 +224,12 @@ function ListHeader({ label, meta }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function TeacherHomeScreen({ navigation }) {
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
   const [courses, setCourses] = useState([]);
   const [classMap, setClassMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -112,7 +257,6 @@ export default function TeacherHomeScreen({ navigation }) {
   useEffect(() => { load(); }, [load]);
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  // All sections across all courses, each annotated with course name and accent index
   const allSections = courses.flatMap((c, ci) =>
     (classMap[c.id] ?? []).map(cls => ({
       ...cls,
@@ -134,10 +278,13 @@ export default function TeacherHomeScreen({ navigation }) {
         </View>
         <TouchableOpacity
           style={styles.menuBtn}
-          onPress={() => navigation.navigate('QuestionBank')}
+          onPress={() => setDrawerOpen(true)}
           activeOpacity={0.75}
         >
-          <Ionicons name="library-outline" size={18} color={colors.purple600} />
+          {/* hamburger SVG — three horizontal lines */}
+          <Svg viewBox="0 0 24 24" width={22} height={22}>
+            <Path d="M4 7h16M4 12h16M4 17h16" stroke={colors.neutral900} strokeWidth="2.4" strokeLinecap="round"/>
+          </Svg>
         </TouchableOpacity>
       </View>
 
@@ -151,10 +298,8 @@ export default function TeacherHomeScreen({ navigation }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
         >
-          {/* Question Bank card */}
           <QuestionBankCard onPress={() => navigation.navigate('QuestionBank')} />
 
-          {/* ── SECTIONS ── */}
           <ListHeader
             label="SECTIONS"
             meta={`${allSections.length} ${allSections.length === 1 ? 'section' : 'sections'} · ${totalStudents} students`}
@@ -166,7 +311,7 @@ export default function TeacherHomeScreen({ navigation }) {
             </View>
           ) : (
             <View style={styles.cardList}>
-              {allSections.map((section, i) => (
+              {allSections.map((section) => (
                 <ClassCard
                   key={section.id}
                   courseClass={section}
@@ -181,7 +326,6 @@ export default function TeacherHomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* ── COURSES ── */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
           </View>
@@ -210,13 +354,20 @@ export default function TeacherHomeScreen({ navigation }) {
           )}
         </ScrollView>
       )}
+
+      <Drawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        teacher={user}
+        navigation={navigation}
+        onSignOut={logout}
+      />
     </ScreenSurface>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,8 +385,8 @@ const styles = StyleSheet.create({
     lineHeight: 30,
   },
   menuBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.neutral200,
@@ -249,7 +400,6 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
 
-  // Scroll
   scroll: {
     padding: screenPadding.horizontal,
     paddingBottom: 48,
@@ -266,9 +416,7 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 4,
   },
-  qbPressed: {
-    transform: [{ translateY: 2 }],
-  },
+  qbPressed: { transform: [{ translateY: 2 }] },
   qbGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -294,10 +442,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  qbText: {
-    flex: 1,
-    minWidth: 0,
-  },
+  qbText: { flex: 1, minWidth: 0 },
   qbTitle: {
     fontFamily: 'Nunito_900Black',
     fontSize: 18,
@@ -330,19 +475,9 @@ const styles = StyleSheet.create({
     color: colors.neutral600,
   },
 
-  // Divider between sections and courses
-  dividerRow: {
-    marginVertical: 4,
-  },
-  dividerLine: {
-    height: 1,
-    backgroundColor: colors.neutral200,
-  },
-
-  // Card list
-  cardList: {
-    gap: 10,
-  },
+  dividerRow: { marginVertical: 4 },
+  dividerLine: { height: 1, backgroundColor: colors.neutral200 },
+  cardList: { gap: 10 },
 
   // Course card
   courseCard: {
@@ -358,18 +493,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  pressed: {
-    opacity: 0.85,
-  },
-  stripe: {
-    width: 5,
-    flexShrink: 0,
-  },
-  courseBody: {
-    flex: 1,
-    padding: 14,
-    gap: 8,
-  },
+  pressed: { opacity: 0.85 },
+  stripe: { width: 5, flexShrink: 0 },
+  courseBody: { flex: 1, padding: 14, gap: 8 },
   courseTitle: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 16,
@@ -381,19 +507,136 @@ const styles = StyleSheet.create({
     color: colors.neutral600,
   },
 
-  // Loader / empty
-  loader: {
-    flex: 1,
+  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  empty: { paddingVertical: 24, alignItems: 'center' },
+  emptyText: { ...typeScale.body, color: colors.neutral600, textAlign: 'center' },
+
+  // Drawer
+  drawerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(33, 8, 79, 0.45)',
+  },
+  drawerPanel: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: DRAWER_W,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
+    shadowColor: '#210A4F',
+    shadowOffset: { width: -12, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    elevation: 16,
+    overflow: 'hidden',
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+  },
+  drawerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.gold400,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.gold600,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
+    flexShrink: 0,
   },
-  empty: {
-    paddingVertical: 24,
+  drawerAvatarText: {
+    fontFamily: 'Nunito_900Black',
+    fontSize: 18,
+    color: colors.neutral900,
+  },
+  drawerName: {
+    fontFamily: 'Nunito_900Black',
+    fontSize: 16,
+    color: '#fff',
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  drawerRole: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 11.5,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  drawerClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  emptyText: {
-    ...typeScale.body,
+  drawerBody: {
+    flex: 1,
+    padding: 12,
+    gap: 4,
+  },
+  drawerFooter: {
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral100,
+    paddingTop: 10,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: radius.md,
+  },
+  drawerItemPrimary: {
+    backgroundColor: colors.purple50,
+  },
+  drawerItemPressed: {
+    backgroundColor: colors.neutral50,
+  },
+  drawerIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.neutral50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  drawerIconBoxPrimary: {
+    backgroundColor: colors.purple600,
+    shadowColor: colors.purple800,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
+  },
+  drawerIconBoxSubdued: {
+    backgroundColor: colors.neutral50,
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+  },
+  drawerLabel: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 14,
+    color: colors.neutral900,
+    marginBottom: 1,
+  },
+  drawerLabelSubdued: {
     color: colors.neutral600,
-    textAlign: 'center',
+  },
+  drawerSublabel: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 11,
+    color: colors.neutral600,
   },
 });
