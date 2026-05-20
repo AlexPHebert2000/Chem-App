@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   Pressable, ActivityIndicator, TouchableOpacity,
-  Modal, Animated, Dimensions,
+  Modal, Animated, Dimensions, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Svg, { Ellipse, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,393 @@ import { colors, typeScale, screenPadding, radius } from '../../theme';
 
 const SCREEN_W = Dimensions.get('window').width;
 const DRAWER_W = Math.min(SCREEN_W * 0.78, 320);
+
+// ─── Sheet (bottom overlay) ───────────────────────────────────────────────────
+
+function Sheet({ visible, onClose, title, children }) {
+  const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(600)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
+        Animated.timing(fadeAnim,  { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 600, duration: 220, useNativeDriver: true }),
+        Animated.timing(fadeAnim,  { toValue: 0,   duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Animated.View style={[StyleSheet.absoluteFill, sheetStyles.backdrop, { opacity: fadeAnim }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+
+        <Animated.View
+          style={[sheetStyles.panel, { paddingBottom: insets.bottom + 8, transform: [{ translateY: slideAnim }] }]}
+        >
+          <View style={sheetStyles.grabber} />
+          <View style={sheetStyles.sheetHeader}>
+            <Text style={sheetStyles.sheetTitle}>{title}</Text>
+            <Pressable onPress={onClose} style={sheetStyles.closeBtn} hitSlop={8}>
+              <Ionicons name="close" size={16} color={colors.neutral800} />
+            </Pressable>
+          </View>
+          {children}
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+const sheetStyles = StyleSheet.create({
+  backdrop: {
+    backgroundColor: 'rgba(33,8,79,0.5)',
+  },
+  panel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 16,
+    paddingTop: 12,
+    shadowColor: '#210A4F',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 16,
+    maxHeight: '85%',
+  },
+  grabber: {
+    width: 44,
+    height: 5,
+    borderRadius: 99,
+    backgroundColor: colors.neutral200,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 18,
+    color: colors.neutral900,
+  },
+  closeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.neutral100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+// ─── Form field ───────────────────────────────────────────────────────────────
+
+function FormField({ label, value, onChangeText, placeholder, autoFocus }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={fieldStyles.wrap}>
+      <Text style={fieldStyles.label}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.neutral400 ?? colors.neutral600}
+        autoFocus={autoFocus}
+        style={[fieldStyles.input, focused && fieldStyles.inputFocused]}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
+    </View>
+  );
+}
+
+const fieldStyles = StyleSheet.create({
+  wrap: { marginBottom: 12 },
+  label: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 11,
+    color: colors.neutral600,
+    letterSpacing: 0.6,
+    marginBottom: 5,
+  },
+  input: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 14,
+    color: colors.neutral900,
+    backgroundColor: colors.neutral50,
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  inputFocused: {
+    borderColor: colors.purple400,
+  },
+});
+
+// ─── Submit button ────────────────────────────────────────────────────────────
+
+function SubmitButton({ label, onPress, disabled, loading: busy }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || busy}
+      style={({ pressed }) => [
+        submitStyles.btn,
+        (disabled || busy) && submitStyles.btnDisabled,
+        pressed && !disabled && submitStyles.btnPressed,
+      ]}
+    >
+      {busy
+        ? <ActivityIndicator size="small" color={colors.neutral900} />
+        : <Text style={submitStyles.label}>{label}</Text>
+      }
+    </Pressable>
+  );
+}
+
+const submitStyles = StyleSheet.create({
+  btn: {
+    backgroundColor: colors.purple400,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    shadowColor: colors.purple800,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 3,
+  },
+  btnDisabled: { opacity: 0.45 },
+  btnPressed: { transform: [{ translateY: 2 }], shadowOffset: { width: 0, height: 1 } },
+  label: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 15,
+    color: colors.neutral900,
+  },
+});
+
+// ─── Create Course Sheet ──────────────────────────────────────────────────────
+
+function CreateCourseSheet({ visible, onClose, token, onCreated }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const reset = () => { setName(''); setError(''); setBusy(false); };
+
+  const submit = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      const course = await api.post('/courses', { name: name.trim() }, token);
+      reset();
+      onClose();
+      onCreated(course);
+    } catch (e) {
+      setError(e.message ?? 'Something went wrong');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet visible={visible} onClose={() => { reset(); onClose(); }} title="Create course">
+      <Text style={formInfoText}>
+        A course is the content template — students join through sections.
+      </Text>
+      <FormField
+        label="COURSE NAME"
+        value={name}
+        onChangeText={setName}
+        placeholder="e.g. General Chemistry I"
+        autoFocus
+      />
+      {!!error && <Text style={errorText}>{error}</Text>}
+      <SubmitButton
+        label="Create course"
+        onPress={submit}
+        disabled={!name.trim()}
+        loading={busy}
+      />
+    </Sheet>
+  );
+}
+
+// ─── Create Section Sheet ─────────────────────────────────────────────────────
+
+function CreateSectionSheet({ visible, onClose, token, courses, onCreated }) {
+  const [courseId, setCourseId] = useState('');
+  const [sectionNumber, setSectionNumber] = useState('');
+  const [meetingTimes, setMeetingTimes] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const reset = () => {
+    setCourseId(''); setSectionNumber(''); setMeetingTimes('');
+    setError(''); setBusy(false);
+  };
+
+  const canSubmit = courseId && sectionNumber.trim() && meetingTimes.trim();
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setBusy(true);
+    setError('');
+    try {
+      const section = await api.post(
+        `/courses/${courseId}/classes`,
+        { sectionNumber: sectionNumber.trim(), meetingTimes: meetingTimes.trim() },
+        token,
+      );
+      reset();
+      onClose();
+      onCreated(courseId, section);
+    } catch (e) {
+      setError(e.message ?? 'Something went wrong');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet visible={visible} onClose={() => { reset(); onClose(); }} title="Create section">
+      <Text style={formInfoText}>
+        Students join with the code generated automatically.
+      </Text>
+
+      <Text style={fieldStyles.label}>COURSE</Text>
+      <ScrollView
+        style={{ maxHeight: 140, marginBottom: 12 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {courses.map(c => (
+          <Pressable
+            key={c.id}
+            onPress={() => setCourseId(c.id)}
+            style={[sectionStyles.courseRow, courseId === c.id && sectionStyles.courseRowSelected]}
+          >
+            <View style={[sectionStyles.radio, courseId === c.id && sectionStyles.radioSelected]}>
+              {courseId === c.id && <View style={sectionStyles.radioDot} />}
+            </View>
+            <Text style={[sectionStyles.courseRowText, courseId === c.id && sectionStyles.courseRowTextSelected]}>
+              {c.name}
+            </Text>
+          </Pressable>
+        ))}
+        {courses.length === 0 && (
+          <Text style={{ ...typeScale.body, color: colors.neutral600, paddingVertical: 8 }}>
+            No courses yet — create a course first.
+          </Text>
+        )}
+      </ScrollView>
+
+      <FormField
+        label="SECTION NUMBER"
+        value={sectionNumber}
+        onChangeText={setSectionNumber}
+        placeholder="e.g. 001"
+      />
+      <FormField
+        label="MEETING TIMES"
+        value={meetingTimes}
+        onChangeText={setMeetingTimes}
+        placeholder="e.g. M W F 10:00am"
+      />
+      {!!error && <Text style={errorText}>{error}</Text>}
+      <SubmitButton
+        label="Create section"
+        onPress={submit}
+        disabled={!canSubmit}
+        loading={busy}
+      />
+    </Sheet>
+  );
+}
+
+const formInfoText = {
+  fontFamily: 'Outfit_500Medium',
+  fontSize: 13,
+  color: colors.neutral600,
+  marginBottom: 14,
+  lineHeight: 18,
+};
+
+const errorText = {
+  fontFamily: 'Outfit_500Medium',
+  fontSize: 12,
+  color: colors.coral600 ?? '#E05252',
+  marginBottom: 8,
+};
+
+const sectionStyles = StyleSheet.create({
+  courseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+    marginBottom: 6,
+    backgroundColor: '#fff',
+  },
+  courseRowSelected: {
+    borderColor: colors.purple400,
+    backgroundColor: colors.purple50,
+  },
+  courseRowText: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 13,
+    color: colors.neutral800,
+  },
+  courseRowTextSelected: {
+    color: colors.purple800,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.neutral300,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  radioSelected: {
+    borderColor: colors.purple400,
+    backgroundColor: colors.purple400,
+  },
+  radioDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+});
 
 // ─── Drawer ───────────────────────────────────────────────────────────────────
 
@@ -59,7 +446,7 @@ function DrawerItem({ icon, label, sublabel, primary, subdued, onPress }) {
   );
 }
 
-function Drawer({ visible, onClose, teacher, navigation, onSignOut }) {
+function Drawer({ visible, onClose, teacher, navigation, onSignOut, onCreateCourse, onCreateSection }) {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(DRAWER_W)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -124,14 +511,14 @@ function Drawer({ visible, onClose, teacher, navigation, onSignOut }) {
             label="Create course"
             sublabel="New course template for your sections"
             primary
-            onPress={() => close(() => navigation.navigate('CreateCourse'))}
+            onPress={() => close(onCreateCourse)}
           />
           <DrawerItem
             icon="add-circle-outline"
             label="Create section"
             sublabel="Add a section and get a student join code"
             primary
-            onPress={() => close(() => navigation.navigate('CreateSection'))}
+            onPress={() => close(onCreateSection)}
           />
           <DrawerItem
             icon="download-outline"
@@ -237,6 +624,7 @@ export default function TeacherHomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sheet, setSheet] = useState(null); // 'createCourse' | 'createSection' | null
 
   const load = useCallback(async () => {
     try {
@@ -368,6 +756,31 @@ export default function TeacherHomeScreen({ navigation }) {
         teacher={user}
         navigation={navigation}
         onSignOut={logout}
+        onCreateCourse={() => setSheet('createCourse')}
+        onCreateSection={() => setSheet('createSection')}
+      />
+
+      <CreateCourseSheet
+        visible={sheet === 'createCourse'}
+        onClose={() => setSheet(null)}
+        token={token}
+        onCreated={(newCourse) => {
+          setCourses(prev => [...prev, newCourse]);
+          setClassMap(prev => ({ ...prev, [newCourse.id]: [] }));
+        }}
+      />
+
+      <CreateSectionSheet
+        visible={sheet === 'createSection'}
+        onClose={() => setSheet(null)}
+        token={token}
+        courses={courses}
+        onCreated={(courseId, newSection) => {
+          setClassMap(prev => ({
+            ...prev,
+            [courseId]: [...(prev[courseId] ?? []), newSection],
+          }));
+        }}
       />
     </ScreenSurface>
   );
