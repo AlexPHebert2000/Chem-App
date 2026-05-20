@@ -665,18 +665,28 @@ export default function TeacherHomeScreen({ navigation }) {
       });
       if (!res.ok) throw new Error(`Export failed (${res.status})`);
       const csv = await res.text();
-
       const date = new Date().toISOString().slice(0, 10);
-      const path = `${FileSystem.cacheDirectory}student-report-${date}.csv`;
-      await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      const filename = `student-report-${date}.csv`;
 
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(path, {
-          mimeType: 'text/csv',
-          dialogTitle: 'Save student report',
-          UTI: 'public.comma-separated-values-text',
-        });
+      if (Platform.OS === 'web') {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const path = `${FileSystem.cacheDirectory}${filename}`;
+        await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(path, {
+            mimeType: 'text/csv',
+            dialogTitle: 'Save student report',
+            UTI: 'public.comma-separated-values-text',
+          });
+        }
       }
     } catch (e) {
       console.warn('Export error:', e.message);
