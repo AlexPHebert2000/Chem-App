@@ -51,7 +51,7 @@ export default function SectionScreen({ navigation, route }) {
   const progress = questions.length > 0 ? currentIndex / questions.length : 0;
 
   const optionState = (choice) => {
-    if (!checked) return selected?.id === choice.id ? 'selected' : 'idle';
+    if (!checked || !result) return selected?.id === choice.id ? 'selected' : 'idle';
     if (correctChoiceIds.includes(choice.id)) return 'correct';
     if (selected?.id === choice.id) return 'wrong';
     return 'muted';
