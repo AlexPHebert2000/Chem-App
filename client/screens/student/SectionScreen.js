@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { ScreenSurface, ShadowButton, ProgressBar } from '../../components/base';
@@ -12,16 +13,10 @@ import PeriodicTableOverlay from '../../components/PeriodicTableOverlay';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
-function maxScore(question) {
-  if (question.type === 'MULTIPLE_CHOICE' || question.type === 'DYNAMIC') return 1;
-  return new Set((question.choices ?? []).map(c => c.blankIndex)).size;
-}
-
 export default function SectionScreen({ navigation, route }) {
   const { token } = useAuth();
   const { sectionId } = route.params;
 
-  const [section, setSection] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -33,40 +28,29 @@ export default function SectionScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [sec, qs] = await Promise.all([
-          api.get(`/sections/${sectionId}`, token),
-          api.get(`/sections/${sectionId}/questions`, token),
-        ]);
-        setSection(sec);
-        setQuestions(qs ?? []);
-      } catch (e) {
-        console.warn('SectionScreen load error:', e.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    api.get(`/sections/${sectionId}/questions`, token)
+      .then(qs => setQuestions(qs ?? []))
+      .catch(e => console.warn('SectionScreen load error:', e.message))
+      .finally(() => setLoading(false));
   }, [sectionId, token]);
 
   const q = questions[currentIndex];
+  const mcChoices = q?.choices?.filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i) ?? [];
+  const correctChoice = mcChoices.find(c => c.isCorrect);
+  const xp = q ? (q.difficulty ?? 1) * 10 : 0;
+  const progress = questions.length > 0 ? currentIndex / questions.length : 0;
 
   const optionState = (choice) => {
     if (!checked) return selected?.id === choice.id ? 'selected' : 'idle';
-    const max = q ? maxScore(q) : 1;
-    const isCorrectChoice = choice.isCorrect;
-    const isSelectedChoice = selected?.id === choice.id;
-    if (isCorrectChoice) return 'correct';
-    if (isSelectedChoice && !isCorrectChoice) return 'wrong';
+    if (choice.isCorrect) return 'correct';
+    if (selected?.id === choice.id && !choice.isCorrect) return 'wrong';
     return 'muted';
   };
 
   const handleCheck = async () => {
     if (!selected || checked || !q) return;
     setChecked(true);
-    const isCorrect = selected.isCorrect;
-    setResult(isCorrect ? 'correct' : 'wrong');
-    // Submit attempt
+    setResult(selected.isCorrect ? 'correct' : 'wrong');
     try {
       await api.post(`/questions/${q.id}/attempts`, {
         sectionId,
@@ -99,6 +83,11 @@ export default function SectionScreen({ navigation, route }) {
     }
   };
 
+  const feedbackMessage = result === 'correct'
+    ? `+${xp} XP${q?.correctExplanation ? ` — ${q.correctExplanation}` : ''}`
+    : correctChoice ? `Correct answer: ${correctChoice.content}` : null;
+
+  // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <ScreenSurface style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -107,10 +96,11 @@ export default function SectionScreen({ navigation, route }) {
     );
   }
 
+  // ── Done ─────────────────────────────────────────────────────────────────────
   if (done) {
     return (
       <ScreenSurface>
-        <View style={styles.doneContainer}>
+        <View style={styles.centerContainer}>
           <Text style={styles.doneEmoji}>🎉</Text>
           <Text style={styles.doneTitle}>Section complete!</Text>
           <Text style={styles.doneXp}>+{xpGained} XP earned</Text>
@@ -125,10 +115,11 @@ export default function SectionScreen({ navigation, route }) {
     );
   }
 
+  // ── Empty ────────────────────────────────────────────────────────────────────
   if (!q) {
     return (
       <ScreenSurface>
-        <View style={styles.doneContainer}>
+        <View style={styles.centerContainer}>
           <Text style={styles.emptyText}>No questions in this section.</Text>
           <ShadowButton label="Go back" variant="ghost" onPress={() => navigation.goBack()} />
         </View>
@@ -136,22 +127,18 @@ export default function SectionScreen({ navigation, route }) {
     );
   }
 
-  const progress = questions.length > 0 ? currentIndex / questions.length : 0;
-  const mcChoices = q.choices?.filter((c, i, arr) =>
-    arr.findIndex(x => x.id === c.id) === i
-  ) ?? [];
-
+  // ── Question ─────────────────────────────────────────────────────────────────
   return (
     <ScreenSurface>
-      {/* Top bar */}
+      {/* Top bar: X + gradient progress bar */}
       <View style={styles.topBar}>
         <Pressable onPress={() => navigation.goBack()} style={styles.exitBtn}>
           <Ionicons name="close" size={18} color={colors.neutral900} />
         </Pressable>
         <ProgressBar
           progress={progress}
-          color={colors.purple400}
-          height={10}
+          gradientColors={[colors.purple400, colors.gold400]}
+          height={12}
           style={styles.progressBar}
         />
       </View>
@@ -160,36 +147,53 @@ export default function SectionScreen({ navigation, route }) {
         contentContainerStyle={[styles.scroll, result && { paddingBottom: 180 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* PT button */}
-        <Pressable style={styles.ptBtn} onPress={() => setPtOpen(true)}>
-          <Ionicons name="grid" size={14} color="#FFF" />
-          <Text style={styles.ptBtnText}>Periodic table</Text>
-        </Pressable>
-
-        <QuestionCard
-          questionNumber={currentIndex + 1}
-          totalQuestions={questions.length}
-          questionText={q.text}
-          xp={q.difficulty * 10}
-        >
-          <View style={{ gap: 10 }}>
-            {mcChoices.map((choice, ci) => (
-              <AnswerOption
-                key={choice.id}
-                label={String.fromCharCode(65 + ci)}
-                text={choice.text}
-                state={optionState(choice)}
-                onPress={() => !checked && setSelected(choice)}
-                disabled={checked}
-              />
-            ))}
+        {/* Meta row: Q N of M · XP pill */}
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>QUESTION {currentIndex + 1} OF {questions.length}</Text>
+          <Text style={styles.metaDot}>·</Text>
+          <View style={styles.xpPill}>
+            <Ionicons name="flash" size={10} color={colors.gold600} />
+            <Text style={styles.xpText}>+{xp} XP</Text>
           </View>
-        </QuestionCard>
+        </View>
 
+        {/* Question card — PT button lives inside */}
+        <QuestionCard
+          questionText={q.content}
+          footer={
+            <Pressable onPress={() => setPtOpen(true)} style={styles.ptBtnContainer}>
+              <LinearGradient
+                colors={[colors.blue400, colors.purple600]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.ptBtn}
+              >
+                <Ionicons name="grid" size={15} color="#FFF" />
+                <Text style={styles.ptBtnText}>Open periodic table</Text>
+              </LinearGradient>
+            </Pressable>
+          }
+        />
+
+        {/* Answer options — outside card */}
+        <View style={styles.optionsList}>
+          {mcChoices.map((choice, ci) => (
+            <AnswerOption
+              key={choice.id}
+              label={String.fromCharCode(65 + ci)}
+              text={choice.content}
+              state={optionState(choice)}
+              onPress={() => !checked && setSelected(choice)}
+              disabled={checked}
+            />
+          ))}
+        </View>
+
+        {/* Check answer button */}
         {!checked && (
           <ShadowButton
             label="Check answer"
-            variant="secondary"
+            variant="primary"
             onPress={handleCheck}
             disabled={!selected}
             style={styles.checkBtn}
@@ -199,10 +203,7 @@ export default function SectionScreen({ navigation, route }) {
 
       <FeedbackBar
         result={result}
-        xp={result === 'correct' ? q.difficulty * 10 : null}
-        message={result === 'wrong'
-          ? `Correct: ${mcChoices.find(c => c.isCorrect)?.text ?? '—'}`
-          : null}
+        message={feedbackMessage}
         onContinue={handleContinue}
       />
 
@@ -228,8 +229,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.neutral200,
+    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   progressBar: {
     flex: 1,
@@ -239,30 +242,67 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingBottom: 24,
   },
-  ptBtn: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.purple600,
+  },
+  metaLabel: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.purple600,
+  },
+  metaDot: {
+    color: colors.neutral400,
+    fontSize: 14,
+  },
+  xpPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.gold50,
+    borderWidth: 1.5,
+    borderColor: colors.gold200,
     borderRadius: radius.full,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  xpText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 10,
+    color: colors.gold800,
+  },
+  ptBtnContainer: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.full,
+    overflow: 'hidden',
     shadowColor: colors.purple800,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 3,
   },
+  ptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
   ptBtnText: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 13,
     color: '#FFF',
   },
-  checkBtn: {
-    marginTop: 6,
+  optionsList: {
+    gap: 10,
   },
-  doneContainer: {
+  checkBtn: {
+    marginTop: 4,
+  },
+  centerContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
