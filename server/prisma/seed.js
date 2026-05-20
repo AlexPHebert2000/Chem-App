@@ -73,6 +73,7 @@ async function clear() {
   if (courseIds.length) {
     await prisma.studentCourse.deleteMany({ where: { courseId: { in: courseIds } } });
   }
+  if (questionIds.length) await prisma.questionTag.deleteMany({ where: { questionIds: { hasSome: questionIds } } });
   if (questionIds.length) await prisma.choice.deleteMany({ where: { questionId: { in: questionIds } } });
   if (questionIds.length) await prisma.question.deleteMany({ where: { id: { in: questionIds } } });
   if (sectionIds.length) await prisma.section.deleteMany({ where: { id: { in: sectionIds } } });
@@ -407,6 +408,40 @@ async function seed() {
     where: { id: alkenes.id },
     data: { questionIds: [q8.id] },
   });
+
+  // ── Question Tags ──────────────────────────────────────────────────────────
+
+  const tagAtomicStructure = await prisma.questionTag.create({
+    data: { name: 'Atomic Structure', color: 'purple', questionIds: [q1.id, q2.id, q3.id] },
+  });
+  const tagElectronConfig = await prisma.questionTag.create({
+    data: { name: 'Electron Configuration', color: 'teal', questionIds: [q4.id, q5.id] },
+  });
+  const tagMemorization = await prisma.questionTag.create({
+    data: { name: 'Memorization', color: 'gold', questionIds: [q1.id, q3.id, q4.id, q6.id] },
+  });
+  const tagConcept = await prisma.questionTag.create({
+    data: { name: 'Concept', color: 'coral', questionIds: [q2.id, q5.id, q7.id, q8.id] },
+  });
+  const tagHydrocarbons = await prisma.questionTag.create({
+    data: { name: 'Hydrocarbons', color: 'purple', questionIds: [q6.id, q7.id, q8.id] },
+  });
+  const tagAlkanes = await prisma.questionTag.create({
+    data: { name: 'Alkanes', color: 'teal', questionIds: [q6.id, q7.id] },
+  });
+  const tagAlkenes = await prisma.questionTag.create({
+    data: { name: 'Alkenes', color: 'gold', questionIds: [q8.id] },
+  });
+
+  // Update each question's tagIds (MongoDB M2M — both sides must be maintained)
+  await prisma.question.update({ where: { id: q1.id }, data: { tagIds: [tagAtomicStructure.id, tagMemorization.id] } });
+  await prisma.question.update({ where: { id: q2.id }, data: { tagIds: [tagAtomicStructure.id, tagConcept.id] } });
+  await prisma.question.update({ where: { id: q3.id }, data: { tagIds: [tagAtomicStructure.id, tagMemorization.id] } });
+  await prisma.question.update({ where: { id: q4.id }, data: { tagIds: [tagElectronConfig.id, tagMemorization.id] } });
+  await prisma.question.update({ where: { id: q5.id }, data: { tagIds: [tagElectronConfig.id, tagConcept.id] } });
+  await prisma.question.update({ where: { id: q6.id }, data: { tagIds: [tagMemorization.id, tagHydrocarbons.id, tagAlkanes.id] } });
+  await prisma.question.update({ where: { id: q7.id }, data: { tagIds: [tagConcept.id, tagHydrocarbons.id, tagAlkanes.id] } });
+  await prisma.question.update({ where: { id: q8.id }, data: { tagIds: [tagConcept.id, tagHydrocarbons.id, tagAlkenes.id] } });
 
   // ── Enrollments ────────────────────────────────────────────────────────────
   // Alice: active | Diana: just enrolled, no activity (exercises blank-stats path)
