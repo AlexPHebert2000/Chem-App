@@ -186,11 +186,20 @@ async function createCourseClass(req, res) {
   if (!course) return res.status(404).json({ error: 'Course not found' });
   if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
 
+  let classCode;
+  for (let i = 0; i < 10; i++) {
+    const candidate = generateCode();
+    const existing = await prisma.courseClass.findUnique({ where: { code: candidate } });
+    if (!existing) { classCode = candidate; break; }
+  }
+  if (!classCode) return res.status(500).json({ error: 'Could not generate unique class code' });
+
   const courseClass = await prisma.courseClass.create({
     data: {
       courseId,
       sectionNumber: sectionNumber.trim(),
       meetingTimes: meetingTimes.trim(),
+      code: classCode,
       archiveDate: archiveDate ? new Date(archiveDate) : null,
     },
   });
@@ -226,6 +235,7 @@ async function getCourseClasses(req, res) {
     courseId: c.courseId,
     sectionNumber: c.sectionNumber,
     meetingTimes: c.meetingTimes,
+    code: c.code,
     archiveDate: c.archiveDate,
     enrollmentCount: c._count.enrollments,
     activeToday: activeTodayCounts[i],

@@ -180,6 +180,7 @@ model CourseClass {
   courseId      String             @db.ObjectId
   sectionNumber String
   meetingTimes  String
+  code          String             @unique
   archiveDate   DateTime?
   course        Course             @relation(fields: [courseId], references: [id])
   enrollments   StudentEnrollment[]
