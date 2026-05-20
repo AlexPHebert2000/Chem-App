@@ -59,14 +59,9 @@ function CourseCard({ course, sectionCount, accentIndex, onPress }) {
       <View style={[styles.stripe, { backgroundColor: a.stripe }]} />
       <View style={styles.courseBody}>
         <Text style={styles.courseTitle} numberOfLines={1}>{course.name}</Text>
-        <View style={styles.courseFooter}>
-          <View style={styles.codeChip}>
-            <Text style={styles.codeText}>{course.code}</Text>
-          </View>
-          <Text style={styles.sectionCount}>
-            {sectionCount} {sectionCount === 1 ? 'section' : 'sections'}
-          </Text>
-        </View>
+        <Text style={styles.sectionCount}>
+          {sectionCount} {sectionCount === 1 ? 'section' : 'sections'}
+        </Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={colors.neutral200} style={{ alignSelf: 'center', marginRight: 14 }} />
     </Pressable>
@@ -379,25 +374,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 16,
     color: colors.purple800,
-  },
-  courseFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  codeChip: {
-    backgroundColor: colors.gold100,
-    borderWidth: 1.5,
-    borderColor: colors.gold400,
-    borderRadius: radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  codeText: {
-    fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 11,
-    color: colors.gold800,
-    letterSpacing: 0.5,
   },
   sectionCount: {
     fontFamily: 'Outfit_500Medium',
