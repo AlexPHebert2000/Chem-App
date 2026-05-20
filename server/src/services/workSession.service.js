@@ -12,7 +12,13 @@ async function getOrCreateWorkSession(studentId, courseId, courseClassId = null)
     const lastActivity = existing.lastActivityAt ?? existing.startedAt;
     const inactive = Date.now() - new Date(lastActivity).getTime() > INACTIVITY_LIMIT_MS;
 
-    if (!inactive) return { session: existing, isNew: false };
+    if (!inactive) {
+      if (courseClassId && !existing.courseClassId) {
+        await prisma.session.update({ where: { id: existing.id }, data: { courseClassId } });
+        existing.courseClassId = courseClassId;
+      }
+      return { session: existing, isNew: false };
+    }
 
     await prisma.session.update({
       where: { id: existing.id },
