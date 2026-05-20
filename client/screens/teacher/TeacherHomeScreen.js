@@ -120,11 +120,18 @@ function Drawer({ visible, onClose, teacher, navigation, onSignOut }) {
         {/* Items */}
         <View style={styles.drawerBody}>
           <DrawerItem
-            icon="add-circle"
-            label="Create class"
-            sublabel="Set up a new class and get a join code"
+            icon="school-outline"
+            label="Create course"
+            sublabel="New course template for your sections"
             primary
-            onPress={() => close(() => navigation.navigate('CreateClass'))}
+            onPress={() => close(() => navigation.navigate('CreateCourse'))}
+          />
+          <DrawerItem
+            icon="add-circle-outline"
+            label="Create section"
+            sublabel="Add a section and get a student join code"
+            primary
+            onPress={() => close(() => navigation.navigate('CreateSection'))}
           />
           <DrawerItem
             icon="download-outline"
