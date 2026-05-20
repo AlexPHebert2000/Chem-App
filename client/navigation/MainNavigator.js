@@ -12,7 +12,7 @@ import SettingsScreen from '../screens/student/SettingsScreen';
 
 // Teacher screens
 import TeacherHomeScreen from '../screens/teacher/TeacherHomeScreen';
-import ClassDetailScreen from '../screens/teacher/ClassDetailScreen';
+import CourseDetailScreen from '../screens/teacher/CourseDetailScreen';
 import ChapterDetailScreen from '../screens/teacher/ChapterDetailScreen';
 import QuestionBankScreen from '../screens/teacher/QuestionBankScreen';
 import QuestionEditorScreen from '../screens/teacher/QuestionEditorScreen';
@@ -54,7 +54,7 @@ export default function MainNavigator() {
       {user?.role === 'TEACHER' ? (
         <>
           <Stack.Screen name="TeacherTabs"   component={TeacherTabNavigator} />
-          <Stack.Screen name="ClassDetail"   component={ClassDetailScreen} />
+          <Stack.Screen name="CourseDetail"   component={CourseDetailScreen} />
           <Stack.Screen name="ChapterDetail" component={ChapterDetailScreen} />
           <Stack.Screen name="QuestionEditor" component={QuestionEditorScreen} />
         </>

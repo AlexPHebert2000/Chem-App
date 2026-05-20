@@ -79,11 +79,27 @@ function buildChoices(type, choices) {
 async function getTeacherQuestions(req, res) {
   const teacherId = req.user.sub;
 
-  const questions = await prisma.question.findMany({
-    where: { teacherId },
-    include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
+  const [questions, courses] = await Promise.all([
+    prisma.question.findMany({
+      where: { teacherId },
+      include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
+    }),
+    prisma.course.findMany({ where: { teacherId }, select: { id: true } }),
+  ]);
+
+  const chapters = await prisma.chapter.findMany({
+    where: { courseId: { in: courses.map(c => c.id) } },
+    select: { id: true },
   });
-  res.json(questions);
+  const sections = await prisma.section.findMany({
+    where: { chapterId: { in: chapters.map(c => c.id) } },
+    select: { questionIds: true },
+  });
+
+  const usageMap = {};
+  sections.forEach(sec => (sec.questionIds ?? []).forEach(qId => { usageMap[qId] = (usageMap[qId] ?? 0) + 1; }));
+
+  res.json(questions.map(q => ({ ...q, usedIn: usageMap[q.id] ?? 0 })));
 }
 
 async function getOneQuestion(req, res) {

@@ -18,7 +18,7 @@ export default function QuestionBankItem({ question, onPress }) {
   return (
     <Pressable onPress={() => onPress?.(question)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <View style={styles.body}>
-        <Text style={styles.preview} numberOfLines={2}>{question.text}</Text>
+        <Text style={styles.preview} numberOfLines={2}>{question.content}</Text>
         <View style={styles.chips}>
           <Chip label={typeLabel} color="purple" />
           <Chip label={`Difficulty ${question.difficulty}`} color={diffColor} />

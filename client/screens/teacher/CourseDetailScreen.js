@@ -76,15 +76,16 @@ const ss = StyleSheet.create({
 
 // ─── Option row (inside options sheet) ───────────────────────────────────────
 
-function OptionRow({ icon, label, sub, onPress, primary, subdued }) {
+function OptionRow({ icon, label, sub, onPress, primary, subdued, disabled }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? null : onPress}
       style={({ pressed }) => [
         oStyles.row,
         primary && oStyles.rowPrimary,
         subdued && oStyles.rowSubdued,
-        pressed && oStyles.rowPressed,
+        disabled && oStyles.rowDisabled,
+        !disabled && pressed && oStyles.rowPressed,
       ]}
     >
       <View style={[oStyles.iconBox, primary && oStyles.iconPrimary, subdued && oStyles.iconSubdued]}>
@@ -115,6 +116,7 @@ const oStyles = StyleSheet.create({
     shadowColor: colors.purple400, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 0, elevation: 2 },
   rowSubdued: { borderColor: colors.neutral200 },
   rowPressed: { opacity: 0.8 },
+  rowDisabled: { opacity: 0.4 },
   iconBox: {
     width: 36, height: 36, borderRadius: radius.sm,
     backgroundColor: colors.purple50, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -282,7 +284,7 @@ const cStyles = StyleSheet.create({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export default function ClassDetailScreen({ navigation, route }) {
+export default function CourseDetailScreen({ navigation, route }) {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
   const {
@@ -322,7 +324,7 @@ export default function ClassDetailScreen({ navigation, route }) {
         setTotalEnrolled(statsData.total ?? enrollmentCount ?? 0);
       }
     } catch (e) {
-      console.warn('ClassDetailScreen load error:', e.message);
+      console.warn('CourseDetailScreen load error:', e.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -473,6 +475,10 @@ export default function ClassDetailScreen({ navigation, route }) {
                     courseId,
                     courseClassId,
                     mode,
+                    courseName,
+                    code,
+                    chapterOrderIndex: i,
+                    totalEnrolled,
                   })}
                 />
               ))}
@@ -504,6 +510,7 @@ export default function ClassDetailScreen({ navigation, route }) {
               label="Export class report"
               sub="CSV of student progress"
               onPress={exportReport}
+              disabled
             />
             <OptionRow
               icon="archive-outline"

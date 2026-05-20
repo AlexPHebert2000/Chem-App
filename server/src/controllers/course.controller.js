@@ -362,4 +362,87 @@ async function getClassChapterStats(req, res) {
   res.json({ total, chapters: chapterStats });
 }
 
-module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, getClassChapterStats };
+async function getChapterClassStats(req, res) {
+  const { courseId, classId, chapterId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const courseClass = await prisma.courseClass.findUnique({ where: { id: classId } });
+  if (!courseClass || courseClass.courseId !== courseId) return res.status(404).json({ error: 'Class not found' });
+
+  const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } });
+  if (!chapter || chapter.courseId !== courseId) return res.status(404).json({ error: 'Chapter not found' });
+
+  const enrollments = await prisma.studentEnrollment.findMany({
+    where: { courseClassId: classId },
+    select: { studentId: true },
+  });
+  const studentIds = enrollments.map(e => e.studentId);
+  const total = studentIds.length;
+
+  const sectionList = await prisma.section.findMany({
+    where: { chapterId },
+    orderBy: { orderIndex: 'asc' },
+    select: { id: true, questionIds: true },
+  });
+
+  if (!studentIds.length) {
+    return res.json({
+      total: 0,
+      sections: sectionList.map(sec => ({
+        sectionId: sec.id,
+        completedCount: 0,
+        avgScore: null,
+        questions: (sec.questionIds ?? []).map(qId => ({ questionId: qId, answeredCount: 0, accuracy: null })),
+      })),
+    });
+  }
+
+  const sections = await Promise.all(sectionList.map(async sec => {
+    const completedCount = await prisma.studentSection.count({
+      where: { sectionId: sec.id, studentId: { in: studentIds }, completedAt: { not: null } },
+    });
+
+    const agg = await prisma.sectionAttempt.aggregate({
+      where: { sectionId: sec.id, studentId: { in: studentIds } },
+      _avg: { score: true },
+      _count: { id: true },
+    });
+    const avgScore = agg._count.id > 0 ? Math.round(agg._avg.score ?? 0) : null;
+
+    const questionIds = sec.questionIds ?? [];
+    let questions = [];
+    if (questionIds.length > 0) {
+      const [distinctRows, avgRows] = await Promise.all([
+        prisma.questionAttempt.groupBy({
+          by: ['questionId', 'studentId'],
+          where: { questionId: { in: questionIds }, studentId: { in: studentIds } },
+        }),
+        prisma.questionAttempt.groupBy({
+          by: ['questionId'],
+          where: { questionId: { in: questionIds }, studentId: { in: studentIds } },
+          _avg: { score: true },
+        }),
+      ]);
+
+      const answeredCountMap = {};
+      distinctRows.forEach(r => { answeredCountMap[r.questionId] = (answeredCountMap[r.questionId] ?? 0) + 1; });
+      const accuracyMap = {};
+      avgRows.forEach(r => { accuracyMap[r.questionId] = Math.round((r._avg.score ?? 0) * 100); });
+
+      questions = questionIds.map(qId => ({
+        questionId: qId,
+        answeredCount: answeredCountMap[qId] ?? 0,
+        accuracy: accuracyMap[qId] != null ? accuracyMap[qId] : null,
+      }));
+    }
+
+    return { sectionId: sec.id, completedCount, avgScore, questions };
+  }));
+
+  res.json({ total, sections });
+}
+
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, getClassChapterStats, getChapterClassStats };
