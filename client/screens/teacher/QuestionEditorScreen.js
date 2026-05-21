@@ -386,7 +386,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
       if (isEdit) {
         await api.patch(`/questions/${questionId}`, body, token);
       } else {
-        await api.post(`/courses/${courseId}/questions`, body, token);
+        await api.post('/questions', body, token);
       }
       navigation.goBack();
     } catch (e) {
