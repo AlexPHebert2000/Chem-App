@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Modal, Animated,
-  StatusBar, Switch,
+  Switch, TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Ellipse } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { colors } from '../../theme';
+import { ScreenSurface } from '../../components/base';
 
 // ─── Toggle ──────────────────────────────────────────────────────────────────
 function Toggle({ value, onChange }) {
@@ -119,24 +120,32 @@ function Toast({ text }) {
 
 // ─── SettingsScreen ───────────────────────────────────────────────────────────
 export default function SettingsScreen({ navigation }) {
-  const { token, logout } = useAuth();
+  const { token, logout, user, updateUser } = useAuth();
+  const isStudent = user?.role === 'STUDENT';
 
   // account state (loaded from API)
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName]         = useState('');
+  const [email, setEmail]       = useState('');
   const [className, setClassName] = useState('');
 
-  // learning
-  const [weeklyGoal, setWeeklyGoal] = useState(60);
+  // learning (student only)
+  const [weeklyGoal, setWeeklyGoal]     = useState(60);
   const [originalGoal, setOriginalGoal] = useState(60);
 
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme]       = useState('light');
   const [textSize, setTextSize] = useState('regular');
 
-  // UI state
+  // modal state
+  const [editModal, setEditModal] = useState(null); // null | 'name' | 'password'
+  const [newName, setNewName]             = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword]     = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingModal, setSavingModal]     = useState(false);
+
+  // logout & toast
   const [showLogout, setShowLogout] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [toast, setToast]           = useState(null);
   const toastTimer = useRef(null);
 
   const showToast = useCallback((text) => {
@@ -147,57 +156,100 @@ export default function SettingsScreen({ navigation }) {
 
   const load = useCallback(async () => {
     try {
-      const me = await api.get('/students/me', token);
-      setName(me.name ?? '');
-      setEmail(me.email ?? '');
-      const enr = me.enrollments?.[0];
-      if (enr) {
-        const sec = enr.courseClass?.sectionNumber;
-        setClassName(sec ? `Section ${sec}` : '');
+      if (isStudent) {
+        const me = await api.get('/students/me', token);
+        setName(me.name ?? '');
+        setEmail(me.email ?? '');
+        const enr = me.enrollments?.[0];
+        if (enr) {
+          const sec = enr.courseClass?.sectionNumber;
+          setClassName(sec ? `Section ${sec}` : '');
+        }
+        const goal = me.weeklyMinuteGoal ?? 60;
+        setWeeklyGoal(goal);
+        setOriginalGoal(goal);
+      } else {
+        const me = await api.get('/auth/me', token);
+        setName(me.name ?? '');
+        setEmail(me.email ?? '');
       }
-      const goal = me.weeklyMinuteGoal ?? 60;
-      setWeeklyGoal(goal);
-      setOriginalGoal(goal);
     } catch (e) {
       console.warn('SettingsScreen load error:', e.message);
     }
-  }, [token]);
+  }, [token, isStudent]);
 
   useEffect(() => { load(); }, [load]);
 
   const saveGoal = useCallback(async (val) => {
     if (val === originalGoal) return;
-    setSaving(true);
     try {
       await api.patch('/students/me/goal', { weeklyMinuteGoal: val }, token);
       setOriginalGoal(val);
       showToast('Weekly goal saved');
-    } catch (e) {
+    } catch {
       showToast('Could not save goal');
-    } finally {
-      setSaving(false);
     }
   }, [originalGoal, token, showToast]);
 
-  const handleGoalChange = (val) => {
-    setWeeklyGoal(val);
+  // ── Name edit ──────────────────────────────────────────────────────────────
+  const openNameModal = () => {
+    setNewName(name);
+    setEditModal('name');
   };
 
-  const handleGoalBlur = () => {
-    saveGoal(weeklyGoal);
+  const handleSaveName = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) { Alert.alert('Error', 'Name cannot be blank.'); return; }
+    setSavingModal(true);
+    try {
+      const updated = await api.patch('/auth/me', { name: trimmed }, token);
+      setName(updated.name);
+      updateUser({ name: updated.name });
+      setEditModal(null);
+      showToast('Name updated');
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'Could not update name.');
+    } finally {
+      setSavingModal(false);
+    }
+  };
+
+  // ── Password change ────────────────────────────────────────────────────────
+  const openPasswordModal = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setEditModal('password');
+  };
+
+  const handleSavePassword = async () => {
+    if (!currentPassword) { Alert.alert('Error', 'Enter your current password.'); return; }
+    if (newPassword.length < 8) { Alert.alert('Error', 'New password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { Alert.alert('Error', 'New passwords do not match.'); return; }
+    setSavingModal(true);
+    try {
+      await api.patch('/auth/me', { currentPassword, newPassword }, token);
+      setEditModal(null);
+      showToast('Password changed');
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'Could not change password.');
+    } finally {
+      setSavingModal(false);
+    }
+  };
+
+  const closeModal = () => {
+    if (!savingModal) setEditModal(null);
   };
 
   const inits = name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.purple800}/>
-      <View style={styles.statusBarFill}/>
-
+    <ScreenSurface>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scroll}
-        onScrollEndDrag={() => saveGoal(weeklyGoal)}
+        onScrollEndDrag={() => isStudent && saveGoal(weeklyGoal)}
       >
         {/* ── Hero Header ── */}
         <LinearGradient
@@ -232,9 +284,6 @@ export default function SettingsScreen({ navigation }) {
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{inits}</Text>
             </View>
-            <View style={styles.editBadge}>
-              <Text style={{ fontSize: 10, color: '#fff' }}>✎</Text>
-            </View>
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.profileName} numberOfLines={1}>{name || '—'}</Text>
@@ -253,11 +302,10 @@ export default function SettingsScreen({ navigation }) {
           {/* ACCOUNT */}
           <SettingsCard title="Account" accent={colors.purple600}>
             <Row emoji="👤" iconBg={colors.purple50} label="Display name" sublabel={name}
-              onPress={() => showToast('Coming soon')}/>
-            <Row emoji="✉️" iconBg={colors.purple50} label="Email" sublabel={email}
-              onPress={() => showToast('Coming soon')}/>
+              onPress={openNameModal}/>
+            <Row emoji="✉️" iconBg={colors.purple50} label="Email" sublabel={email}/>
             <Row emoji="🔑" iconBg={colors.purple50} label="Change password"
-              onPress={() => showToast('Coming soon')} last/>
+              onPress={openPasswordModal} last/>
           </SettingsCard>
 
           {/* NOTIFICATIONS */}
@@ -270,29 +318,30 @@ export default function SettingsScreen({ navigation }) {
               right={<Toggle value={false} onChange={() => {}}/>} disabled last/>
           </SettingsCard>
 
-          {/* LEARNING */}
-          <SettingsCard title="Learning" accent={colors.teal600}>
-            {/* Weekly goal stepper row */}
-            <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.neutral100 }]}>
-              <View style={[styles.rowIcon, { backgroundColor: colors.teal50 }]}>
-                <Text style={styles.rowIconEmoji}>🎯</Text>
+          {/* LEARNING — students only */}
+          {isStudent && (
+            <SettingsCard title="Learning" accent={colors.teal600}>
+              <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.neutral100 }]}>
+                <View style={[styles.rowIcon, { backgroundColor: colors.teal50 }]}>
+                  <Text style={styles.rowIconEmoji}>🎯</Text>
+                </View>
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowLabel}>Weekly goal</Text>
+                  <Text style={styles.rowSublabel}>Minutes of study per week</Text>
+                </View>
+                <GoalStepper
+                  value={weeklyGoal}
+                  onChange={(val) => { setWeeklyGoal(val); saveGoal(val); }}
+                />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowLabel}>Weekly goal</Text>
-                <Text style={styles.rowSublabel}>Minutes of study per week</Text>
-              </View>
-              <GoalStepper
-                value={weeklyGoal}
-                onChange={(val) => { handleGoalChange(val); saveGoal(val); }}
-              />
-            </View>
-            <Row emoji="⚡" iconBg={colors.teal50} label="Sound effects"
-              sublabel="XP chimes, correct answer sounds"
-              right={<Toggle value={false} onChange={() => {}}/>} disabled/>
-            <Row emoji="🔥" iconBg={colors.teal50} label="Haptic feedback"
-              sublabel="Vibrations on taps and streaks"
-              right={<Toggle value={false} onChange={() => {}}/>} disabled last/>
-          </SettingsCard>
+              <Row emoji="⚡" iconBg={colors.teal50} label="Sound effects"
+                sublabel="XP chimes, correct answer sounds"
+                right={<Toggle value={false} onChange={() => {}}/>} disabled/>
+              <Row emoji="🔥" iconBg={colors.teal50} label="Haptic feedback"
+                sublabel="Vibrations on taps and streaks"
+                right={<Toggle value={false} onChange={() => {}}/>} disabled last/>
+            </SettingsCard>
+          )}
 
           {/* APPEARANCE */}
           <SettingsCard title="Appearance" accent={colors.coral600}>
@@ -351,6 +400,90 @@ export default function SettingsScreen({ navigation }) {
         </View>
       </ScrollView>
 
+      {/* ── Edit name modal ── */}
+      <Modal visible={editModal === 'name'} transparent animationType="fade" onRequestClose={closeModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={styles.sheetOverlay} onPress={closeModal}>
+            <Pressable style={styles.sheet} onPress={() => {}}>
+              <View style={styles.sheetHandle}/>
+              <View style={styles.sheetIcon}>
+                <Text style={{ fontSize: 26 }}>👤</Text>
+              </View>
+              <Text style={styles.sheetTitle}>Display name</Text>
+              <Text style={styles.sheetBody}>This is how your name appears to teachers and classmates.</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="Your name"
+                placeholderTextColor={colors.neutral400}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleSaveName}
+              />
+              <Pressable style={[styles.sheetConfirmBtn, savingModal && { opacity: 0.6 }]}
+                onPress={handleSaveName} disabled={savingModal}>
+                <Text style={styles.sheetConfirmText}>{savingModal ? 'Saving…' : 'Save name'}</Text>
+              </Pressable>
+              <Pressable style={styles.sheetCancelBtn} onPress={closeModal} disabled={savingModal}>
+                <Text style={styles.sheetCancelText}>Cancel</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Change password modal ── */}
+      <Modal visible={editModal === 'password'} transparent animationType="fade" onRequestClose={closeModal}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={styles.sheetOverlay} onPress={closeModal}>
+            <Pressable style={styles.sheet} onPress={() => {}}>
+              <View style={styles.sheetHandle}/>
+              <View style={styles.sheetIcon}>
+                <Text style={{ fontSize: 26 }}>🔑</Text>
+              </View>
+              <Text style={styles.sheetTitle}>Change password</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Current password"
+                placeholderTextColor={colors.neutral400}
+                secureTextEntry
+                autoFocus
+                returnKeyType="next"
+              />
+              <TextInput
+                style={[styles.modalInput, { marginTop: 8 }]}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="New password (min 8 characters)"
+                placeholderTextColor={colors.neutral400}
+                secureTextEntry
+                returnKeyType="next"
+              />
+              <TextInput
+                style={[styles.modalInput, { marginTop: 8 }]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm new password"
+                placeholderTextColor={colors.neutral400}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleSavePassword}
+              />
+              <Pressable style={[styles.sheetConfirmBtn, savingModal && { opacity: 0.6 }]}
+                onPress={handleSavePassword} disabled={savingModal}>
+                <Text style={styles.sheetConfirmText}>{savingModal ? 'Saving…' : 'Change password'}</Text>
+              </Pressable>
+              <Pressable style={styles.sheetCancelBtn} onPress={closeModal} disabled={savingModal}>
+                <Text style={styles.sheetCancelText}>Cancel</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* ── Sign-out confirmation sheet ── */}
       <Modal
         visible={showLogout}
@@ -380,13 +513,11 @@ export default function SettingsScreen({ navigation }) {
 
       {/* ── Toast ── */}
       {toast ? <Toast text={toast}/> : null}
-    </View>
+    </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.neutral50 },
-  statusBarFill: { height: 50, backgroundColor: colors.purple800 },
   scroll: { paddingBottom: 40 },
 
   // Hero
@@ -469,24 +600,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#fff',
   },
-  editBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.purple600,
-    borderWidth: 2.5,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.purple800,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 0,
-    elevation: 2,
-  },
   profileName: {
     fontFamily: 'Nunito_900Black',
     fontSize: 17,
@@ -558,10 +671,10 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
     paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral100,
   },
-  rowLast: {
-    borderBottomWidth: 0,
-  },
+  rowLast: { borderBottomWidth: 0 },
   rowIcon: {
     width: 34,
     height: 34,
@@ -699,9 +812,7 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: colors.neutral600,
   },
-  segItemTextOn: {
-    color: colors.purple800,
-  },
+  segItemTextOn: { color: colors.purple800 },
 
   // Sign out button
   signOutBtn: {
@@ -731,6 +842,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.neutral400,
     marginTop: -8,
+  },
+
+  // Modal input
+  modalInput: {
+    width: '100%',
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+    borderRadius: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 15,
+    color: colors.neutral900,
+    backgroundColor: colors.neutral50,
+    marginBottom: 4,
   },
 
   // Sheet / Modal
@@ -764,9 +890,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.coral50,
+    backgroundColor: colors.purple50,
     borderWidth: 2,
-    borderColor: colors.coral400,
+    borderColor: colors.purple100,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -783,16 +909,17 @@ const styles = StyleSheet.create({
     color: colors.neutral600,
     textAlign: 'center',
     lineHeight: 19,
-    marginBottom: 18,
+    marginBottom: 14,
   },
   sheetConfirmBtn: {
     width: '100%',
-    backgroundColor: colors.coral400,
+    backgroundColor: colors.purple600,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
+    marginTop: 10,
     marginBottom: 8,
-    shadowColor: colors.coral600,
+    shadowColor: colors.purple800,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,

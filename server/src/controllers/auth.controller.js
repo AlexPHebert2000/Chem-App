@@ -106,4 +106,39 @@ async function me(req, res) {
   res.json({ ...user, role });
 }
 
-module.exports = { signup, login, refresh, logout, me };
+async function changeProfile(req, res) {
+  const { sub: id, role } = req.user;
+  const { name, currentPassword, newPassword } = req.body;
+
+  if (name === undefined && newPassword === undefined) {
+    return res.status(400).json({ error: 'Provide name or newPassword to update' });
+  }
+
+  const model = getModel(role);
+  if (!model) return res.status(400).json({ error: 'Invalid role' });
+
+  const data = {};
+
+  if (name !== undefined) {
+    if (!name || !name.trim()) return res.status(400).json({ error: 'name cannot be blank' });
+    data.name = name.trim();
+  }
+
+  if (newPassword !== undefined) {
+    if (!currentPassword) return res.status(400).json({ error: 'currentPassword is required to change password' });
+    if (newPassword.length < 8) return res.status(400).json({ error: 'newPassword must be at least 8 characters' });
+
+    const user = await model.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = await bcrypt.compare(currentPassword, user.password);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    data.password = await bcrypt.hash(newPassword, 12);
+  }
+
+  const updated = await model.update({ where: { id }, data, omit: { password: true } });
+  res.json({ ...updated, role });
+}
+
+module.exports = { signup, login, refresh, logout, me, changeProfile };

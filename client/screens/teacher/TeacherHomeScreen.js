@@ -538,7 +538,7 @@ function Drawer({ visible, onClose, teacher, navigation, onSignOut, onCreateCour
             icon="settings-outline"
             label="Settings"
             sublabel="Profile, notifications, grading"
-            onPress={() => close()}
+            onPress={() => close(() => navigation.navigate('Settings'))}
           />
         </View>
 

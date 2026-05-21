@@ -9,6 +9,7 @@ import StudentClassScreen from '../screens/student/StudentClassScreen';
 import SectionScreen from '../screens/student/SectionScreen';
 import ProfileScreen from '../screens/student/ProfileScreen';
 import SettingsScreen from '../screens/student/SettingsScreen';
+// SettingsScreen is shared — used by both student and teacher stacks
 
 // Teacher screens
 import TeacherHomeScreen from '../screens/teacher/TeacherHomeScreen';
@@ -58,6 +59,7 @@ export default function MainNavigator() {
           <Stack.Screen name="ChapterDetail" component={ChapterDetailScreen} />
           <Stack.Screen name="QuestionEditor" component={QuestionEditorScreen} />
           <Stack.Screen name="QuestionBank"  component={QuestionBankScreen} />
+          <Stack.Screen name="Settings"      component={SettingsScreen} />
         </>
       ) : (
         <>

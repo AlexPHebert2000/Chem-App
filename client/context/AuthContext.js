@@ -89,8 +89,12 @@ export function AuthProvider({ children }) {
     }
   }
 
+  function updateUser(fields) {
+    setUser(prev => prev ? { ...prev, ...fields } : prev);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, sessionToken, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, sessionToken, isLoading, login, signup, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
