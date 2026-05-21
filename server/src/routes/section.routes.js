@@ -3,6 +3,7 @@ const { authenticate, requireRole } = require('../middleware/auth.middleware');
 const { getSectionQuestions, updateQuestion } = require('../controllers/question.controller');
 const { completeSection, addQuestionToSection, removeQuestionFromSection } = require('../controllers/section.controller');
 const { getStudentSectionQuestions } = require('../controllers/student.controller');
+const { exportSectionCsv } = require('../controllers/export.controller');
 
 const router = Router();
 
@@ -15,6 +16,7 @@ function byRole(teacherFn, studentFn) {
 }
 
 router.get('/:sectionId/questions',                        authenticate, byRole(getSectionQuestions, getStudentSectionQuestions));
+router.get('/:sectionId/export',                           authenticate, requireRole('TEACHER'), exportSectionCsv);
 router.post('/:sectionId/questions/:questionId',           authenticate, requireRole('TEACHER'), addQuestionToSection);
 router.delete('/:sectionId/questions/:questionId',         authenticate, requireRole('TEACHER'), removeQuestionFromSection);
 router.patch('/:sectionId/questions/:questionId',          authenticate, requireRole('TEACHER'), updateQuestion);

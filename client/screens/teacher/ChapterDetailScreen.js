@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Modal, Animated,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import { doExport } from '../../lib/exportCsv';
 import { colors, radius } from '../../theme';
 
 // ─── Sheet ─────────────────────────────────────────────────────────────────────
@@ -266,7 +267,7 @@ const qr = StyleSheet.create({
 
 // ─── SectionCard ───────────────────────────────────────────────────────────────
 
-function SectionCard({ section, orderIndex, expanded, onToggle, questions, loadingQ, stats, totalEnrolled, sectionMode, onAddFromBank }) {
+function SectionCard({ section, orderIndex, expanded, onToggle, questions, loadingQ, stats, totalEnrolled, sectionMode, onAddFromBank, onExport, exportingThis }) {
   const qCount = section._count?.questions ?? 0;
   const chevronAnim = useRef(new Animated.Value(0)).current;
 
@@ -344,6 +345,15 @@ function SectionCard({ section, orderIndex, expanded, onToggle, questions, loadi
               <Text style={sc.addFromBankText}>ADD FROM BANK</Text>
             </Pressable>
           )}
+          {sectionMode && (
+            <Pressable
+              onPress={exportingThis ? null : onExport}
+              style={({ pressed }) => [sc.exportRow, exportingThis && { opacity: 0.5 }, !exportingThis && pressed && { opacity: 0.8 }]}
+            >
+              <Ionicons name="download-outline" size={12} color={colors.neutral600} />
+              <Text style={sc.exportRowText}>{exportingThis ? 'EXPORTING…' : 'EXPORT SECTION'}</Text>
+            </Pressable>
+          )}
         </View>
       )}
     </View>
@@ -392,6 +402,16 @@ const sc = StyleSheet.create({
   addFromBankText: {
     fontFamily: 'Nunito_800ExtraBold', fontSize: 11,
     color: colors.purple600, letterSpacing: 1,
+  },
+  exportRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 14,
+    borderTopWidth: 1, borderTopColor: colors.neutral200,
+    backgroundColor: colors.neutral50,
+  },
+  exportRowText: {
+    fontFamily: 'Nunito_800ExtraBold', fontSize: 11,
+    color: colors.neutral600, letterSpacing: 1,
   },
 });
 
@@ -473,6 +493,7 @@ export default function ChapterDetailScreen({ navigation, route }) {
   const [totalEnrolled, setTotalEnrolled] = useState(enrolledParam);
   const [loading, setLoading]       = useState(true);
   const [sheet, setSheet]           = useState(null); // 'options' | 'addSection' | null
+  const [exporting, setExporting]   = useState(null); // chapterId | sectionId | null
 
   const load = useCallback(async () => {
     try {
@@ -541,6 +562,37 @@ export default function ChapterDetailScreen({ navigation, route }) {
       console.warn('Add section error:', e.message);
     }
   }, [chapterId, token]);
+
+  const exportChapter = useCallback(async () => {
+    if (exporting) return;
+    setExporting('chapter');
+    setSheet(null);
+    try {
+      const qs = courseClassId ? `?courseClassId=${courseClassId}` : '';
+      const date = new Date().toISOString().slice(0, 10);
+      const safeName = (chapterName ?? 'chapter').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      await doExport(`/chapters/${chapterId}/export${qs}`, token, `chapter-${safeName}-${date}.csv`);
+    } catch (e) {
+      Alert.alert('Export failed', e.message ?? 'Could not export chapter report.');
+    } finally {
+      setExporting(null);
+    }
+  }, [exporting, chapterId, courseClassId, chapterName, token]);
+
+  const exportSection = useCallback(async (sectionId, sectionName) => {
+    if (exporting) return;
+    setExporting(sectionId);
+    try {
+      const qs = courseClassId ? `?courseClassId=${courseClassId}` : '';
+      const date = new Date().toISOString().slice(0, 10);
+      const safeName = (sectionName ?? 'section').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      await doExport(`/sections/${sectionId}/export${qs}`, token, `section-${safeName}-${date}.csv`);
+    } catch (e) {
+      Alert.alert('Export failed', e.message ?? 'Could not export section report.');
+    } finally {
+      setExporting(null);
+    }
+  }, [exporting, courseClassId, token]);
 
   const totalQuestions = sections.reduce((sum, s) => sum + (s._count?.questions ?? 0), 0);
   const chapterNum = chapterOrderIndex != null ? chapterOrderIndex + 1 : null;
@@ -615,6 +667,8 @@ export default function ChapterDetailScreen({ navigation, route }) {
                   courseId,
                   existingIds: (questionMap[sec.id] ?? []).map(q => q.id),
                 })}
+                onExport={() => exportSection(sec.id, sec.name)}
+                exportingThis={exporting === sec.id}
               />
             ))}
           </View>
@@ -651,10 +705,10 @@ export default function ChapterDetailScreen({ navigation, route }) {
           <>
             <OptionRow
               icon="download-outline"
-              label="Export chapter report"
+              label={exporting === 'chapter' ? 'Exporting…' : 'Export chapter report'}
               sub="Per-question stats by student"
-              onPress={() => setSheet(null)}
-              disabled
+              onPress={exportChapter}
+              disabled={!!exporting}
             />
             <OptionRow
               icon="archive-outline"

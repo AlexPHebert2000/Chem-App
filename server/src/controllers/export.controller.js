@@ -213,4 +213,240 @@ async function exportStudentsCsv(req, res) {
   res.send(csv);
 }
 
-module.exports = { exportStudentsCsv };
+async function exportChapterCsv(req, res) {
+  const teacherId = req.user.sub;
+  const { chapterId } = req.params;
+  const { courseClassId } = req.query;
+
+  const chapter = await prisma.chapter.findUnique({
+    where: { id: chapterId },
+    include: { course: { select: { teacherId: true, name: true } } },
+  });
+  if (!chapter || chapter.course.teacherId !== teacherId)
+    return res.status(404).json({ error: 'Not found' });
+
+  const sections = await prisma.section.findMany({
+    where: { chapterId },
+    orderBy: { orderIndex: 'asc' },
+    include: {
+      questions: { select: { id: true, content: true, type: true, choices: { select: { blankIndex: true } } } },
+    },
+  });
+  const sectionIds = sections.map(s => s.id);
+
+  const questionMaxScore = new Map();
+  const allQuestionIds = [];
+  for (const sec of sections) {
+    for (const q of sec.questions) {
+      if (!questionMaxScore.has(q.id)) {
+        const max = q.type === 'MULTIPLE_CHOICE' ? 1 : new Set(q.choices.map(c => c.blankIndex)).size || 1;
+        questionMaxScore.set(q.id, max);
+        allQuestionIds.push(q.id);
+      }
+    }
+  }
+
+  let students = [];
+  if (courseClassId) {
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { courseClassId },
+      include: { student: { select: { id: true, name: true, email: true } } },
+      orderBy: { student: { name: 'asc' } },
+    });
+    students = enrollments.map(e => e.student);
+  } else if (sectionIds.length > 0) {
+    const ss = await prisma.studentSection.findMany({
+      where: { sectionId: { in: sectionIds } },
+      include: { student: { select: { id: true, name: true, email: true } } },
+    });
+    const seen = new Set();
+    for (const s of ss) {
+      if (!seen.has(s.studentId)) { seen.add(s.studentId); students.push(s.student); }
+    }
+    students.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const studentIds = students.map(s => s.id);
+  const totalStudents = students.length;
+
+  const studentSections = sectionIds.length > 0 && studentIds.length > 0
+    ? await prisma.studentSection.findMany({ where: { sectionId: { in: sectionIds }, studentId: { in: studentIds } } })
+    : [];
+
+  const attempts = allQuestionIds.length > 0 && studentIds.length > 0
+    ? await prisma.questionAttempt.findMany({ where: { questionId: { in: allQuestionIds }, studentId: { in: studentIds } } })
+    : [];
+
+  // Section completion/score stats
+  const sectionCompletedCount = new Map();
+  const sectionScores = new Map();
+  for (const ss of studentSections) {
+    sectionCompletedCount.set(ss.sectionId, (sectionCompletedCount.get(ss.sectionId) ?? 0) + 1);
+    if (!sectionScores.has(ss.sectionId)) sectionScores.set(ss.sectionId, []);
+    sectionScores.get(ss.sectionId).push(ss.score);
+  }
+
+  // Per-question stats
+  const qAnswered = new Map();
+  const qScoreData = new Map();
+  for (const a of attempts) {
+    if (!qAnswered.has(a.questionId)) qAnswered.set(a.questionId, new Set());
+    qAnswered.get(a.questionId).add(a.studentId);
+    if (!qScoreData.has(a.questionId)) qScoreData.set(a.questionId, { totalScore: 0, totalPossible: 0 });
+    const entry = qScoreData.get(a.questionId);
+    entry.totalScore += a.score;
+    entry.totalPossible += questionMaxScore.get(a.questionId) ?? 1;
+  }
+
+  const BOM = '﻿';
+  const CRLF = '\r\n';
+  const lines = [];
+
+  const classLabel = courseClassId ? ` | Class ${courseClassId}` : '';
+  lines.push(rowToCsv([`Chapter: ${chapter.name}`]));
+  lines.push(rowToCsv([`Course: ${chapter.course.name}${classLabel}`]));
+  lines.push(rowToCsv([`Students: ${totalStudents}`]));
+  lines.push('');
+
+  lines.push(rowToCsv(['SECTION SUMMARY']));
+  lines.push(rowToCsv(['Section', 'Questions', 'Completed', 'Completion %', 'Avg Score %']));
+  for (const sec of sections) {
+    const completed = sectionCompletedCount.get(sec.id) ?? 0;
+    const completionPct = totalStudents > 0 ? ((completed / totalStudents) * 100).toFixed(1) : '';
+    const scores = sectionScores.get(sec.id) ?? [];
+    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '';
+    lines.push(rowToCsv([
+      sec.name,
+      String(sec.questions.length),
+      String(completed),
+      completionPct ? `${completionPct}%` : '',
+      avgScore ? `${avgScore}%` : '',
+    ]));
+  }
+
+  lines.push('');
+  lines.push(rowToCsv(['QUESTIONS BREAKDOWN']));
+  lines.push(rowToCsv(['Section', 'Question', 'Type', 'Students Answered', 'Accuracy %']));
+  for (const sec of sections) {
+    for (const q of sec.questions) {
+      const answered = qAnswered.get(q.id)?.size ?? 0;
+      const s = qScoreData.get(q.id);
+      const accuracy = s && s.totalPossible > 0 ? ((s.totalScore / s.totalPossible) * 100).toFixed(1) : '';
+      const preview = q.content.length > 80 ? q.content.slice(0, 80) + '...' : q.content;
+      lines.push(rowToCsv([sec.name, preview, q.type, String(answered), accuracy ? `${accuracy}%` : '']));
+    }
+  }
+
+  const csv = BOM + lines.join(CRLF);
+  const date = new Date().toISOString().slice(0, 10);
+  const safeName = chapter.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="chapter-${safeName}-${date}.csv"`);
+  res.send(csv);
+}
+
+async function exportSectionCsv(req, res) {
+  const teacherId = req.user.sub;
+  const { sectionId } = req.params;
+  const { courseClassId } = req.query;
+
+  const section = await prisma.section.findUnique({
+    where: { id: sectionId },
+    include: {
+      chapter: { include: { course: { select: { teacherId: true, name: true } } } },
+      questions: { select: { id: true, content: true, type: true, choices: { select: { blankIndex: true } } } },
+    },
+  });
+  if (!section || section.chapter.course.teacherId !== teacherId)
+    return res.status(404).json({ error: 'Not found' });
+
+  const questionMaxScore = new Map();
+  for (const q of section.questions) {
+    const max = q.type === 'MULTIPLE_CHOICE' ? 1 : new Set(q.choices.map(c => c.blankIndex)).size || 1;
+    questionMaxScore.set(q.id, max);
+  }
+  const questionIds = section.questions.map(q => q.id);
+
+  let students = [];
+  if (courseClassId) {
+    const enrollments = await prisma.studentEnrollment.findMany({
+      where: { courseClassId },
+      include: { student: { select: { id: true, name: true, email: true } } },
+      orderBy: { student: { name: 'asc' } },
+    });
+    students = enrollments.map(e => e.student);
+  } else {
+    const ss = await prisma.studentSection.findMany({
+      where: { sectionId },
+      include: { student: { select: { id: true, name: true, email: true } } },
+    });
+    const seen = new Set();
+    for (const s of ss) {
+      if (!seen.has(s.studentId)) { seen.add(s.studentId); students.push(s.student); }
+    }
+    students.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const studentIds = students.map(s => s.id);
+
+  const studentSectionRecords = studentIds.length > 0
+    ? await prisma.studentSection.findMany({ where: { sectionId, studentId: { in: studentIds } } })
+    : [];
+  const studentSectionMap = new Map();
+  for (const ss of studentSectionRecords) studentSectionMap.set(ss.studentId, ss);
+
+  const attempts = questionIds.length > 0 && studentIds.length > 0
+    ? await prisma.questionAttempt.findMany({ where: { questionId: { in: questionIds }, studentId: { in: studentIds } } })
+    : [];
+
+  const studentAttemptCount = new Map();
+  const qAnswered = new Map();
+  const qScoreData = new Map();
+  for (const a of attempts) {
+    studentAttemptCount.set(a.studentId, (studentAttemptCount.get(a.studentId) ?? 0) + 1);
+    if (!qAnswered.has(a.questionId)) qAnswered.set(a.questionId, new Set());
+    qAnswered.get(a.questionId).add(a.studentId);
+    if (!qScoreData.has(a.questionId)) qScoreData.set(a.questionId, { totalScore: 0, totalPossible: 0 });
+    const entry = qScoreData.get(a.questionId);
+    entry.totalScore += a.score;
+    entry.totalPossible += questionMaxScore.get(a.questionId) ?? 1;
+  }
+
+  const BOM = '﻿';
+  const CRLF = '\r\n';
+  const lines = [];
+
+  lines.push(rowToCsv([`Section: ${section.name}`]));
+  lines.push(rowToCsv([`Chapter: ${section.chapter.name} | Course: ${section.chapter.course.name}`]));
+  lines.push('');
+
+  lines.push(rowToCsv(['STUDENT RESULTS']));
+  lines.push(rowToCsv(['Student Name', 'Email', 'Completed', 'Score (%)', 'Attempts']));
+  for (const student of students) {
+    const ss = studentSectionMap.get(student.id);
+    const completed = ss ? 'Yes' : 'No';
+    const score = ss != null ? `${ss.score}%` : '';
+    const attemptCount = String(studentAttemptCount.get(student.id) ?? 0);
+    lines.push(rowToCsv([student.name, student.email, completed, score, attemptCount]));
+  }
+
+  lines.push('');
+  lines.push(rowToCsv(['QUESTIONS BREAKDOWN']));
+  lines.push(rowToCsv(['Question', 'Type', 'Students Answered', 'Accuracy %']));
+  for (const q of section.questions) {
+    const answered = qAnswered.get(q.id)?.size ?? 0;
+    const s = qScoreData.get(q.id);
+    const accuracy = s && s.totalPossible > 0 ? ((s.totalScore / s.totalPossible) * 100).toFixed(1) : '';
+    const preview = q.content.length > 80 ? q.content.slice(0, 80) + '...' : q.content;
+    lines.push(rowToCsv([preview, q.type, String(answered), accuracy ? `${accuracy}%` : '']));
+  }
+
+  const csv = BOM + lines.join(CRLF);
+  const date = new Date().toISOString().slice(0, 10);
+  const safeName = section.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="section-${safeName}-${date}.csv"`);
+  res.send(csv);
+}
+
+module.exports = { exportStudentsCsv, exportChapterCsv, exportSectionCsv };
