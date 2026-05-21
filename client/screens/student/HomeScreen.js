@@ -25,7 +25,7 @@ function PathConnector({ fromIndex, toIndex }) {
   // Cubic bezier: control points pulled to the opposite side for the S shape
   const d = `M ${x1} 0 C ${x1} ${CONNECTOR_H * 0.5}, ${x2} ${CONNECTOR_H * 0.5}, ${x2} ${CONNECTOR_H}`;
   return (
-    <Svg width="100%" height={CONNECTOR_H} viewBox={`0 0 ${CONNECTOR_W} ${CONNECTOR_H}`} preserveAspectRatio="none">
+    <Svg width={CONNECTOR_W} height={CONNECTOR_H} viewBox={`0 0 ${CONNECTOR_W} ${CONNECTOR_H}`}>
       <Path
         d={d}
         fill="none"
@@ -143,7 +143,7 @@ export default function HomeScreen({ navigation, route }) {
                     ? getSectionStatus(section, sections)
                     : 'locked';
                   return (
-                    <View key={section.id}>
+                    <View key={section.id} style={{ alignItems: 'center' }}>
                       {si > 0 && <PathConnector fromIndex={si - 1} toIndex={si} />}
                       <SectionNode
                         section={{ ...section, status, bestScore: section.score }}
