@@ -57,6 +57,7 @@ export default function MainNavigator() {
           <Stack.Screen name="CourseDetail"   component={CourseDetailScreen} />
           <Stack.Screen name="ChapterDetail" component={ChapterDetailScreen} />
           <Stack.Screen name="QuestionEditor" component={QuestionEditorScreen} />
+          <Stack.Screen name="QuestionBank"  component={QuestionBankScreen} />
         </>
       ) : (
         <>
