@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   Pressable, ActivityIndicator, TouchableOpacity,
-  Modal, Animated, Dimensions, TextInput, KeyboardAvoidingView, Platform,
+  Modal, Animated, Dimensions, TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import Svg, { Ellipse, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -686,10 +686,12 @@ export default function TeacherHomeScreen({ navigation }) {
             dialogTitle: 'Save student report',
             UTI: 'public.comma-separated-values-text',
           });
+        } else {
+          Alert.alert('Export saved', `Report saved to:\n${path}`);
         }
       }
     } catch (e) {
-      console.warn('Export error:', e.message);
+      Alert.alert('Export failed', e.message ?? 'Could not export report. Please try again.');
     } finally {
       setExporting(false);
     }
