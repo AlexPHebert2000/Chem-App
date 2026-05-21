@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-21T16:28:30.936Z
-> Files: 8 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-21T16:48:17.786Z
+> Files: 14 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -17,6 +17,7 @@
 
 ## client/
 
+- `App.js` — Declares App (~300 tok)
 - `babel.config.js` (~31 tok)
 
 ## client/.expo/
@@ -33,6 +34,7 @@
 ## client/components/base/
 
 - `ProgressBar.js` — Declares ProgressBar (~406 tok)
+- `ScreenSurface.js` — Declares ScreenSurface (~260 tok)
 - `ShadowButton.js` — SHADOW_OFFSET: ShadowButton (~699 tok)
 
 ## client/context/
@@ -43,15 +45,19 @@
 
 ## client/navigation/
 
+- `MainNavigator.js` — Student screens (~827 tok)
 
 ## client/screens/auth/
 
 
 ## client/screens/student/
 
+- `HomeScreen.js` — API routes: GET (3 endpoints) (~2380 tok)
+- `ProfileScreen.js` — initials: resolveBadgeTheme, badgeDesc, DonutChart + 9 more (~7882 tok)
 
 ## client/screens/teacher/
 
+- `TeacherHomeScreen.js` — API routes: GET, POST (3 endpoints) (~9793 tok)
 
 ## client/theme/
 

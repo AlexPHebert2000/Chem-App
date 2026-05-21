@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl, Pressable, StatusBar,
+  View, Text, ScrollView, StyleSheet, RefreshControl, Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
@@ -10,6 +10,7 @@ import Svg, {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { colors } from '../../theme';
+import { ScreenSurface } from '../../components/base';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function initials(name = '') {
@@ -355,10 +356,7 @@ export default function ProfileScreen({ navigation }) {
   const progressBadges = badges.filter(b => !b.dateAchieved && b.badge?.criteriaAmount);
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.purple800}/>
-      <View style={styles.statusBarFill}/>
-
+    <ScreenSurface>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scroll}
@@ -467,14 +465,12 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
-    </View>
+    </ScreenSurface>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.neutral50 },
-  statusBarFill: { height: 50, backgroundColor: colors.purple800 },
   scroll: { paddingBottom: 40 },
 
   // Header

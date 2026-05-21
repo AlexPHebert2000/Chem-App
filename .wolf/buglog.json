@@ -2638,6 +2638,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-20T16:59:39.778Z"
+    },
+    {
+      "id": "bug-165",
+      "timestamp": "2026-05-21T16:31:50.794Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/student/HomeScreen.js",
+      "root_cause": "Had \"100%\"",
+      "fix": "Changed to `0 0 ${CONNECTOR_W} ${CONNECTOR_H}`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T16:31:50.794Z"
+    },
+    {
+      "id": "bug-166",
+      "timestamp": "2026-05-21T16:35:29.352Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/App.js",
+      "root_cause": "Had \"auto\"",
+      "fix": "Changed to \"light\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T16:35:29.352Z"
+    },
+    {
+      "id": "bug-167",
+      "timestamp": "2026-05-21T16:39:48.587Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/components/base/ScreenSurface.js",
+      "root_cause": "Had 'bottom'",
+      "fix": "Changed to 'left'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T16:39:48.587Z"
+    },
+    {
+      "id": "bug-168",
+      "timestamp": "2026-05-21T16:48:11.694Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/student/ProfileScreen.js",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T16:48:11.694Z"
     }
   ]
 }
