@@ -483,7 +483,7 @@ function Drawer({ visible, onClose, teacher, navigation, onSignOut, onCreateCour
       <Animated.View
         style={[
           styles.drawerPanel,
-          { paddingTop: insets.top, transform: [{ translateX: slideAnim }] },
+          { transform: [{ translateX: slideAnim }] },
         ]}
         pointerEvents="box-none"
       >
