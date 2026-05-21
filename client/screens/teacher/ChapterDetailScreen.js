@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Modal, Animated,
   TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -497,6 +498,20 @@ export default function ChapterDetailScreen({ navigation, route }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Refresh questions for any expanded sections when returning from QuestionBank
+  useFocusEffect(
+    useCallback(() => {
+      const expandedIds = Object.keys(expanded).filter(id => expanded[id]);
+      if (expandedIds.length === 0) return;
+      expandedIds.forEach(async (sid) => {
+        try {
+          const qs = await api.get(`/sections/${sid}/questions`, token);
+          setQuestionMap(m => ({ ...m, [sid]: qs ?? [] }));
+        } catch {}
+      });
+    }, [expanded, token])
+  );
+
   const toggleSection = useCallback(async (sectionId) => {
     const nowExpanded = !expanded[sectionId];
     setExpanded(e => ({ ...e, [sectionId]: nowExpanded }));
@@ -595,7 +610,11 @@ export default function ChapterDetailScreen({ navigation, route }) {
                 stats={statsMap[sec.id]}
                 totalEnrolled={totalEnrolled}
                 sectionMode={isSectionMode}
-                onAddFromBank={() => navigation.navigate('QuestionBank')}
+                onAddFromBank={() => navigation.navigate('QuestionBank', {
+                  sectionId: sec.id,
+                  courseId,
+                  existingIds: (questionMap[sec.id] ?? []).map(q => q.id),
+                })}
               />
             ))}
           </View>

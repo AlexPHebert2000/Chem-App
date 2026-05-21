@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
   Modal, Animated, KeyboardAvoidingView, Platform, RefreshControl,
-  ActivityIndicator,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -196,35 +196,47 @@ const fc = StyleSheet.create({
 
 // ─── QuestionCard ──────────────────────────────────────────────────────────────
 
-function QuestionCard({ question, onPress }) {
+function QuestionCard({ question, onPress, pickMode, selected, alreadyAdded }) {
   const usedIn = question.usedIn ?? 0;
   const tags = question.tags ?? [];
   return (
     <Pressable
-      onPress={() => onPress(question)}
-      style={({ pressed }) => [qc.card, pressed && { opacity: 0.85 }]}
+      onPress={alreadyAdded ? null : () => onPress(question)}
+      style={({ pressed }) => [
+        qc.card,
+        selected && qc.cardSelected,
+        alreadyAdded && qc.cardAdded,
+        !alreadyAdded && pressed && { opacity: 0.85 },
+      ]}
     >
-      {/* Top row: type + stars + usage */}
       <View style={qc.topRow}>
+        {pickMode && (
+          <View style={[qc.checkbox, selected && qc.checkboxOn, alreadyAdded && qc.checkboxDone]}>
+            {selected && <Ionicons name="checkmark" size={11} color="#fff" />}
+            {alreadyAdded && <Ionicons name="checkmark" size={11} color={colors.neutral500} />}
+          </View>
+        )}
         <TypeChip type={question.type} />
         <Stars n={question.difficulty ?? 1} />
         <View style={{ flex: 1 }} />
-        <View style={qc.usageRow}>
-          {usedIn > 0 ? (
-            <>
-              <Ionicons name="book-outline" size={11} color={colors.purple600} />
-              <Text style={qc.usedText}>In {usedIn} section{usedIn === 1 ? '' : 's'}</Text>
-            </>
-          ) : (
-            <Text style={qc.unusedText}>Unused</Text>
-          )}
-        </View>
+        {alreadyAdded ? (
+          <Text style={qc.addedText}>Added</Text>
+        ) : (
+          <View style={qc.usageRow}>
+            {usedIn > 0 ? (
+              <>
+                <Ionicons name="book-outline" size={11} color={colors.purple600} />
+                <Text style={qc.usedText}>In {usedIn} section{usedIn === 1 ? '' : 's'}</Text>
+              </>
+            ) : (
+              <Text style={qc.unusedText}>Unused</Text>
+            )}
+          </View>
+        )}
       </View>
 
-      {/* Question text */}
       <Text style={qc.text} numberOfLines={3}>{question.content}</Text>
 
-      {/* Tags */}
       {tags.length > 0 && (
         <View style={qc.tagsRow}>
           {tags.map(tag => (
@@ -247,10 +259,24 @@ const qc = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 2, elevation: 1,
   },
+  cardSelected: {
+    borderColor: colors.purple400,
+    backgroundColor: colors.purple50,
+  },
+  cardAdded: { opacity: 0.5 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2, borderColor: colors.neutral300,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  checkboxOn: { backgroundColor: colors.purple600, borderColor: colors.purple600 },
+  checkboxDone: { borderColor: colors.neutral300, backgroundColor: colors.neutral100 },
   usageRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   usedText: { fontFamily: 'Nunito_700Bold', fontSize: 10.5, color: colors.purple600 },
   unusedText: { fontFamily: 'Nunito_700Bold', fontSize: 10.5, color: colors.neutral600 },
+  addedText: { fontFamily: 'Nunito_700Bold', fontSize: 10.5, color: colors.neutral400 },
   text: { fontFamily: 'Outfit_500Medium', fontSize: 13.5, color: colors.neutral900, lineHeight: 19 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   tagChip: {
@@ -265,7 +291,9 @@ const qc = StyleSheet.create({
 export default function QuestionBankScreen({ navigation, route }) {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
-  const courseId = route?.params?.courseId;
+  const { courseId, sectionId, existingIds: existingIdsProp = [] } = route?.params ?? {};
+  const pickMode = !!sectionId;
+  const existingIdSet = useMemo(() => new Set(existingIdsProp), [existingIdsProp]);
 
   const [questions, setQuestions]   = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -273,6 +301,8 @@ export default function QuestionBankScreen({ navigation, route }) {
   const [query, setQuery]           = useState('');
   const [activeTags, setActiveTags] = useState([]);
   const [sheet, setSheet]           = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [adding, setAdding]           = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -304,6 +334,28 @@ export default function QuestionBankScreen({ navigation, route }) {
 
   const clearFilters = () => { setActiveTags([]); setQuery(''); };
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const confirmAdd = async () => {
+    if (selectedIds.size === 0 || adding) return;
+    setAdding(true);
+    try {
+      await Promise.all([...selectedIds].map(qId =>
+        api.post(`/sections/${sectionId}/questions/${qId}`, {}, token)
+      ));
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'Could not add questions.');
+      setAdding(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return questions.filter(item => {
@@ -331,12 +383,18 @@ export default function QuestionBankScreen({ navigation, route }) {
           <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.squareBtn, pressed && { opacity: 0.7 }]}>
             <Ionicons name="chevron-back" size={20} color={colors.neutral900} />
           </Pressable>
-          <Pressable onPress={() => setSheet(true)} style={({ pressed }) => [styles.squareBtn, pressed && { opacity: 0.7 }]}>
-            <Ionicons name="ellipsis-horizontal" size={20} color={colors.neutral900} />
-          </Pressable>
+          {!pickMode && (
+            <Pressable onPress={() => setSheet(true)} style={({ pressed }) => [styles.squareBtn, pressed && { opacity: 0.7 }]}>
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.neutral900} />
+            </Pressable>
+          )}
         </View>
-        <Text style={styles.title}>Question Bank</Text>
-        <Text style={styles.subtitle}>{questions.length} reusable questions</Text>
+        <Text style={styles.title}>{pickMode ? 'Add to Section' : 'Question Bank'}</Text>
+        <Text style={styles.subtitle}>
+          {pickMode
+            ? `Tap questions to select them · ${selectedIds.size} selected`
+            : `${questions.length} reusable questions`}
+        </Text>
       </View>
 
       {/* Search bar */}
@@ -407,12 +465,40 @@ export default function QuestionBankScreen({ navigation, route }) {
               <QuestionCard
                 key={q.id}
                 question={q}
-                onPress={q => navigation.navigate('QuestionEditor', { questionId: q.id, courseId })}
+                pickMode={pickMode}
+                selected={selectedIds.has(q.id)}
+                alreadyAdded={existingIdSet.has(q.id)}
+                onPress={pickMode
+                  ? (q) => toggleSelect(q.id)
+                  : (q) => navigation.navigate('QuestionEditor', { questionId: q.id, courseId })
+                }
               />
             ))}
           </View>
         )}
       </ScrollView>
+
+      {/* Pick mode — sticky confirm bar */}
+      {pickMode && (
+        <View style={[styles.pickBar, { paddingBottom: insets.bottom + 10 }]}>
+          <Text style={styles.pickBarCount}>
+            {selectedIds.size === 0 ? 'Tap to select' : `${selectedIds.size} selected`}
+          </Text>
+          <Pressable
+            onPress={confirmAdd}
+            disabled={selectedIds.size === 0 || adding}
+            style={({ pressed }) => [
+              styles.pickBarBtn,
+              (selectedIds.size === 0 || adding) && styles.pickBarBtnDisabled,
+              pressed && selectedIds.size > 0 && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.pickBarBtnText}>
+              {adding ? 'Adding…' : `Add${selectedIds.size > 0 ? ` ${selectedIds.size}` : ''} question${selectedIds.size === 1 ? '' : 's'}`}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* Options sheet */}
       <Sheet visible={sheet} onClose={() => setSheet(false)} title="Question Bank">
@@ -495,4 +581,29 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: 'Nunito_800ExtraBold', fontSize: 15, color: colors.neutral800, marginBottom: 4 },
   emptySub: { fontFamily: 'Outfit_500Medium', fontSize: 12.5, color: colors.neutral600, textAlign: 'center' },
   sheetHint: { fontFamily: 'Outfit_500Medium', fontSize: 13, color: colors.neutral600, marginBottom: 14 },
+  pickBar: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: colors.neutral200,
+    paddingHorizontal: 14, paddingTop: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.07, shadowRadius: 6, elevation: 8,
+  },
+  pickBarCount: {
+    flex: 1, fontFamily: 'Outfit_500Medium', fontSize: 13, color: colors.neutral600,
+  },
+  pickBarBtn: {
+    backgroundColor: colors.purple600,
+    paddingVertical: 12, paddingHorizontal: 20,
+    borderRadius: radius.md,
+    shadowColor: colors.purple800, shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 1, shadowRadius: 0, elevation: 3,
+  },
+  pickBarBtnDisabled: {
+    backgroundColor: colors.neutral200,
+    shadowOpacity: 0,
+  },
+  pickBarBtnText: {
+    fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: '#fff',
+  },
 });
