@@ -1,0 +1,9 @@
+{
+  "cli": { "version": ">= 10.0.0" },
+  "build": {
+    "internal": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    }
+  }
+}

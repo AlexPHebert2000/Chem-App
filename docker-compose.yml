@@ -24,5 +24,18 @@ services:
       mongosh --host mongo:27017 --eval
       "try { rs.status() } catch(e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }) }"
 
+  server:
+    build: ./server
+    container_name: chem_app_server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: ./server/.env.production
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-setup:
+        condition: service_completed_successfully
+
 volumes:
   mongo_data:
