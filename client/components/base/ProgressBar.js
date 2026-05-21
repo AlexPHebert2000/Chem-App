@@ -1,23 +1,24 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, Animated, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius } from '../../theme';
 
 export default function ProgressBar({ progress = 0, color = colors.purple400, gradientColors, height = 8, style }) {
-  const width = useSharedValue(0);
+  const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    width.value = withTiming(Math.min(Math.max(progress, 0), 1), { duration: 400 });
+    Animated.timing(anim, {
+      toValue: Math.min(Math.max(progress, 0), 1),
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
   }, [progress]);
 
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${width.value * 100}%`,
-  }));
+  const widthPercent = anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
     <View style={[styles.track, { height }, style]}>
-      <Animated.View style={[styles.fill, { height, borderRadius: radius.full }, barStyle]}>
+      <Animated.View style={[styles.fill, { height, width: widthPercent, borderRadius: radius.full }]}>
         {gradientColors ? (
           <LinearGradient
             colors={gradientColors}

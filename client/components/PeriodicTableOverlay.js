@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, Modal, Pressable, ScrollView, StyleSheet,
+  View, Text, Modal, Pressable, ScrollView, Animated, PanResponder, StyleSheet,
 } from 'react-native';
-import Animated, {
-  useSharedValue, useAnimatedStyle, useAnimatedReaction, runOnJS, withTiming,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius } from '../theme';
@@ -81,7 +77,7 @@ const SERIES_MARKERS = [
   { col: 3, row: 7, label: '89–103' },
 ];
 
-// ─── Category colors (exact from design) ─────────────────────────────────────
+// ─── Category colors ──────────────────────────────────────────────────────────
 const CAT_COLORS = {
   'alkali':          { bg: '#FF8B6E', fg: '#5A1A0C' },
   'alkaline':        { bg: '#FFD580', fg: '#5A3C00' },
@@ -120,19 +116,11 @@ const MAX_SCALE = 3.0;
 function ElementCell({ el, onPress }) {
   const [sym, num, name, , col, row, cat] = el;
   const c = CAT_COLORS[cat] ?? CAT_COLORS['nonmetal'];
-  // Row 9 (lanthanides) and 10 (actinides) sit at y-index 8 and 9
-  const yIndex = row <= 7 ? row - 1 : row - 1; // y=9 → index 8, y=10 → index 9
+  const yIndex = row - 1;
   return (
     <Pressable
       onPress={() => onPress(el)}
-      style={[
-        styles.cell,
-        {
-          backgroundColor: c.bg,
-          left: (col - 1) * (CELL + GAP),
-          top: yIndex * (CELL + GAP),
-        },
-      ]}
+      style={[styles.cell, { backgroundColor: c.bg, left: (col - 1) * (CELL + GAP), top: yIndex * (CELL + GAP) }]}
     >
       <Text style={[styles.cellNum, { color: c.fg }]}>{num}</Text>
       <Text style={[styles.cellSym, { color: c.fg }]}>{sym}</Text>
@@ -143,11 +131,7 @@ function ElementCell({ el, onPress }) {
 
 function SeriesMarkerCell({ col, row, label }) {
   return (
-    <View style={[
-      styles.cell,
-      styles.markerCell,
-      { left: (col - 1) * (CELL + GAP), top: (row - 1) * (CELL + GAP) },
-    ]}>
+    <View style={[styles.cell, styles.markerCell, { left: (col - 1) * (CELL + GAP), top: (row - 1) * (CELL + GAP) }]}>
       <Text style={styles.markerText}>{label}</Text>
     </View>
   );
@@ -158,32 +142,24 @@ function SeriesMarkerCell({ col, row, label }) {
 function DetailCard({ el, onDismiss }) {
   const [sym, num, name, mass, col, row, cat] = el;
   const c = CAT_COLORS[cat] ?? CAT_COLORS['nonmetal'];
-  const period = row <= 7 ? row : row === 9 ? '—' : '—';
-  const slideY = useSharedValue(20);
+  const period = row <= 7 ? row : '—';
+  const slideY = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
-    slideY.value = withTiming(0, { duration: 200 });
+    Animated.timing(slideY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
   }, []);
 
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: slideY.value }],
-  }));
-
   return (
-    <Animated.View style={[styles.detailCard, { borderColor: c.bg }, animStyle]}>
+    <Animated.View style={[styles.detailCard, { borderColor: c.bg, transform: [{ translateY: slideY }] }]}>
       <View style={[styles.detailBadge, { backgroundColor: c.bg }]}>
         <Text style={[styles.detailBadgeNum, { color: c.fg }]}>{num}</Text>
         <Text style={[styles.detailBadgeSym, { color: c.fg }]}>{sym}</Text>
       </View>
       <View style={styles.detailInfo}>
         <Text style={styles.detailName}>{name}</Text>
-        <Text style={styles.detailMeta}>
-          Atomic mass {mass} · Group {col} · Period {period}
-        </Text>
+        <Text style={styles.detailMeta}>Atomic mass {mass} · Group {col} · Period {period}</Text>
         <View style={[styles.catPill, { backgroundColor: c.bg }]}>
-          <Text style={[styles.catPillText, { color: c.fg }]}>
-            {cat.replace('-', ' ').toUpperCase()}
-          </Text>
+          <Text style={[styles.catPillText, { color: c.fg }]}>{cat.replace('-', ' ').toUpperCase()}</Text>
         </View>
       </View>
       <Pressable onPress={onDismiss} style={styles.detailClose}>
@@ -198,33 +174,39 @@ function DetailCard({ el, onDismiss }) {
 export default function PeriodicTableOverlay({ open, onClose }) {
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState(null);
-  const [scaleLabel, setScaleLabel] = useState('35%');
+  const [scaleLabel, setScaleLabel] = useState(`${Math.round(MIN_SCALE * 100)}%`);
+
+  // Stable animated values
+  const animTx    = useRef(new Animated.Value(0)).current;
+  const animTy    = useRef(new Animated.Value(0)).current;
+  const animScale = useRef(new Animated.Value(MIN_SCALE)).current;
+
+  // Mutable transform state (not React state — updated synchronously during gestures)
+  const vs = useRef({ desiredTx: 0, desiredTy: 0, scale: MIN_SCALE });
   const stageDims = useRef({ w: 0, h: 0 });
+  const lastTouch = useRef({ x: 0, y: 0, dist: 0 });
 
-  // Transform state: desiredTx/Ty = intended screen position of table's top-left
-  const desiredTx = useSharedValue(0);
-  const desiredTy = useSharedValue(0);
-  const tableScale = useSharedValue(0.35);
-
-  // Gesture base snapshots
-  const baseTx = useSharedValue(0);
-  const baseTy = useSharedValue(0);
-  const baseScale = useSharedValue(0.35);
+  // Apply desiredTx/Ty/scale → compensate for RN's center-based scale origin
+  const applyTransform = useCallback((desiredTx, desiredTy, scale) => {
+    animTx.setValue(desiredTx + (scale - 1) * TABLE_W / 2);
+    animTy.setValue(desiredTy + (scale - 1) * TABLE_H / 2);
+    animScale.setValue(scale);
+    setScaleLabel(`${Math.round(scale * 100)}%`);
+  }, []);
 
   const fitToStage = useCallback((w, h) => {
-    if (w === 0 || h === 0) return;
+    if (!w || !h) return;
     const s = Math.max(MIN_SCALE, Math.min(MAX_SCALE, Math.min(w / TABLE_W, h / TABLE_H) * 0.95));
-    tableScale.value = s;
-    desiredTx.value = (w - TABLE_W * s) / 2;
-    desiredTy.value = (h - TABLE_H * s) / 2;
-  }, []);
+    vs.current = { desiredTx: (w - TABLE_W * s) / 2, desiredTy: (h - TABLE_H * s) / 2, scale: s };
+    applyTransform(vs.current.desiredTx, vs.current.desiredTy, s);
+  }, [applyTransform]);
 
   useEffect(() => {
     if (open) {
       setSelected(null);
       fitToStage(stageDims.current.w, stageDims.current.h);
     }
-  }, [open]);
+  }, [open, fitToStage]);
 
   const onStageLayout = useCallback((e) => {
     const { width, height } = e.nativeEvent.layout;
@@ -232,66 +214,82 @@ export default function PeriodicTableOverlay({ open, onClose }) {
     if (open) fitToStage(width, height);
   }, [open, fitToStage]);
 
-  // Animated transform — compensates for RN's center-based scale
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: desiredTx.value + (tableScale.value - 1) * TABLE_W / 2 },
-      { translateY: desiredTy.value + (tableScale.value - 1) * TABLE_H / 2 },
-      { scale: tableScale.value },
-    ],
-  }));
-
-  // Scale percentage display — bridge animated value to JS state
-  useAnimatedReaction(
-    () => Math.round(tableScale.value * 100),
-    (pct) => runOnJS(setScaleLabel)(`${pct}%`),
-  );
-
-  // ── Gestures ────────────────────────────────────────────────────────────────
-
-  const panGesture = Gesture.Pan()
-    .minPointers(1).maxPointers(1)
-    .onStart(() => {
-      baseTx.value = desiredTx.value;
-      baseTy.value = desiredTy.value;
-    })
-    .onUpdate((e) => {
-      desiredTx.value = baseTx.value + e.translationX;
-      desiredTy.value = baseTy.value + e.translationY;
-    });
-
-  const pinchGesture = Gesture.Pinch()
-    .onStart(() => {
-      baseScale.value = tableScale.value;
-      baseTx.value = desiredTx.value;
-      baseTy.value = desiredTy.value;
-    })
-    .onUpdate((e) => {
-      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, baseScale.value * e.scale));
-      const ratio = newScale / baseScale.value;
-      // Keep pinch focal point stationary
-      desiredTx.value = e.focalX - (e.focalX - baseTx.value) * ratio;
-      desiredTy.value = e.focalY - (e.focalY - baseTy.value) * ratio;
-      tableScale.value = newScale;
-    });
-
-  const composed = Gesture.Simultaneous(panGesture, pinchGesture);
-
-  // ── Zoom controls (JS thread) ────────────────────────────────────────────────
+  // ── Zoom controls ──────────────────────────────────────────────────────────
 
   const zoomBy = (factor) => {
     const { w, h } = stageDims.current;
     const cx = w / 2, cy = h / 2;
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, tableScale.value * factor));
-    const ratio = newScale / tableScale.value;
-    desiredTx.value = cx - (cx - desiredTx.value) * ratio;
-    desiredTy.value = cy - (cy - desiredTy.value) * ratio;
-    tableScale.value = newScale;
+    const s = vs.current;
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s.scale * factor));
+    const ratio = newScale / s.scale;
+    s.desiredTx = cx - (cx - s.desiredTx) * ratio;
+    s.desiredTy = cy - (cy - s.desiredTy) * ratio;
+    s.scale = newScale;
+    applyTransform(s.desiredTx, s.desiredTy, s.scale);
   };
 
-  const handleFit = () => fitToStage(stageDims.current.w, stageDims.current.h);
+  // ── Pan + pinch via PanResponder ───────────────────────────────────────────
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder:  () => true,
+      onPanResponderGrant: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length >= 2) {
+          const t1 = touches[0], t2 = touches[1];
+          const dx = t2.pageX - t1.pageX, dy = t2.pageY - t1.pageY;
+          lastTouch.current = {
+            x: (t1.pageX + t2.pageX) / 2,
+            y: (t1.pageY + t2.pageY) / 2,
+            dist: Math.sqrt(dx * dx + dy * dy),
+          };
+        } else {
+          lastTouch.current = { x: touches[0].pageX, y: touches[0].pageY, dist: 0 };
+        }
+      },
+      onPanResponderMove: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        const s = vs.current;
+        const last = lastTouch.current;
+
+        if (touches.length >= 2) {
+          const t1 = touches[0], t2 = touches[1];
+          const dx = t2.pageX - t1.pageX, dy = t2.pageY - t1.pageY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const midX = (t1.pageX + t2.pageX) / 2;
+          const midY = (t1.pageY + t2.pageY) / 2;
+
+          if (last.dist > 0) {
+            const scaleDelta = dist / last.dist;
+            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s.scale * scaleDelta));
+            const ratio = newScale / s.scale;
+            // Scale around focal point + pan from centroid movement
+            s.desiredTx = midX - (midX - s.desiredTx) * ratio + (midX - last.x);
+            s.desiredTy = midY - (midY - s.desiredTy) * ratio + (midY - last.y);
+            s.scale = newScale;
+            animTx.setValue(s.desiredTx + (s.scale - 1) * TABLE_W / 2);
+            animTy.setValue(s.desiredTy + (s.scale - 1) * TABLE_H / 2);
+            animScale.setValue(s.scale);
+            setScaleLabel(`${Math.round(s.scale * 100)}%`);
+          }
+          lastTouch.current = { x: midX, y: midY, dist };
+        } else if (touches.length === 1) {
+          const t = touches[0];
+          s.desiredTx += t.pageX - last.x;
+          s.desiredTy += t.pageY - last.y;
+          animTx.setValue(s.desiredTx + (s.scale - 1) * TABLE_W / 2);
+          animTy.setValue(s.desiredTy + (s.scale - 1) * TABLE_H / 2);
+          lastTouch.current = { x: t.pageX, y: t.pageY, dist: 0 };
+        }
+      },
+      onPanResponderRelease: () => {
+        lastTouch.current = { x: 0, y: 0, dist: 0 };
+      },
+    })
+  ).current;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <Modal visible={open} animationType="slide" presentationStyle="fullScreen">
@@ -309,7 +307,7 @@ export default function PeriodicTableOverlay({ open, onClose }) {
           <Pressable onPress={() => zoomBy(0.85)} style={styles.squareBtn}>
             <Ionicons name="remove" size={14} color={colors.neutral900} />
           </Pressable>
-          <Pressable onPress={handleFit} style={styles.fitBtn}>
+          <Pressable onPress={() => fitToStage(stageDims.current.w, stageDims.current.h)} style={styles.fitBtn}>
             <Text style={styles.fitBtnText}>{scaleLabel}</Text>
           </Pressable>
           <Pressable onPress={() => zoomBy(1.18)} style={styles.squareBtn}>
@@ -334,26 +332,23 @@ export default function PeriodicTableOverlay({ open, onClose }) {
         </View>
 
         {/* Stage */}
-        <GestureDetector gesture={composed}>
-          <View style={styles.stage} onLayout={onStageLayout}>
-            <Animated.View style={[styles.tableContainer, animatedStyle]}>
-              {SERIES_MARKERS.map(m => (
-                <SeriesMarkerCell key={m.label} {...m} />
-              ))}
-              {ELEMENTS.map(el => (
-                <ElementCell key={el[1]} el={el} onPress={setSelected} />
-              ))}
-            </Animated.View>
+        <View
+          style={styles.stage}
+          onLayout={onStageLayout}
+          {...panResponder.panHandlers}
+        >
+          <Animated.View style={[
+            styles.tableContainer,
+            { transform: [{ translateX: animTx }, { translateY: animTy }, { scale: animScale }] },
+          ]}>
+            {SERIES_MARKERS.map(m => <SeriesMarkerCell key={m.label} {...m} />)}
+            {ELEMENTS.map(el => <ElementCell key={el[1]} el={el} onPress={setSelected} />)}
+          </Animated.View>
 
-            {selected && (
-              <DetailCard
-                key={selected[1]}
-                el={selected}
-                onDismiss={() => setSelected(null)}
-              />
-            )}
-          </View>
-        </GestureDetector>
+          {selected && (
+            <DetailCard key={selected[1]} el={selected} onDismiss={() => setSelected(null)} />
+          )}
+        </View>
 
       </View>
     </Modal>
@@ -367,8 +362,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF',
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -389,9 +382,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  headerText: {
-    flex: 1,
-  },
+  headerText: { flex: 1 },
   headerTitle: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 18,
@@ -404,8 +395,7 @@ const styles = StyleSheet.create({
     color: colors.neutral600,
   },
   fitBtn: {
-    width: 52,
-    height: 36,
+    width: 52, height: 36,
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.neutral200,
@@ -423,8 +413,6 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0,
   },
-
-  // Legend
   legendWrapper: {
     height: 28,
     flexShrink: 0,
@@ -454,22 +442,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.neutral600,
   },
-
-  // Stage
   stage: {
     flex: 1,
     backgroundColor: colors.neutral50,
     overflow: 'hidden',
   },
-
-  // Table container (absolutely positioned, transformed)
   tableContainer: {
     position: 'absolute',
     width: TABLE_W,
     height: TABLE_H,
   },
-
-  // Element cell
   cell: {
     position: 'absolute',
     width: CELL,
@@ -495,8 +477,6 @@ const styles = StyleSheet.create({
     lineHeight: 9,
     textAlign: 'center',
   },
-
-  // Series marker
   markerCell: {
     backgroundColor: 'rgba(255,255,255,0.5)',
     borderWidth: 1.5,
@@ -510,8 +490,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: 'rgba(0,0,0,0.55)',
   },
-
-  // Detail card
   detailCard: {
     position: 'absolute',
     left: 12,
@@ -548,10 +526,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 26,
   },
-  detailInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
+  detailInfo: { flex: 1, minWidth: 0 },
   detailName: {
     fontFamily: 'Nunito_800ExtraBold',
     fontSize: 16,

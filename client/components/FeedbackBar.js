@@ -1,36 +1,39 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, withTiming, useSharedValue } from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, typeScale } from '../theme';
+import { colors, typeScale } from '../theme';
 import ShadowButton from './base/ShadowButton';
 
 export default function FeedbackBar({ result, message, onContinue }) {
+  const translateY = useRef(new Animated.Value(100)).current;
+
+  useEffect(() => {
+    if (result) {
+      translateY.setValue(100);
+      Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }).start();
+    }
+  }, [result]);
+
   if (!result) return null;
 
   const isCorrect = result === 'correct';
-  const translateY = useSharedValue(100);
-
-  useEffect(() => {
-    translateY.value = withTiming(0, { duration: 280 });
-  }, [result]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
 
   return (
     <Animated.View style={[
       styles.bar,
-      { borderTopColor: isCorrect ? colors.teal400 : colors.coral400,
-        backgroundColor: isCorrect ? colors.teal50 : colors.coral50 },
-      animStyle,
+      {
+        borderTopColor: isCorrect ? colors.teal400 : colors.coral400,
+        backgroundColor: isCorrect ? colors.teal50 : colors.coral50,
+        transform: [{ translateY }],
+      },
     ]}>
       <View style={styles.row}>
         <View style={[
           styles.iconCircle,
-          { backgroundColor: isCorrect ? colors.teal400 : colors.coral400,
-            shadowColor: isCorrect ? colors.teal600 : colors.coral600 },
+          {
+            backgroundColor: isCorrect ? colors.teal400 : colors.coral400,
+            shadowColor: isCorrect ? colors.teal600 : colors.coral600,
+          },
         ]}>
           <Ionicons name={isCorrect ? 'checkmark' : 'close'} size={18} color="#FFF" />
         </View>

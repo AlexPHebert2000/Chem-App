@@ -1,70 +1,65 @@
-import React, { useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Pressable, Animated, PanResponder, StyleSheet, Dimensions } from 'react-native';
 import { colors, radius } from '../theme';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function BottomSheet({ visible, onClose, children, title }) {
-  const translateY = useSharedValue(SCREEN_HEIGHT);
-  const opacity = useSharedValue(0);
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (visible) {
-      opacity.value = withTiming(1, { duration: 200 });
-      translateY.value = withTiming(0, { duration: 280 });
+      Animated.parallel([
+        Animated.timing(opacity,     { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(translateY,  { toValue: 0, duration: 280, useNativeDriver: true }),
+      ]).start();
     } else {
-      opacity.value = withTiming(0, { duration: 200 });
-      translateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 });
+      Animated.parallel([
+        Animated.timing(opacity,     { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(translateY,  { toValue: SCREEN_HEIGHT, duration: 250, useNativeDriver: true }),
+      ]).start();
     }
   }, [visible]);
 
-  const panGesture = Gesture.Pan()
-    .onUpdate(e => {
-      if (e.translationY > 0) translateY.value = e.translationY;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (_, gs) => gs.dy > 0,
+      onMoveShouldSetPanResponder:  (_, gs) => gs.dy > 5,
+      onPanResponderMove: (_, gs) => {
+        if (gs.dy > 0) translateY.setValue(gs.dy);
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy > 100 || gs.vy > 0.5) {
+          Animated.parallel([
+            Animated.timing(translateY, { toValue: SCREEN_HEIGHT, duration: 250, useNativeDriver: true }),
+            Animated.timing(opacity,    { toValue: 0,             duration: 200, useNativeDriver: true }),
+          ]).start(() => onCloseRef.current?.());
+        } else {
+          Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+        }
+      },
     })
-    .onEnd(e => {
-      if (e.translationY > 100) {
-        translateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 });
-        opacity.value = withTiming(0, { duration: 200 });
-        runOnJS(onClose)();
-      } else {
-        translateY.value = withTiming(0, { duration: 200 });
-      }
-    });
-
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
+  ).current;
 
   if (!visible) return null;
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
-      <Animated.View style={[styles.backdrop, backdropStyle]}>
+      <Animated.View style={[styles.backdrop, { opacity }]}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
       </Animated.View>
 
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.sheet, sheetStyle]}>
-          {/* Grabber */}
-          <View style={styles.grabber} />
-
-          {title && <Text style={styles.title}>{title}</Text>}
-
-          {children}
-        </Animated.View>
-      </GestureDetector>
+      <Animated.View
+        style={[styles.sheet, { transform: [{ translateY }] }]}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.grabber} />
+        {title && <Text style={styles.title}>{title}</Text>}
+        {children}
+      </Animated.View>
     </View>
   );
 }

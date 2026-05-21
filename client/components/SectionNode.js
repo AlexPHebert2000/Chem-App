@@ -1,12 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius } from '../theme';
 
@@ -36,20 +29,24 @@ export default function SectionNode({ section, theme = 'purple', index = 0, onPr
   const stars = isDone && section.bestScore != null ? starsFromScore(section.bestScore) : 0;
   const offsetX = NODE_OFFSETS[index % NODE_OFFSETS.length];
 
-  const nudge = useSharedValue(0);
+  const nudge = useRef(new Animated.Value(0)).current;
+  const loopRef = useRef(null);
+
   useEffect(() => {
     if (isNext) {
-      nudge.value = withRepeat(
-        withSequence(withTiming(-3, { duration: 900 }), withTiming(0, { duration: 900 })),
-        -1,
-        false
+      loopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(nudge, { toValue: -3, duration: 900, useNativeDriver: true }),
+          Animated.timing(nudge, { toValue: 0,  duration: 900, useNativeDriver: true }),
+        ])
       );
+      loopRef.current.start();
+    } else {
+      if (loopRef.current) { loopRef.current.stop(); loopRef.current = null; }
+      nudge.setValue(0);
     }
+    return () => { if (loopRef.current) { loopRef.current.stop(); loopRef.current = null; } };
   }, [isNext]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: nudge.value }],
-  }));
 
   const nodeBg = isDone ? t.fill : isNext ? colors.gold400 : colors.neutral100;
   const nodeBorder = isLocked ? { borderWidth: 2, borderColor: colors.neutral300, borderStyle: 'dashed' } : {};
@@ -63,7 +60,6 @@ export default function SectionNode({ section, theme = 'purple', index = 0, onPr
 
   return (
     <View style={[styles.wrapper, { transform: [{ translateX: offsetX }] }]}>
-      {/* Stars */}
       {isDone && (
         <View style={styles.stars}>
           {[0, 1, 2].map(i => (
@@ -84,9 +80,9 @@ export default function SectionNode({ section, theme = 'purple', index = 0, onPr
         ]}
       >
         {() => (
-          <Animated.View style={[styles.nodeInner, isNext && animStyle]}>
-            {isDone && <Ionicons name="checkmark" size={size * 0.45} color="#FFF" />}
-            {isNext && <Ionicons name="play" size={size * 0.4} color={colors.neutral900} />}
+          <Animated.View style={[styles.nodeInner, isNext && { transform: [{ translateY: nudge }] }]}>
+            {isDone   && <Ionicons name="checkmark"   size={size * 0.45} color="#FFF" />}
+            {isNext   && <Ionicons name="play"        size={size * 0.4}  color={colors.neutral900} />}
             {isLocked && <Ionicons name="lock-closed" size={size * 0.38} color={colors.neutral600} />}
           </Animated.View>
         )}
