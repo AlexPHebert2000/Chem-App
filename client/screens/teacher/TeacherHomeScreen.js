@@ -678,7 +678,7 @@ export default function TeacherHomeScreen({ navigation }) {
         URL.revokeObjectURL(url);
       } else {
         const path = `${FileSystem.cacheDirectory}${filename}`;
-        await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+        await FileSystem.writeAsStringAsync(path, csv, { encoding: 'utf8' });
         const canShare = await Sharing.isAvailableAsync();
         if (canShare) {
           await Sharing.shareAsync(path, {
