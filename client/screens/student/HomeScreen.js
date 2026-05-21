@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
-  Pressable, Modal, Animated, TouchableWithoutFeedback,
+  Pressable, Animated,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,37 +43,46 @@ function PathConnector({ fromIndex, toIndex }) {
 }
 
 // ─── ClassSheet ───────────────────────────────────────────────────────────────
-function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose }) {
-  const slideAnim = useRef(new Animated.Value(400)).current;
+// Renders as an absolute-positioned dropdown anchored just below the header.
+// Always mounted so exit animation plays — use pointerEvents to block interaction when hidden.
+function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose, topOffset }) {
+  const slideAnim = useRef(new Animated.Value(-300)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 400, duration: 220, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 0,   duration: 180, useNativeDriver: true }),
-      ]).start();
-    }
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: visible ? 0 : -300,
+        duration: visible ? 240 : 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: visible ? 1 : 0,
+        duration: visible ? 200 : 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [visible]);
 
-  if (!visible) return null;
-
   return (
-    <Modal transparent animationType="none" visible={visible} onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <Animated.View style={[cs.backdrop, { opacity: fadeAnim }]} />
-      </TouchableWithoutFeedback>
-      <Animated.View style={[cs.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        <View style={cs.grabber} />
+    <>
+      {/* Backdrop — sits below the header, dismisses on tap */}
+      <Animated.View
+        pointerEvents={visible ? 'auto' : 'none'}
+        style={[StyleSheet.absoluteFill, { top: topOffset, opacity: fadeAnim, backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 10 }]}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+
+      {/* Dropdown panel — slides down from the header edge */}
+      <Animated.View
+        pointerEvents={visible ? 'box-none' : 'none'}
+        style={[cs.sheet, { top: topOffset, transform: [{ translateY: slideAnim }], zIndex: 11 }]}
+      >
         <Text style={cs.sheetTitle}>My Classes</Text>
         <View style={cs.divider} />
         {enrollments.map((enroll, i) => {
-          const isActive = enroll.courseClassId === activeClassId;
+          const isActive   = enroll.courseClassId === activeClassId;
           const sectionNum = enroll.courseClass?.sectionNumber;
           const times      = enroll.courseClass?.meetingTimes;
           const subtitle   = [sectionNum ? `Section ${sectionNum}` : null, times].filter(Boolean).join(' · ');
@@ -93,15 +102,15 @@ function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose }) 
                 </View>
               </View>
               <View style={cs.classBadges}>
-                <StreakBadge streak={enroll.streak ?? 0} small />
-                <XpBadge xp={enroll.currentPoints ?? 0} small />
+                <StreakBadge streak={enroll.streak ?? 0} />
+                <XpBadge xp={enroll.currentPoints ?? 0} />
               </View>
             </Pressable>
           );
         })}
-        <View style={{ height: 24 }} />
+        <View style={{ height: 8 }} />
       </Animated.View>
-    </Modal>
+    </>
   );
 }
 
@@ -116,6 +125,7 @@ export default function HomeScreen({ navigation, route }) {
   const [allEnrollments,  setAllEnrollments]  = useState([]);
   const [activeClassId,   setActiveClassId]   = useState(null);
   const [classDrawerOpen, setClassDrawerOpen] = useState(false);
+  const [headerHeight,    setHeaderHeight]    = useState(0);
   const [chapters,        setChapters]        = useState([]);
   const [completedIds,    setCompletedIds]    = useState(new Set());
   const [loading,         setLoading]         = useState(true);
@@ -138,11 +148,12 @@ export default function HomeScreen({ navigation, route }) {
     try {
       const [me, courses] = await Promise.all([
         api.get('/students/me', token),
-        api.get('/courses', token),
+        api.get('/courses', token).catch(() => []),
       ]);
       setCoursesCache(courses ?? []);
 
       const enrollments = me.enrollments ?? [];
+      console.log('[HomeScreen] enrollments from /students/me:', enrollments.length, enrollments.map(e => e.courseClassId));
       // Attach course name to each enrollment for the drawer
       const enriched = enrollments.map(e => ({
         ...e,
@@ -206,6 +217,7 @@ export default function HomeScreen({ navigation, route }) {
     <ScreenSurface>
       <Pressable
         style={styles.header}
+        onLayout={e => setHeaderHeight(e.nativeEvent.layout.height)}
         onPress={canSwitchClass ? () => setClassDrawerOpen(true) : undefined}
         disabled={!canSwitchClass}
       >
@@ -310,6 +322,7 @@ export default function HomeScreen({ navigation, route }) {
         activeClassId={activeClassId}
         onSwitch={switchClass}
         onClose={() => setClassDrawerOpen(false)}
+        topOffset={headerHeight}
       />
     </ScreenSurface>
   );
@@ -374,33 +387,20 @@ const styles = StyleSheet.create({
 
 // ─── ClassSheet styles ─────────────────────────────────────────────────────────
 const cs = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
   sheet: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
     elevation: 12,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.neutral200,
-    marginBottom: 16,
   },
   sheetTitle: {
     ...typeScale.h3,
