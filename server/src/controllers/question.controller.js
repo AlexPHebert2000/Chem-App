@@ -52,12 +52,15 @@ function validateFillInBlank(choices) {
   }
 
   for (const [blankIndex, blankChoices] of Object.entries(blanks)) {
-    if (blankChoices.length < 2) return `blank ${blankIndex} must have at least 2 choices`;
     const correctCount = blankChoices.filter(c => c.isCorrect === true).length;
     if (correctCount !== 1) return `blank ${blankIndex} must have exactly one correct choice`;
   }
 
   return null;
+}
+
+function isNumericAnswer(str) {
+  return /^-?\d*\.?\d+$/.test(str.trim());
 }
 
 function buildChoices(type, choices) {
@@ -69,11 +72,11 @@ function buildChoices(type, choices) {
     }));
   }
 
-  return choices.map(c => ({
-    content: c.content.trim(),
-    isCorrect: c.isCorrect === true,
-    blankIndex: c.blankIndex,
-  }));
+  return choices.map(c => {
+    const raw = c.content.trim();
+    const content = (type === 'FILL_IN_BLANK' && !isNumericAnswer(raw)) ? raw.toLowerCase() : raw;
+    return { content, isCorrect: c.isCorrect === true, blankIndex: c.blankIndex };
+  });
 }
 
 async function getTeacherQuestions(req, res) {
@@ -295,13 +298,10 @@ async function updateQuestion(req, res) {
 
 async function attemptQuestion(req, res) {
   const { questionId } = req.params;
-  const { sessionId, choiceIds } = req.body;
+  const { sessionId, choiceIds, fibAnswers } = req.body;
   const studentId = req.user.sub;
 
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
-  if (!Array.isArray(choiceIds) || choiceIds.length === 0) {
-    return res.status(400).json({ error: 'choiceIds must be a non-empty array' });
-  }
 
   const question = await prisma.question.findUnique({
     where: { id: questionId },
@@ -327,6 +327,63 @@ async function attemptQuestion(req, res) {
     where: { studentId, courseClass: { courseId: session.courseId } },
   });
   if (!enrollment) return res.status(403).json({ error: 'Not enrolled in this course' });
+
+  // FILL_IN_BLANK: text-based submission
+  if (question.type === 'FILL_IN_BLANK') {
+    if (!Array.isArray(fibAnswers) || fibAnswers.length === 0) {
+      return res.status(400).json({ error: 'fibAnswers must be a non-empty array for fill-in-blank questions' });
+    }
+
+    const correctByBlank = {};
+    for (const c of question.choices) {
+      if (c.isCorrect) correctByBlank[c.blankIndex] = c.content;
+    }
+    const totalBlanks = Object.keys(correctByBlank).length;
+
+    if (fibAnswers.length !== totalBlanks) {
+      return res.status(400).json({ error: `Must provide ${totalBlanks} answer(s), one per blank` });
+    }
+
+    let score = 0;
+    const blankResults = [];
+    for (let i = 0; i < fibAnswers.length; i++) {
+      const raw = String(fibAnswers[i]).trim();
+      const submitted = isNumericAnswer(raw) ? raw : raw.toLowerCase();
+      const correct = correctByBlank[i];
+      const ok = submitted === correct;
+      if (ok) score++;
+      blankResults.push(ok);
+    }
+
+    const isCorrect = score === totalBlanks;
+    const xpDelta = isCorrect ? question.difficulty * 10 : 0;
+
+    const attempt = await prisma.questionAttempt.create({
+      data: { studentId, questionId, sessionId, attemptedAt: new Date(), score },
+      include: { answers: true },
+    });
+
+    await recordActivity(sessionId, xpDelta);
+    await awardBadges(studentId);
+
+    const correctAnswers = Object.entries(correctByBlank)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, v]) => v);
+
+    return res.status(201).json({
+      attempt,
+      isCorrect,
+      explanation: isCorrect ? question.correctExplanation : question.incorrectExplanation,
+      xpDelta,
+      correctChoiceIds: [],
+      correctAnswers,
+      blankResults,
+    });
+  }
+
+  if (!Array.isArray(choiceIds) || choiceIds.length === 0) {
+    return res.status(400).json({ error: 'choiceIds must be a non-empty array' });
+  }
 
   // DYNAMIC question handling
   if (question.type === 'DYNAMIC') {

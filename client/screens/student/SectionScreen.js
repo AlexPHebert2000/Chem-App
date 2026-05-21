@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator
+  View, Text, TextInput, ScrollView, StyleSheet, Pressable, ActivityIndicator
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
@@ -20,9 +20,12 @@ export default function SectionScreen({ navigation, route }) {
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [fibInputs, setFibInputs] = useState([]);
   const [checked, setChecked] = useState(false);
   const [result, setResult] = useState(null);
   const [correctChoiceIds, setCorrectChoiceIds] = useState([]);
+  const [correctAnswers, setCorrectAnswers] = useState([]);
+  const [blankResults, setBlankResults] = useState([]);
   const [explanation, setExplanation] = useState(null);
   const [ptOpen, setPtOpen] = useState(false);
   const [xpGained, setXpGained] = useState(0);
@@ -53,10 +56,15 @@ export default function SectionScreen({ navigation, route }) {
   }, [courseId, token]);
 
   const q = questions[currentIndex];
+  const isFib = q?.type === 'FILL_IN_BLANK';
   const mcChoices = q?.choices?.filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i) ?? [];
+  const blankCount = isFib ? new Set((q.choices ?? []).map(c => c.blankIndex)).size : 0;
   const correctChoice = mcChoices.find(c => correctChoiceIds.includes(c.id));
   const xp = q ? (q.difficulty ?? 1) * 10 : 0;
   const progress = questions.length > 0 ? currentIndex / questions.length : 0;
+  const canCheck = isFib
+    ? fibInputs.length === blankCount && blankCount > 0 && fibInputs.every(v => v?.trim())
+    : !!selected;
 
   const optionState = (choice) => {
     if (!checked || !result) return selected?.id === choice.id ? 'selected' : 'idle';
@@ -66,15 +74,17 @@ export default function SectionScreen({ navigation, route }) {
   };
 
   const handleCheck = async () => {
-    if (!selected || checked || !q) return;
+    if (checked || !q || !canCheck) return;
     setChecked(true);
     try {
-      const res = await api.post(`/questions/${q.id}/attempt`, {
-        sessionId,
-        choiceIds: [selected.id],
-      }, token);
+      const body = isFib
+        ? { sessionId, fibAnswers: fibInputs.map(v => v.trim()) }
+        : { sessionId, choiceIds: [selected.id] };
+      const res = await api.post(`/questions/${q.id}/attempt`, body, token);
       setResult(res.isCorrect ? 'correct' : 'wrong');
       setCorrectChoiceIds(res.correctChoiceIds ?? []);
+      setCorrectAnswers(res.correctAnswers ?? []);
+      setBlankResults(res.blankResults ?? []);
       setExplanation(res.explanation ?? null);
     } catch (e) {
       console.warn('attempt submit error:', e.message);
@@ -86,9 +96,12 @@ export default function SectionScreen({ navigation, route }) {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(i => i + 1);
       setSelected(null);
+      setFibInputs([]);
       setChecked(false);
       setResult(null);
       setCorrectChoiceIds([]);
+      setCorrectAnswers([]);
+      setBlankResults([]);
       setExplanation(null);
     } else {
       completeSection();
@@ -113,7 +126,9 @@ export default function SectionScreen({ navigation, route }) {
 
   const feedbackMessage = result === 'correct'
     ? `+${xp} XP${explanation ? ` — ${explanation}` : ''}`
-    : correctChoice ? `Correct answer: ${correctChoice.content}` : (explanation ?? null);
+    : isFib && correctAnswers.length
+      ? `Correct: ${correctAnswers.join(' / ')}`
+      : correctChoice ? `Correct answer: ${correctChoice.content}` : (explanation ?? null);
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
@@ -203,19 +218,45 @@ export default function SectionScreen({ navigation, route }) {
           }
         />
 
-        {/* Answer options — outside card */}
-        <View style={styles.optionsList}>
-          {mcChoices.map((choice, ci) => (
-            <AnswerOption
-              key={choice.id}
-              label={String.fromCharCode(65 + ci)}
-              text={choice.content}
-              state={optionState(choice)}
-              onPress={() => !checked && setSelected(choice)}
-              disabled={checked}
-            />
-          ))}
-        </View>
+        {/* Answer area — text inputs for FIB, option buttons for MC */}
+        {isFib ? (
+          <View style={styles.fibInputList}>
+            {Array.from({ length: blankCount }, (_, i) => (
+              <View key={i} style={styles.fibInputRow}>
+                <View style={styles.blankPill}>
+                  <Text style={styles.blankPillText}>BLANK {i + 1}</Text>
+                </View>
+                <TextInput
+                  style={[
+                    styles.fibInput,
+                    checked && blankResults[i] === true && styles.fibInputCorrect,
+                    checked && blankResults[i] === false && styles.fibInputWrong,
+                  ]}
+                  value={fibInputs[i] ?? ''}
+                  onChangeText={v => setFibInputs(prev => { const n = [...prev]; n[i] = v; return n; })}
+                  placeholder={`Answer ${i + 1}`}
+                  editable={!checked}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholderTextColor={colors.neutral400}
+                />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.optionsList}>
+            {mcChoices.map((choice, ci) => (
+              <AnswerOption
+                key={choice.id}
+                label={String.fromCharCode(65 + ci)}
+                text={choice.content}
+                state={optionState(choice)}
+                onPress={() => !checked && setSelected(choice)}
+                disabled={checked}
+              />
+            ))}
+          </View>
+        )}
 
         {/* Check answer button */}
         {!checked && (
@@ -223,7 +264,7 @@ export default function SectionScreen({ navigation, route }) {
             label="Check answer"
             variant="primary"
             onPress={handleCheck}
-            disabled={!selected}
+            disabled={!canCheck}
             style={styles.checkBtn}
           />
         )}
@@ -326,6 +367,50 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     gap: 10,
+  },
+  fibInputList: {
+    gap: 10,
+  },
+  fibInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  blankPill: {
+    backgroundColor: colors.teal50,
+    borderWidth: 1.5,
+    borderColor: colors.teal400,
+    borderRadius: 999,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    flexShrink: 0,
+  },
+  blankPillText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.teal600,
+  },
+  fibInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+    borderRadius: radius.md,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 14,
+    color: colors.neutral900,
+    backgroundColor: '#FFF',
+  },
+  fibInputCorrect: {
+    borderColor: colors.teal400,
+    backgroundColor: colors.teal50,
+  },
+  fibInputWrong: {
+    borderColor: colors.coral400,
+    backgroundColor: colors.coral50,
   },
   checkBtn: {
     marginTop: 4,
