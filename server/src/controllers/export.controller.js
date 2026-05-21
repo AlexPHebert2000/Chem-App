@@ -88,7 +88,7 @@ async function exportStudentsCsv(req, res) {
 
     // Build questionId → maxScore map (one fetch, no per-attempt includes)
     const questions = await prisma.question.findMany({
-      where: { sectionId: { in: sectionIds } },
+      where: { sectionIds: { hasSome: sectionIds } },
       select: { id: true, type: true, choices: { select: { blankIndex: true } } },
     });
     const questionMaxScore = new Map();
