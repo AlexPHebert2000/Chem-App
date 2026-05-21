@@ -9,7 +9,7 @@ export default function ScreenSurface({ children, style }) {
       {/* Transparent top-edge SafeAreaView — purple outer View shows through the inset */}
       <SafeAreaView style={styles.topInset} edges={['top']}>
         {/* White content area handles remaining edges */}
-        <SafeAreaView style={[styles.surface, style]} edges={['bottom', 'left', 'right']}>
+        <SafeAreaView style={[styles.surface, style]} edges={['left', 'right']}>
           {children}
         </SafeAreaView>
       </SafeAreaView>
