@@ -2,14 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, Pressable,
   TouchableOpacity, Modal, Animated, TextInput, KeyboardAvoidingView,
-  Platform, Clipboard, ActivityIndicator,
+  Platform, Clipboard, ActivityIndicator, Alert,
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import { doExport } from '../../lib/exportCsv';
 import { ScreenSurface } from '../../components/base';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 
@@ -373,30 +372,10 @@ export default function CourseDetailScreen({ navigation, route }) {
     setExporting(true);
     setSheet(null);
     try {
-      const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-      const res = await fetch(`${BASE_URL}/api/courses/export`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`Export failed (${res.status})`);
-      const csv = await res.text();
       const date = new Date().toISOString().slice(0, 10);
-      const filename = `class-report-${date}.csv`;
-
-      if (Platform.OS === 'web') {
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename; a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        const path = `${FileSystem.cacheDirectory}${filename}`;
-        await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(path, { mimeType: 'text/csv', dialogTitle: 'Save class report', UTI: 'public.comma-separated-values-text' });
-        }
-      }
+      await doExport('/courses/export', token, `class-report-${date}.csv`);
     } catch (e) {
-      console.warn('Export error:', e.message);
+      Alert.alert('Export failed', e.message ?? 'Could not export class report.');
     } finally {
       setExporting(false);
     }
@@ -507,10 +486,10 @@ export default function CourseDetailScreen({ navigation, route }) {
             />
             <OptionRow
               icon="download-outline"
-              label="Export class report"
+              label={exporting ? 'Exporting…' : 'Export class report'}
               sub="CSV of student progress"
               onPress={exportReport}
-              disabled
+              disabled={exporting}
             />
             <OptionRow
               icon="archive-outline"
