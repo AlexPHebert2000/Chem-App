@@ -2702,6 +2702,34 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-21T16:48:11.694Z"
+    },
+    {
+      "id": "bug-169",
+      "timestamp": "2026-05-21T16:53:52.889Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "Had `/courses/${courseId}/questions`",
+      "fix": "Changed to '/questions'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T16:53:52.889Z"
+    },
+    {
+      "id": "bug-170",
+      "timestamp": "2026-05-21T00:00:00.000Z",
+      "error_message": "JSON Parse error: unexpected character: <",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "createQuestion called api.post(`/courses/${courseId}/questions`) but the server route is POST /questions (questions are teacher-scoped, not course-scoped). Express returned a 404 HTML page which api.js tried to parse as JSON.",
+      "fix": "Changed POST endpoint from `/courses/${courseId}/questions` to `/questions`",
+      "tags": ["wrong-endpoint", "404", "json-parse", "teacher", "dynamic-question"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-21T00:00:00.000Z"
     }
   ]
 }
