@@ -7,8 +7,10 @@ import Svg, {
   Circle, Ellipse, Polygon,
   Defs, LinearGradient as SvgGrad, Stop,
 } from 'react-native-svg';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import { getItem } from '../../lib/storage';
 import { colors } from '../../theme';
 import { ScreenSurface } from '../../components/base';
 
@@ -239,9 +241,11 @@ function EarnedBadgesGrid({ badges }) {
 }
 
 // ─── ProgressBadgeRow ────────────────────────────────────────────────────────
-function ProgressBadgeRow({ badge }) {
+function ProgressBadgeRow({ badge, activeStreak }) {
   const goal     = badge.badge?.criteriaAmount ?? 0;
-  const progress = badge.progress ?? 0;
+  const progress = badge.badge?.criteriaType === 'STREAK_DAYS'
+    ? (activeStreak ?? badge.progress ?? 0)
+    : (badge.progress ?? 0);
   const pct      = goal > 0 ? Math.min(1, progress / goal) : 0;
   const xpReward = badge.badge?.xpReward ?? 0;
   const theme    = resolveBadgeTheme(badge.badge?.color);
@@ -301,22 +305,34 @@ function StatPill({ emoji, value, label }) {
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 export default function ProfileScreen({ navigation }) {
   const { user, token, logout } = useAuth();
-  const [student, setStudent]     = useState(null);
-  const [badges, setBadges]       = useState([]);
-  const [weekly, setWeekly]       = useState(null);
+  const [student, setStudent]         = useState(null);
+  const [badges, setBadges]           = useState([]);
+  const [weekly, setWeekly]           = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [refreshing, setRefreshing]   = useState(false);
+  const [activeClassId, setActiveClassId] = useState(null);
+
+  // Re-read active class whenever this tab gains focus
+  useFocusEffect(useCallback(() => {
+    getItem('active_class_id').then(id => setActiveClassId(id ?? null));
+  }, []));
 
   const load = useCallback(async () => {
     try {
-      const [me, badgeData] = await Promise.all([
+      const [me, badgeData, storedClassId] = await Promise.all([
         api.get('/students/me', token),
         api.get('/students/me/badges', token).catch(() => []),
+        getItem('active_class_id'),
       ]);
       setStudent(me);
       setBadges(Array.isArray(badgeData) ? badgeData : []);
+      if (storedClassId) setActiveClassId(storedClassId);
 
-      const enrollment = me?.enrollments?.[0];
+      const enrollments = me?.enrollments ?? [];
+      const enrollment = storedClassId
+        ? (enrollments.find(e => e.courseClassId === storedClassId) ?? enrollments[0])
+        : enrollments[0];
+
       if (enrollment?.courseClassId) {
         const courseId = enrollment.courseClass?.courseId;
         const classId  = enrollment.courseClassId;
@@ -339,7 +355,9 @@ export default function ProfileScreen({ navigation }) {
   useEffect(() => { load(); }, [load]);
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  const enrollment   = student?.enrollments?.[0];
+  const enrollment = activeClassId
+    ? (student?.enrollments?.find(e => e.courseClassId === activeClassId) ?? student?.enrollments?.[0])
+    : student?.enrollments?.[0];
   const streak       = enrollment?.streak ?? 0;
   const weeklyXp     = weekly?.xpEarned ?? 0;
   const myRank       = leaderboard.findIndex(r => r.isYou) + 1 || null;
@@ -460,7 +478,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.section}>
             <SectionHeader label="Almost there"/>
             <View style={{ gap: 8 }}>
-              {progressBadges.map(b => <ProgressBadgeRow key={b.id} badge={b}/>)}
+              {progressBadges.map(b => <ProgressBadgeRow key={b.id} badge={b} activeStreak={enrollment?.streak}/>)}
             </View>
           </View>
         )}

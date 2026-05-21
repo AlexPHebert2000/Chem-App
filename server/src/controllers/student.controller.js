@@ -306,7 +306,7 @@ async function getStudentMe(req, res) {
           streak: true,
           lifetimePoints: true,
           currentPoints: true,
-          courseClass: { select: { courseId: true, sectionNumber: true } },
+          courseClass: { select: { courseId: true, sectionNumber: true, meetingTimes: true, code: true } },
         },
       },
     },
