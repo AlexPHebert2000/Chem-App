@@ -2574,6 +2574,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-20T16:29:54.901Z"
+    },
+    {
+      "id": "bug-161",
+      "timestamp": "2026-05-20T16:49:46.518Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/components/PeriodicTableOverlay.js",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:49:46.518Z"
+    },
+    {
+      "id": "bug-162",
+      "timestamp": "2026-05-20T16:58:55.736Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/question.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:58:55.736Z"
+    },
+    {
+      "id": "bug-163",
+      "timestamp": "2026-05-20T16:59:34.733Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/student/SectionScreen.js",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 58→73 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:59:34.733Z"
+    },
+    {
+      "id": "bug-164",
+      "timestamp": "2026-05-20T16:59:39.778Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/student/SectionScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-20T16:59:39.778Z"
     }
   ]
 }

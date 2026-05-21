@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-20T16:38:43.958Z
-> Files: 24 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-20T17:12:09.730Z
+> Files: 26 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -25,7 +25,7 @@
 
 - `ClassCard.js` — ACCENT: MicroStat, ClassCard (~1578 tok)
 - `FeedbackBar.js` — Declares FeedbackBar (~759 tok)
-- `PeriodicTableOverlay.js` — AnimatedTextInput: ElementCell, SeriesMarkerCell, DetailCard, PeriodicTableOverlay (~5842 tok)
+- `PeriodicTableOverlay.js` — ELEMENTS: ElementCell, SeriesMarkerCell, DetailCard, PeriodicTableOverlay (~5813 tok)
 - `QuestionBankItem.js` — TYPE_LABELS: QuestionBankItem (~485 tok)
 - `QuestionCard.js` — Declares QuestionCard (~293 tok)
 
@@ -48,8 +48,8 @@
 
 ## client/screens/student/
 
-- `HomeScreen.js` — API routes: GET (3 endpoints) (~2274 tok)
-- `SectionScreen.js` — API routes: GET, POST (3 endpoints) (~2758 tok)
+- `HomeScreen.js` — API routes: GET (3 endpoints) (~2308 tok)
+- `SectionScreen.js` — API routes: GET, POST (6 endpoints) (~3068 tok)
 - `StudentClassScreen.js` — API routes: GET (3 endpoints) (~4355 tok)
 
 ## client/screens/teacher/
@@ -96,8 +96,9 @@
 ## server/src/controllers/
 
 - `course.controller.js` — crypto: generateCode, getTeacherCourses, createCourse + 11 more (~4797 tok)
-- `question.controller.js` — prisma: ownedQuestion, validateMultipleChoice, validateFillInBlank + 7 more (~5283 tok)
+- `question.controller.js` — prisma: ownedQuestion, validateMultipleChoice, validateFillInBlank + 7 more (~5353 tok)
 - `student.controller.js` — prisma: getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions + 9 more (~3196 tok)
+- `study.controller.js` — prisma: startWorkSession, endWorkSession (~397 tok)
 
 ## server/src/lib/
 
@@ -119,3 +120,4 @@
 
 ## server/src/services/
 
+- `workSession.service.js` — prisma: getOrCreateWorkSession, recordActivity, closeWorkSession (~480 tok)
