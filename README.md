@@ -12,23 +12,25 @@ A chemistry course platform for teachers and students. Teachers create courses w
 ### 1. Start MongoDB
 
 ```bash
-docker compose up -d
+docker compose up -d mongo mongo-setup
 ```
 
-This starts a MongoDB 7 container (`chemu_mongo`) on port `27017` with a replica set (`rs0`) required by Prisma. The container auto-initialises the replica set via its healthcheck — wait until the status shows `healthy` before continuing.
+This starts a MongoDB 7 container (`chemu_mongo`) on port `27017` with a replica set (`rs0`) required by Prisma. The `mongo-setup` service initialises the replica set once and exits. Wait until the mongo container is healthy before continuing.
 
 ```bash
 docker ps  # STATUS column should read "Up ... (healthy)"
 ```
 
-### 2. Install dependencies
+> The `server` service in `docker-compose.yml` is for **production deployment only** — it reads from `server/.env.production`. Do not run it for local development.
+
+### 2. Install server dependencies
 
 ```bash
 cd server
 npm install
 ```
 
-### 3. Configure environment variables
+### 3. Configure server environment variables
 
 ```bash
 cp .env.example .env
@@ -45,11 +47,20 @@ Edit `server/.env` and set:
 
 ### 4. Generate Prisma client
 
+Run from the `server/` directory:
+
 ```bash
 npx prisma generate
 ```
 
-### 5. Start the server
+### 5. Seed the database (optional)
+
+```bash
+npm run seed          # seed with sample data
+npm run seed:reset    # drop all data and re-seed
+```
+
+### 6. Start the server
 
 **Development** (auto-restarts on file changes):
 ```bash
@@ -63,7 +74,7 @@ npm start
 
 The API will be available at `http://localhost:3000`.
 
-### 6. Start the client
+### 7. Start the client
 
 ```bash
 cd client
@@ -72,15 +83,18 @@ cp .env.example .env
 npm start
 ```
 
-Edit `client/.env` if your server runs on a different port:
+Edit `client/.env` to point at your API server:
 
 | Variable | Description |
 |---|---|
 | `EXPO_PUBLIC_API_URL` | Base URL of the API server (default `http://localhost:3000`) |
 
+> **Physical device:** `localhost` won't work from a phone. Replace it with your machine's LAN IP address, e.g. `http://192.168.1.100:3000`. Keep the port the same as `PORT` in `server/.env`.
+
 This opens the Expo dev server. From there:
 
 - Press `a` to open on an Android emulator
+- Press `i` to open on an iOS simulator
 - Press `w` to open in a web browser
 - Scan the QR code with the [Expo Go](https://expo.dev/go) app on your phone
 
@@ -92,6 +106,15 @@ npm test
 ```
 
 Tests run in-band (sequentially) using Jest and Supertest.
+
+## Building for distribution (EAS)
+
+The project uses [EAS Build](https://docs.expo.dev/build/introduction/) for creating distributable binaries. The `eas.json` includes an `internal` profile that produces an Android APK for internal testing.
+
+```bash
+cd client
+npx eas build --profile internal --platform android
+```
 
 ## Stopping MongoDB
 
