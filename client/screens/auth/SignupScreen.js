@@ -50,7 +50,7 @@ export default function SignupScreen({ navigation }) {
         </View>
 
         <Text style={styles.title}>Create account</Text>
-        <Text style={styles.subtitle}>Join ChemApp and start learning.</Text>
+        <Text style={styles.subtitle}>Join ChemU and start learning.</Text>
 
         {/* Role toggle */}
         <View style={styles.roleRow}>

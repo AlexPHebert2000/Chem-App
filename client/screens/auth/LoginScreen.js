@@ -43,7 +43,7 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.logoMark}>
             <Ionicons name="flask" size={32} color={colors.purple600} />
           </View>
-          <Text style={styles.appName}>ChemApp</Text>
+          <Text style={styles.appName}>ChemU</Text>
           <Text style={styles.tagline}>Master chemistry, one section at a time.</Text>
         </View>
 

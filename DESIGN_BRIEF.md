@@ -1,8 +1,8 @@
-# Chem App — Design Brief
+# ChemU — Design Brief
 
 ## 1. What This App Is
 
-**Chem App** is a mobile-first chemistry learning platform for high school and university students. Teachers create courses with chapters, sections, and questions. Students join via a class code, work through questions, get instant feedback, and earn points and badges. The app runs on iOS, Android, and web via React Native + Expo.
+**ChemU** is a mobile-first chemistry learning platform for high school and university students. Teachers create courses with chapters, sections, and questions. Students join via a class code, work through questions, get instant feedback, and earn points and badges. The app runs on iOS, Android, and web via React Native + Expo.
 
 ---
 
@@ -146,7 +146,7 @@ The course structure goes: Course → Chapter → Section → Questions. Student
 
 ## 6. Design Goals (Priority Order)
 
-1. **Brand identity on entry** — Login/Signup should feel like Chem App, not a generic form
+1. **Brand identity on entry** — Login/Signup should feel like ChemU, not a generic form
 2. **Student motivation** — Dashboard and question flow should make progress feel visible and rewarding
 3. **Teacher efficiency** — Key actions (create, access question bank) should be immediately findable
 4. **Spatial clarity** — Users should always know where they are in the course hierarchy

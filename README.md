@@ -1,4 +1,4 @@
-# Chem App
+# ChemU
 
 A chemistry course platform for teachers and students. Teachers create courses with chapters, sections, and questions. Students enroll, work through content, and earn points and badges.
 
@@ -15,7 +15,7 @@ A chemistry course platform for teachers and students. Teachers create courses w
 docker compose up -d
 ```
 
-This starts a MongoDB 7 container (`chem_app_mongo`) on port `27017` with a replica set (`rs0`) required by Prisma. The container auto-initialises the replica set via its healthcheck — wait until the status shows `healthy` before continuing.
+This starts a MongoDB 7 container (`chemu_mongo`) on port `27017` with a replica set (`rs0`) required by Prisma. The container auto-initialises the replica set via its healthcheck — wait until the status shows `healthy` before continuing.
 
 ```bash
 docker ps  # STATUS column should read "Up ... (healthy)"

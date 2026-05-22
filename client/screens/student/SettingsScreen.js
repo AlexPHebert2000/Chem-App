@@ -396,7 +396,7 @@ export default function SettingsScreen({ navigation }) {
             <Text style={styles.signOutText}>Sign out</Text>
           </Pressable>
 
-          <Text style={styles.versionText}>Chem App · v1.0.0</Text>
+          <Text style={styles.versionText}>ChemU · v1.0.0</Text>
         </View>
       </ScrollView>
 
