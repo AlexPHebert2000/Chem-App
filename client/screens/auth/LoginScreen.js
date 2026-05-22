@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert, Switch,
+  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert, Switch, Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { ShadowButton, ScreenSurface } from '../../components/base';
@@ -41,7 +41,7 @@ export default function LoginScreen({ navigation }) {
         {/* Logo / wordmark */}
         <View style={styles.logoArea}>
           <View style={styles.logoMark}>
-            <Ionicons name="flask" size={32} color={colors.purple600} />
+            <Image source={require('../../assets/icon.png')} style={styles.logoImage} />
           </View>
           <Text style={styles.appName}>ChemU</Text>
           <Text style={styles.tagline}>Master chemistry, one section at a time.</Text>
@@ -168,6 +168,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   appName: {
     ...typeScale.display,
