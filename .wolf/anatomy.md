@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-25T16:59:40.127Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-25T17:02:10.692Z
 > Files: 11 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
@@ -20,7 +20,7 @@
 
 ## .github/workflows/
 
-- `deploy.yml` — CI: Deploy (~321 tok)
+- `deploy.yml` — CI: Deploy (~662 tok)
 
 ## client/
 
