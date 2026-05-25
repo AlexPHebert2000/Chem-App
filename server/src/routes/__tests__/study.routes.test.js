@@ -2,7 +2,7 @@ const request = require('supertest');
 const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
-  studentCourse: { findUnique: jest.fn() },
+  studentEnrollment: { findFirst: jest.fn() },
   session: {
     findFirst: jest.fn(),
     findUnique: jest.fn(),
@@ -57,14 +57,14 @@ describe('POST /api/study/start', () => {
   });
 
   test('403 if student not enrolled', async () => {
-    prisma.studentCourse.findUnique.mockResolvedValue(null);
+    prisma.studentEnrollment.findFirst.mockResolvedValue(null);
     const res = await request(app).post('/api/study/start').set('Authorization', `Bearer ${STUDENT_TOKEN}`).send({ courseId: 'course-id-1' });
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/not enrolled/);
   });
 
   test('200 resumes existing active session', async () => {
-    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: 'student-id-1', courseId: 'course-id-1' });
+    prisma.studentEnrollment.findFirst.mockResolvedValue({ courseClassId: null });
     prisma.session.findFirst.mockResolvedValue(OPEN_SESSION);
     const res = await request(app).post('/api/study/start').set('Authorization', `Bearer ${STUDENT_TOKEN}`).send({ courseId: 'course-id-1' });
     expect(res.status).toBe(200);
@@ -74,7 +74,7 @@ describe('POST /api/study/start', () => {
   });
 
   test('200 creates new session when none exists', async () => {
-    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: 'student-id-1', courseId: 'course-id-1' });
+    prisma.studentEnrollment.findFirst.mockResolvedValue({ courseClassId: null });
     prisma.session.findFirst.mockResolvedValue(null);
     prisma.session.create.mockResolvedValue({ ...OPEN_SESSION, id: 'session-id-new' });
     const res = await request(app).post('/api/study/start').set('Authorization', `Bearer ${STUDENT_TOKEN}`).send({ courseId: 'course-id-1' });
@@ -86,7 +86,7 @@ describe('POST /api/study/start', () => {
   test('200 closes stale session and creates new one when inactive > 1 hour', async () => {
     const staleTime = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
     const staleSession = { ...OPEN_SESSION, lastActivityAt: staleTime };
-    prisma.studentCourse.findUnique.mockResolvedValue({ studentId: 'student-id-1', courseId: 'course-id-1' });
+    prisma.studentEnrollment.findFirst.mockResolvedValue({ courseClassId: null });
     prisma.session.findFirst.mockResolvedValue(staleSession);
     prisma.session.update.mockResolvedValue({ ...staleSession, endedAt: new Date() });
     prisma.session.create.mockResolvedValue({ ...OPEN_SESSION, id: 'session-id-new' });

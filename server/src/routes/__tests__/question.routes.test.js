@@ -3,13 +3,15 @@ const jwt = require('jsonwebtoken');
 const app = require('../../app');
 
 jest.mock('../../lib/prisma', () => ({
-  question:        { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  section:         { findMany: jest.fn() },
-  session:         { findUnique: jest.fn(), update: jest.fn() },
-  studentCourse:   { findUnique: jest.fn() },
-  questionAttempt: { create: jest.fn() },
-  questionResolution: { findUnique: jest.fn() },
-  choice:          { deleteMany: jest.fn(), create: jest.fn() },
+  question:          { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+  section:           { findMany: jest.fn() },
+  session:           { findUnique: jest.fn(), update: jest.fn() },
+  course:            { findMany: jest.fn() },
+  chapter:           { findMany: jest.fn() },
+  studentEnrollment: { findFirst: jest.fn() },
+  questionAttempt:   { create: jest.fn() },
+  questionResolution:{ findUnique: jest.fn() },
+  choice:            { deleteMany: jest.fn(), create: jest.fn() },
 }));
 
 jest.mock('../../services/badge.service', () => ({ awardBadges: jest.fn().mockResolvedValue(undefined) }));
@@ -54,8 +56,8 @@ const MC_CHOICES = [
 const FIB_CHOICES = [
   { id: 'choice-id-1', content: '6',  isCorrect: true,  blankIndex: 0 },
   { id: 'choice-id-2', content: '12', isCorrect: false, blankIndex: 0 },
-  { id: 'choice-id-3', content: 'C',  isCorrect: true,  blankIndex: 1 },
-  { id: 'choice-id-4', content: 'Ca', isCorrect: false, blankIndex: 1 },
+  { id: 'choice-id-3', content: 'c',  isCorrect: true,  blankIndex: 1 },  // stored lowercase by buildChoices
+  { id: 'choice-id-4', content: 'ca', isCorrect: false, blankIndex: 1 },
 ];
 
 const MC_QUESTION  = { id: 'question-id-1', teacherId: TEACHER_ID, sectionIds: [SECTION.id], type: 'MULTIPLE_CHOICE', difficulty: 3, correctExplanation: 'Carbon has 6 electrons.', incorrectExplanation: 'Review atomic numbers.', choices: MC_CHOICES };
@@ -72,7 +74,9 @@ function mockChain(question = MC_QUESTION) {
   prisma.question.findUnique.mockResolvedValue(question);
   prisma.session.findUnique.mockResolvedValue(SESSION);
   prisma.section.findMany.mockResolvedValue([{ ...SECTION, chapter: CHAPTER }]);
-  prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+  prisma.studentEnrollment.findFirst.mockResolvedValue(ENROLLMENT);
+  prisma.course.findMany.mockResolvedValue([]);
+  prisma.chapter.findMany.mockResolvedValue([]);
   prisma.questionAttempt.create.mockResolvedValue(ATTEMPT);
   prisma.session.update.mockResolvedValue({});
 }
@@ -92,16 +96,23 @@ describe('GET /api/questions — guards and basic behavior', () => {
     expect(res.status).toBe(403);
   });
 
-  test('200 returns teacher questions', async () => {
+  test('200 returns teacher questions with usedIn count', async () => {
     prisma.question.findMany.mockResolvedValue([MC_QUESTION]);
+    prisma.course.findMany.mockResolvedValue([COURSE]);
+    prisma.chapter.findMany.mockResolvedValue([CHAPTER]);
+    prisma.section.findMany.mockResolvedValue([SECTION]);
     const res = await request(app).get('/api/questions').set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].id).toBe(MC_QUESTION.id);
+    expect(res.body[0].usedIn).toBe(0);
   });
 
   test('calls findMany with teacherId filter', async () => {
     prisma.question.findMany.mockResolvedValue([MC_QUESTION]);
+    prisma.course.findMany.mockResolvedValue([COURSE]);
+    prisma.chapter.findMany.mockResolvedValue([CHAPTER]);
+    prisma.section.findMany.mockResolvedValue([SECTION]);
     await request(app).get('/api/questions').set('Authorization', `Bearer ${token('TEACHER', TEACHER_ID)}`);
     expect(prisma.question.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { teacherId: TEACHER_ID },
@@ -504,12 +515,14 @@ describe('POST /api/questions/:questionId/attempt — input validation', () => {
   });
 
   test('400 if choiceIds is missing', async () => {
+    mockChain();
     const res = await request(app).post(attemptUrl()).set(auth()).send({ sessionId: SESSION.id });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/choiceIds/);
   });
 
   test('400 if choiceIds is empty', async () => {
+    mockChain();
     const res = await request(app).post(attemptUrl()).set(auth()).send({ sessionId: SESSION.id, choiceIds: [] });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/choiceIds/);
@@ -565,7 +578,7 @@ describe('POST /api/questions/:questionId/attempt — resource checks', () => {
     prisma.question.findUnique.mockResolvedValue(MC_QUESTION);
     prisma.session.findUnique.mockResolvedValue(SESSION);
     prisma.section.findMany.mockResolvedValue([{ ...SECTION, chapter: CHAPTER }]);
-    prisma.studentCourse.findUnique.mockResolvedValue(null);
+    prisma.studentEnrollment.findFirst.mockResolvedValue(null);
     const res = await request(app).post(attemptUrl()).set(auth()).send({ sessionId: SESSION.id, choiceIds: ['choice-id-1'] });
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/Not enrolled/);
@@ -641,32 +654,47 @@ describe('POST /api/questions/:questionId/attempt — MULTIPLE_CHOICE submission
 });
 
 // ─── POST /api/questions/:questionId/attempt — FILL_IN_BLANK submission ───────
+// FIB_QUESTION has 2 blanks: blank 0 correct='6', blank 1 correct='c' (lowercased by controller)
 
 describe('POST /api/questions/:questionId/attempt — FILL_IN_BLANK submission', () => {
   const auth = () => ({ Authorization: `Bearer ${token('STUDENT', STUDENT_ID)}` });
 
-  test('400 if not all blanks are answered', async () => {
+  test('400 if fibAnswers not provided', async () => {
     mockChain(FIB_QUESTION);
-    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id, choiceIds: ['choice-id-1'] });
+    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/blanks/);
+    expect(res.body.error).toMatch(/fibAnswers/);
   });
 
-  test('400 if more than one answer submitted for a blank', async () => {
+  test('400 if wrong number of fibAnswers (too few)', async () => {
     mockChain(FIB_QUESTION);
-    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id, choiceIds: ['choice-id-1', 'choice-id-2', 'choice-id-3'] });
+    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id, fibAnswers: ['6'] });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/duplicate/);
+    expect(res.body.error).toMatch(/2 answer/);
   });
 
-  test('201 with score equal to number of correct blanks', async () => {
+  test('201 with score 2 when all blanks correct', async () => {
     mockChain(FIB_QUESTION);
     const fibAttempt = { ...ATTEMPT, score: 2 };
     prisma.questionAttempt.create.mockResolvedValue(fibAttempt);
-    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id, choiceIds: ['choice-id-1', 'choice-id-3'] });
+    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id, fibAnswers: ['6', 'c'] });
     expect(res.status).toBe(201);
+    expect(res.body.isCorrect).toBe(true);
     expect(prisma.questionAttempt.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ score: 2 }),
+    }));
+  });
+
+  test('201 with score 1 when one blank is wrong', async () => {
+    mockChain(FIB_QUESTION);
+    const fibAttempt = { ...ATTEMPT, score: 1 };
+    prisma.questionAttempt.create.mockResolvedValue(fibAttempt);
+    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id, fibAnswers: ['6', 'wrong'] });
+    expect(res.status).toBe(201);
+    expect(res.body.isCorrect).toBe(false);
+    expect(res.body.xpDelta).toBe(0);
+    expect(prisma.questionAttempt.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ score: 1 }),
     }));
   });
 });

@@ -8,6 +8,7 @@ jest.mock('../../lib/prisma', () => ({
   chapter:            { findUnique: jest.fn() },
   course:             { findUnique: jest.fn() },
   studentCourse:      { findUnique: jest.fn() },
+  studentEnrollment:  { findFirst: jest.fn() },
   session:            { findUnique: jest.fn(), update: jest.fn() },
   questionResolution: { upsert: jest.fn(), findUnique: jest.fn() },
   questionAttempt:    { create: jest.fn() },
@@ -170,7 +171,7 @@ describe('POST /api/questions/:questionId/attempt — DYNAMIC', () => {
     prisma.question.findUnique.mockResolvedValue(DYNAMIC_QUESTION);
     prisma.session.findUnique.mockResolvedValue(SESSION);
     prisma.section.findMany.mockResolvedValue([{ ...SECTION, chapter: CHAPTER }]);
-    prisma.studentCourse.findUnique.mockResolvedValue(ENROLLMENT);
+    prisma.studentEnrollment.findFirst.mockResolvedValue(ENROLLMENT);
     prisma.questionResolution.findUnique.mockResolvedValue(overrides.resolution !== undefined ? overrides.resolution : RESOLUTION);
     prisma.questionAttempt.create.mockResolvedValue(overrides.attempt ?? ATTEMPT);
     prisma.session.update.mockResolvedValue({});
