@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-22T16:34:59.333Z
-> Files: 10 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-25T16:59:40.127Z
+> Files: 11 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -17,6 +17,10 @@
 
 ## .claude/rules/
 
+
+## .github/workflows/
+
+- `deploy.yml` — CI: Deploy (~321 tok)
 
 ## client/
 
@@ -76,7 +80,7 @@
 
 ## server/
 
-- `.dockerignore` (~7 tok)
+- `.dockerignore` — /__tests__ (~12 tok)
 - `Dockerfile` — Docker container definition (~41 tok)
 
 ## server/prisma/

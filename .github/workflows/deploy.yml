@@ -1,0 +1,45 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Strip client and test code
+        run: |
+          rm -rf client/
+          find server -type d -name __tests__ -exec rm -rf {} + 2>/dev/null || true
+          rm -rf notes/ docs/ .wolf/ DESIGN_BRIEF.md
+
+      - name: Push deploy branch
+        run: |
+          git add -A
+          git commit -m "deploy: $(git rev-parse --short HEAD)"
+          git push origin HEAD:deploy --force
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/chemu
+            git pull origin deploy
+            docker compose up -d --build
