@@ -10,19 +10,24 @@ const ACCENT = [
   { stripe: colors.coral600,  tint: colors.coral50,  text: colors.coral600 },
 ];
 
-function MicroStat({ icon, iconColor, value, label }) {
+function MicroStat({ icon, iconColor, value, label, onPress }) {
+  const El = onPress ? Pressable : View;
   return (
-    <View style={styles.stat}>
+    <El
+      onPress={onPress}
+      style={({ pressed } = {}) => [styles.stat, onPress && pressed && styles.statPressed]}
+    >
       <View style={styles.statTop}>
         <Ionicons name={icon} size={11} color={iconColor} />
         <Text style={styles.statValue}>{value}</Text>
+        {!!onPress && <Ionicons name="chevron-forward" size={9} color={iconColor} style={{ marginLeft: 1 }} />}
       </View>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </El>
   );
 }
 
-export default function ClassCard({ courseClass, courseName, accentIndex = 0, onPress }) {
+export default function ClassCard({ courseClass, courseName, accentIndex = 0, onPress, onStatPress }) {
   const a = ACCENT[accentIndex % ACCENT.length];
   const [copied, setCopied] = useState(false);
 
@@ -77,12 +82,21 @@ export default function ClassCard({ courseClass, courseName, accentIndex = 0, on
             iconColor={a.text}
             value={courseClass.enrollmentCount ?? 0}
             label="students"
+            onPress={onStatPress ? (e) => { e?.stopPropagation?.(); onStatPress('roster'); } : undefined}
           />
           <MicroStat
             icon="flash"
             iconColor={colors.green600}
             value={courseClass.activeToday ?? 0}
             label="active today"
+            onPress={onStatPress ? (e) => { e?.stopPropagation?.(); onStatPress('active-today'); } : undefined}
+          />
+          <MicroStat
+            icon="checkmark-circle-outline"
+            iconColor={colors.purple600}
+            value={courseClass.sectionsCompleted ?? 0}
+            label="sections done"
+            onPress={onStatPress ? (e) => { e?.stopPropagation?.(); onStatPress('sections-done'); } : undefined}
           />
         </View>
       </View>
@@ -185,6 +199,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: 7,
     gap: 2,
+  },
+  statPressed: {
+    backgroundColor: colors.neutral100,
   },
   statTop: {
     flexDirection: 'row',

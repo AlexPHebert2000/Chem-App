@@ -628,6 +628,8 @@ export default function TeacherHomeScreen({ navigation }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sheet, setSheet] = useState(null); // 'createCourse' | 'createSection' | null
   const [exporting, setExporting] = useState(false);
+  const [studentSheet, setStudentSheet] = useState(null); // { title, students }
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -694,6 +696,29 @@ export default function TeacherHomeScreen({ navigation }) {
       Alert.alert('Export failed', e.message ?? 'Could not export report. Please try again.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const openStatSheet = async (section, statType) => {
+    const titleMap = {
+      'roster':       `${section.sectionNumber ? `§${section.sectionNumber} ` : ''}All Students`,
+      'active-today': `${section.sectionNumber ? `§${section.sectionNumber} ` : ''}Active Today`,
+      'sections-done': `${section.sectionNumber ? `§${section.sectionNumber} ` : ''}Sections Completed`,
+    };
+    setStudentSheet({ title: titleMap[statType] ?? 'Students', students: [] });
+    setLoadingStudents(true);
+    try {
+      const all = await api.get(`/courses/${section.courseId}/classes/${section.id}/students`, token);
+      const filtered = statType === 'active-today'
+        ? all.filter(s => s.activeToday)
+        : statType === 'sections-done'
+        ? all.filter(s => s.sectionsCompleted > 0)
+        : all;
+      setStudentSheet({ title: titleMap[statType], students: filtered });
+    } catch (e) {
+      console.warn('openStatSheet error:', e.message);
+    } finally {
+      setLoadingStudents(false);
     }
   };
 
@@ -766,6 +791,7 @@ export default function TeacherHomeScreen({ navigation }) {
                     code: section.code,
                     enrollmentCount: section.enrollmentCount,
                   })}
+                  onStatPress={(statType) => openStatSheet(section, statType)}
                 />
               ))}
             </View>
@@ -838,6 +864,49 @@ export default function TeacherHomeScreen({ navigation }) {
           }));
         }}
       />
+
+      {/* Student list sheet */}
+      <Sheet
+        visible={!!studentSheet}
+        onClose={() => setStudentSheet(null)}
+        title={studentSheet?.title ?? ''}
+      >
+        {loadingStudents ? (
+          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+            <ActivityIndicator color={colors.purple400} />
+          </View>
+        ) : (studentSheet?.students ?? []).length === 0 ? (
+          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+            <Text style={{ ...typeScale.body, color: colors.neutral600 }}>No students to show.</Text>
+          </View>
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+            {(studentSheet?.students ?? []).map((s, i) => (
+              <View
+                key={s.id}
+                style={[styles.studentRow, i > 0 && styles.studentRowBorder]}
+              >
+                <View style={styles.studentAvatar}>
+                  <Text style={styles.studentAvatarText}>
+                    {s.name.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.studentName} numberOfLines={1}>{s.name}</Text>
+                  <Text style={styles.studentMeta} numberOfLines={1}>
+                    {s.sectionsCompleted} section{s.sectionsCompleted !== 1 ? 's' : ''} · {s.currentPoints} XP
+                  </Text>
+                </View>
+                {s.activeToday && (
+                  <View style={styles.activePip}>
+                    <Text style={styles.activePipText}>Today</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </Sheet>
     </ScreenSurface>
   );
 }
@@ -986,6 +1055,54 @@ const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { paddingVertical: 24, alignItems: 'center' },
   emptyText: { ...typeScale.body, color: colors.neutral600, textAlign: 'center' },
+
+  studentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+  },
+  studentRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral100,
+  },
+  studentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.purple100 ?? colors.purple50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  studentAvatarText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 13,
+    color: colors.purple700 ?? colors.purple600,
+  },
+  studentName: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 14,
+    color: colors.neutral900,
+  },
+  studentMeta: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 11.5,
+    color: colors.neutral600,
+    marginTop: 1,
+  },
+  activePip: {
+    backgroundColor: colors.green100 ?? '#DCFCE7',
+    borderRadius: 99,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    flexShrink: 0,
+  },
+  activePipText: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 10,
+    color: colors.green600 ?? '#16A34A',
+  },
 
   // Drawer
   drawerBackdrop: {

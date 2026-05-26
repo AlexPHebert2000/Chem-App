@@ -204,14 +204,28 @@ async function getCourseClasses(req, res) {
 
   const todayUTC = new Date(new Date().toISOString().slice(0, 10));
 
-  const activeTodayCounts = await Promise.all(
-    classes.map(c =>
+  const [activeTodayCounts, sectionsCompletedCounts] = await Promise.all([
+    Promise.all(classes.map(c =>
       prisma.session.groupBy({
         by: ['studentId'],
         where: { courseClassId: c.id, startedAt: { gte: todayUTC } },
       }).then(rows => rows.length)
-    )
-  );
+    )),
+    Promise.all(classes.map(c =>
+      prisma.studentEnrollment.findMany({
+        where: { courseClassId: c.id },
+        select: { studentId: true },
+      }).then(async enrollments => {
+        const ids = enrollments.map(e => e.studentId);
+        if (!ids.length) return 0;
+        const completed = await prisma.studentSection.groupBy({
+          by: ['studentId'],
+          where: { studentId: { in: ids }, completedAt: { not: null } },
+        });
+        return completed.length;
+      })
+    )),
+  ]);
 
   res.json(classes.map((c, i) => ({
     id: c.id,
@@ -222,6 +236,49 @@ async function getCourseClasses(req, res) {
     archiveDate: c.archiveDate,
     enrollmentCount: c._count.enrollments,
     activeToday: activeTodayCounts[i],
+    sectionsCompleted: sectionsCompletedCounts[i],
+  })));
+}
+
+async function getClassStudents(req, res) {
+  const { courseId, classId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this course' });
+
+  const todayUTC = new Date(new Date().toISOString().slice(0, 10));
+
+  const enrollments = await prisma.studentEnrollment.findMany({
+    where: { courseClassId: classId },
+    include: { student: { select: { id: true, name: true, email: true } } },
+  });
+
+  const studentIds = enrollments.map(e => e.studentId);
+
+  const [activeTodayRows, sectionRows] = await Promise.all([
+    prisma.session.groupBy({
+      by: ['studentId'],
+      where: { courseClassId: classId, startedAt: { gte: todayUTC } },
+    }),
+    studentIds.length ? prisma.studentSection.groupBy({
+      by: ['studentId'],
+      where: { studentId: { in: studentIds }, completedAt: { not: null } },
+      _count: { sectionId: true },
+    }) : Promise.resolve([]),
+  ]);
+
+  const activeTodaySet = new Set(activeTodayRows.map(r => r.studentId));
+  const sectionCountMap = Object.fromEntries(sectionRows.map(r => [r.studentId, r._count.sectionId]));
+
+  res.json(enrollments.map(e => ({
+    id: e.student.id,
+    name: e.student.name,
+    email: e.student.email,
+    activeToday: activeTodaySet.has(e.studentId),
+    sectionsCompleted: sectionCountMap[e.studentId] ?? 0,
+    streak: e.streak ?? 0,
+    currentPoints: e.currentPoints ?? 0,
   })));
 }
 
@@ -480,4 +537,4 @@ async function getChapterClassStats(req, res) {
   res.json({ total, sections });
 }
 
-module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, enrollByCode, getClassChapterStats, getChapterClassStats };
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, enrollByCode, getClassStudents, getClassChapterStats, getChapterClassStats };
