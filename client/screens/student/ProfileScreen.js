@@ -8,6 +8,7 @@ import Svg, {
   Defs, LinearGradient as SvgGrad, Stop,
 } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { getItem } from '../../lib/storage';
@@ -304,6 +305,7 @@ function StatPill({ emoji, value, label }) {
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 export default function ProfileScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { user, token, logout } = useAuth();
   const [student, setStudent]         = useState(null);
   const [badges, setBadges]           = useState([]);
@@ -386,7 +388,7 @@ export default function ProfileScreen({ navigation }) {
         <LinearGradient
           colors={[colors.purple800, colors.purple600]}
           start={{ x: 0.1, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { paddingTop: insets.top + 16 }]}
         >
           <Svg viewBox="0 0 200 200" style={styles.atomDecor}>
             <Ellipse cx="100" cy="100" rx="80" ry="30"

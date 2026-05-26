@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Modal, Animated,
@@ -630,6 +631,7 @@ export default function ChapterDetailScreen({ navigation, route }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.neutral50 }}>
+      <StatusBar style="dark" />
       <View style={{ height: insets.top, backgroundColor: '#fff' }} />
 
       {/* Header */}

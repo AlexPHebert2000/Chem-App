@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   Pressable, ActivityIndicator, TouchableOpacity,
@@ -620,6 +621,7 @@ function ListHeader({ label, meta }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function TeacherHomeScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { user, token, logout } = useAuth();
   const [courses, setCourses] = useState([]);
   const [classMap, setClassMap] = useState({});
@@ -734,8 +736,9 @@ export default function TeacherHomeScreen({ navigation }) {
 
   return (
     <ScreenSurface>
+      <StatusBar style="dark" />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.headerGreeting}>
             Hello, {user?.name?.split(' ')[0] ?? 'Professor'}

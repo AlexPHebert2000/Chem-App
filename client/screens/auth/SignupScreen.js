@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
 } from 'react-native';
@@ -8,6 +10,7 @@ import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SignupScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { signup } = useAuth();
   const [role, setRole] = useState('STUDENT');
   const [name, setName] = useState('');
@@ -37,8 +40,9 @@ export default function SignupScreen({ navigation }) {
 
   return (
     <ScreenSurface>
+      <StatusBar style="dark" />
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 8 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Ellipse, Circle, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import { ScreenSurface } from '../../components/base';
 import { colors, typeScale, screenPadding } from '../../theme';
 
 // Cycling avatar colors — assigned by rank so they're stable
@@ -150,8 +151,8 @@ function LeaderRow({ entry, myId, last }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function StudentClassScreen() {
-  const { user, token } = useAuth();
   const insets = useSafeAreaInsets();
+  const { user, token } = useAuth();
 
   const [courseName, setCourseName] = useState('');
   const [sectionLabel, setSectionLabel] = useState('');
@@ -204,7 +205,7 @@ export default function StudentClassScreen() {
   ].filter(Boolean);
 
   return (
-    <View style={styles.root}>
+    <ScreenSurface style={styles.root}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.purple400} />}
@@ -271,7 +272,7 @@ export default function StudentClassScreen() {
           )}
         </View>
       </ScrollView>
-    </View>
+    </ScreenSurface>
   );
 }
 
@@ -285,6 +286,7 @@ const styles = StyleSheet.create({
   // Hero
   hero: {
     paddingHorizontal: screenPadding.horizontal,
+    paddingTop: 16,
     paddingBottom: 72,
     position: 'relative',
     overflow: 'hidden',

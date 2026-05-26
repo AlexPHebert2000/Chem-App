@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Modal, Animated,
   Switch, TextInput, KeyboardAvoidingView, Platform, Alert,
@@ -120,6 +121,7 @@ function Toast({ text }) {
 
 // ─── SettingsScreen ───────────────────────────────────────────────────────────
 export default function SettingsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { token, logout, user, updateUser } = useAuth();
   const isStudent = user?.role === 'STUDENT';
 
@@ -255,7 +257,7 @@ export default function SettingsScreen({ navigation }) {
         <LinearGradient
           colors={[colors.purple800, colors.purple600]}
           start={{ x: 0.1, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={[styles.hero, { paddingTop: insets.top + 14 }]}
         >
           <Svg viewBox="0 0 200 200" style={styles.atomDecor}>
             <Ellipse cx="100" cy="100" rx="80" ry="30"

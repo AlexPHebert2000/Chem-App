@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
   Modal, Animated, KeyboardAvoidingView, Platform, RefreshControl,
@@ -375,6 +376,7 @@ export default function QuestionBankScreen({ navigation, route }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.neutral50 }}>
+      <StatusBar style="dark" />
       <View style={{ height: insets.top, backgroundColor: '#fff' }} />
 
       {/* Header */}

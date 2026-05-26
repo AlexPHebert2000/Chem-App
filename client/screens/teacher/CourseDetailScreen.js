@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, Pressable,
   TouchableOpacity, Modal, Animated, TextInput, KeyboardAvoidingView,
@@ -417,6 +418,7 @@ export default function CourseDetailScreen({ navigation, route }) {
 
   return (
     <ScreenSurface>
+      <StatusBar style="dark" />
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 14) }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>

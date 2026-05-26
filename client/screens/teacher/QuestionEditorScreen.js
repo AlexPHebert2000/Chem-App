@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, ScrollView, StyleSheet,
   Pressable, Alert, Platform,
@@ -268,6 +270,7 @@ const BLANK_MC = [
 ];
 
 export default function QuestionEditorScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const { questionId, courseId } = route.params ?? {};
   const isEdit = !!questionId;
@@ -398,8 +401,9 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
   return (
     <ScreenSurface>
+      <StatusBar style="dark" />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={colors.neutral900} />
         </Pressable>

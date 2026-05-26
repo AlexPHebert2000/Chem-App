@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   Pressable, Animated, TextInput, Alert,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { getItem, setItem } from '../../lib/storage';
@@ -127,6 +129,7 @@ function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose, on
 
 // ─── HomeScreen ────────────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const courseId = route?.params?.courseId;
 
@@ -250,8 +253,9 @@ export default function HomeScreen({ navigation, route }) {
 
   return (
     <ScreenSurface>
+      <StatusBar style="dark" />
       <Pressable
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 12 }]}
         onLayout={e => setHeaderHeight(e.nativeEvent.layout.height)}
         onPress={canSwitchClass ? () => setClassDrawerOpen(true) : undefined}
         disabled={!canSwitchClass}

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, ScrollView, StyleSheet, Pressable, ActivityIndicator
 } from 'react-native';
@@ -14,6 +16,7 @@ import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SectionScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const { sectionId, courseId } = route.params;
 
@@ -173,8 +176,9 @@ export default function SectionScreen({ navigation, route }) {
   // ── Question ─────────────────────────────────────────────────────────────────
   return (
     <ScreenSurface>
+      <StatusBar style="dark" />
       {/* Top bar: X + gradient progress bar */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.exitBtn}>
           <Ionicons name="close" size={18} color={colors.neutral900} />
         </Pressable>
