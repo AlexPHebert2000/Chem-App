@@ -82,6 +82,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/chemu
-            git pull origin deploy
-            docker compose up -d --build
+            cd ~/Chem-App
+            git fetch origin deploy && git reset --hard origin/deploy
+            docker compose up -d --build server
+            docker compose exec server npm run seed
+            
