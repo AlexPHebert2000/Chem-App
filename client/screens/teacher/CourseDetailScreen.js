@@ -411,7 +411,7 @@ export default function CourseDetailScreen({ navigation, route }) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const subtitle = isSectionMode
-    ? [sectionNumber && `Section ${sectionNumber}`, totalEnrolled && `${totalEnrolled} students`]
+    ? [sectionNumber && `Class ${sectionNumber}`, totalEnrolled && `${totalEnrolled} students`]
         .filter(Boolean).join(' · ')
     : `${chapters.length} ${chapters.length === 1 ? 'chapter' : 'chapters'}`;
 
@@ -500,7 +500,7 @@ export default function CourseDetailScreen({ navigation, route }) {
         title={courseName}
       >
         <Text style={styles.sheetInfo}>
-          {isSectionMode ? 'Manage this section and its students.' : 'Manage course content and chapters.'}
+          {isSectionMode ? 'Manage this class and its students.' : 'Manage course content and chapters.'}
         </Text>
 
         {isSectionMode ? (
@@ -526,8 +526,8 @@ export default function CourseDetailScreen({ navigation, route }) {
             />
             <OptionRow
               icon="archive-outline"
-              label="Archive section"
-              sub="Hide from your active sections"
+              label="Archive class"
+              sub="Hide from your active classes"
               subdued
               onPress={() => setSheet(null)}
             />

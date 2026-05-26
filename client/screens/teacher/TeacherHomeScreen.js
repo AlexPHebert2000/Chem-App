@@ -290,7 +290,7 @@ function CreateSectionSheet({ visible, onClose, token, courses, onCreated }) {
   };
 
   return (
-    <Sheet visible={visible} onClose={() => { reset(); onClose(); }} title="Create section">
+    <Sheet visible={visible} onClose={() => { reset(); onClose(); }} title="Create class">
       <Text style={formInfoText}>
         Students join with the code generated automatically.
       </Text>
@@ -322,7 +322,7 @@ function CreateSectionSheet({ visible, onClose, token, courses, onCreated }) {
       </ScrollView>
 
       <FormField
-        label="SECTION NUMBER"
+        label="CLASS NUMBER"
         value={sectionNumber}
         onChangeText={setSectionNumber}
         placeholder="e.g. 001"
@@ -335,7 +335,7 @@ function CreateSectionSheet({ visible, onClose, token, courses, onCreated }) {
       />
       {!!error && <Text style={errorText}>{error}</Text>}
       <SubmitButton
-        label="Create section"
+        label="Create class"
         onPress={submit}
         disabled={!canSubmit}
         loading={busy}
@@ -517,8 +517,8 @@ function Drawer({ visible, onClose, teacher, navigation, onSignOut, onCreateCour
           />
           <DrawerItem
             icon="add-circle-outline"
-            label="Create section"
-            sublabel="Add a section and get a student join code"
+            label="Create class"
+            sublabel="Add a class and get a student join code"
             primary
             onPress={() => close(onCreateSection)}
           />
@@ -766,13 +766,13 @@ export default function TeacherHomeScreen({ navigation }) {
           <QuestionBankCard onPress={() => navigation.navigate('QuestionBank')} />
 
           <ListHeader
-            label="SECTIONS"
-            meta={`${allSections.length} ${allSections.length === 1 ? 'section' : 'sections'} · ${totalStudents} students`}
+            label="CLASSES"
+            meta={`${allSections.length} ${allSections.length === 1 ? 'class' : 'classes'} · ${totalStudents} students`}
           />
 
           {allSections.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No sections yet. Create a course and add a section.</Text>
+              <Text style={styles.emptyText}>No classes yet. Create a course and add a class.</Text>
             </View>
           ) : (
             <View style={styles.cardList}>

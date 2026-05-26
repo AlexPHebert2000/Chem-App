@@ -54,7 +54,7 @@ export default function ClassCard({ courseClass, courseName, accentIndex = 0, on
         )}
 
         {/* Section number */}
-        <Text style={styles.sectionTitle}>Section {courseClass.sectionNumber}</Text>
+        <Text style={styles.sectionTitle}>Class {courseClass.sectionNumber}</Text>
         {!!courseClass.meetingTimes && (
           <Text style={styles.meetingTimes} numberOfLines={1}>{courseClass.meetingTimes}</Text>
         )}
@@ -90,12 +90,6 @@ export default function ClassCard({ courseClass, courseName, accentIndex = 0, on
             value={courseClass.activeToday ?? 0}
             label="active today"
             onPress={onStatPress ? (e) => { e?.stopPropagation?.(); onStatPress('active-today'); } : undefined}
-          />
-          <MicroStat
-            icon="checkmark-circle-outline"
-            iconColor={colors.purple600}
-            value={courseClass.sectionsCompleted ?? 0}
-            label="sections done"
           />
         </View>
       </View>
