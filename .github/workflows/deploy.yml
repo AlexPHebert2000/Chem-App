@@ -49,6 +49,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    environment: deploy
     permissions:
       contents: write
 
