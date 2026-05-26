@@ -5,7 +5,8 @@ const jwt = require('jsonwebtoken');
 
 const prisma = new PrismaClient();
 
-const TEACHER_EMAIL = 'teacher@seed.dev';
+const TEACHER_EMAIL  = 'teacher@seed.dev';
+const TEACHER2_EMAIL = 'teacher2@seed.dev';
 const STUDENT_EMAILS = [
   'alice@seed.dev',   'bob@seed.dev',     'charlie@seed.dev', 'diana@seed.dev',
   'ethan@seed.dev',   'fiona@seed.dev',   'george@seed.dev',  'hannah@seed.dev',
@@ -70,12 +71,14 @@ async function mkSession(studentId, courseId, classId, startDate, durationMin, q
 async function clear() {
   console.log('Clearing previous seed data...');
 
-  const teacher = await prisma.teacher.findUnique({ where: { email: TEACHER_EMAIL } });
+  const teacher  = await prisma.teacher.findUnique({ where: { email: TEACHER_EMAIL } });
+  const teacher2 = await prisma.teacher.findUnique({ where: { email: TEACHER2_EMAIL } });
   const students = await prisma.student.findMany({ where: { email: { in: STUDENT_EMAILS } } });
   const studentIds = students.map(s => s.id);
 
-  const courseIds = teacher
-    ? (await prisma.course.findMany({ where: { teacherId: teacher.id }, select: { id: true } })).map(c => c.id)
+  const allTeacherIds = [teacher?.id, teacher2?.id].filter(Boolean);
+  const courseIds = allTeacherIds.length
+    ? (await prisma.course.findMany({ where: { teacherId: { in: allTeacherIds } }, select: { id: true } })).map(c => c.id)
     : [];
 
   const sessionIds = courseIds.length
@@ -94,8 +97,8 @@ async function clear() {
     ? (await prisma.section.findMany({ where: { chapterId: { in: chapterIds } }, select: { id: true } })).map(s => s.id)
     : [];
 
-  const questionIds = teacher
-    ? (await prisma.question.findMany({ where: { teacherId: teacher.id }, select: { id: true } })).map(q => q.id)
+  const questionIds = allTeacherIds.length
+    ? (await prisma.question.findMany({ where: { teacherId: { in: allTeacherIds } }, select: { id: true } })).map(q => q.id)
     : [];
 
   if (attemptIds.length) {
@@ -122,7 +125,8 @@ async function clear() {
   if (sectionIds.length) await prisma.section.deleteMany({ where: { id: { in: sectionIds } } });
   if (chapterIds.length) await prisma.chapter.deleteMany({ where: { id: { in: chapterIds } } });
   if (courseIds.length) await prisma.course.deleteMany({ where: { id: { in: courseIds } } });
-  if (teacher) await prisma.teacher.delete({ where: { id: teacher.id } });
+  if (teacher)  await prisma.teacher.delete({ where: { id: teacher.id } });
+  if (teacher2) await prisma.teacher.delete({ where: { id: teacher2.id } });
   if (studentIds.length) await prisma.studentBadge.deleteMany({ where: { studentId: { in: studentIds } } });
   if (studentIds.length) await prisma.student.deleteMany({ where: { id: { in: studentIds } } });
 
@@ -847,11 +851,9 @@ async function seed() {
     ]);
   }
 
-  // Question tags
-  const allGchemQIds = [n1.id, n2.id, n3.id, n4.id, e1.id, e2.id, e3.id, e4.id, i1.id, i2.id, i3.id, io1.id, io2.id, io3.id, cv1.id, cv2.id, cv3.id, mo1.id, mo2.id, mo3.id, ba1.id, ba2.id, ba3.id];
-  const allOchemQIds = [al1.id, al2.id, al3.id, ak1.id, ak2.id, ak3.id, ay1.id, ay2.id, oh1.id, oh2.id, oh3.id, ca1.id, ca2.id];
-
-  await prisma.questionTag.createMany({ data: [
+  // ─── Question tags ─────────────────────────────────────────────────────────
+  // Build tag definitions first so we can back-reference tagIds onto each question
+  const tagDefs = [
     { name: 'Atomic Structure',     color: 'purple', questionIds: [n1.id, n2.id, n3.id, n4.id, e1.id, e2.id, e3.id, e4.id, i1.id, i2.id, i3.id] },
     { name: 'Chemical Bonding',     color: 'teal',   questionIds: [io1.id, io2.id, io3.id, cv1.id, cv2.id, cv3.id] },
     { name: 'Stoichiometry',        color: 'gold',   questionIds: [mo1.id, mo2.id, mo3.id, ba1.id, ba2.id, ba3.id] },
@@ -860,18 +862,77 @@ async function seed() {
     { name: 'Memorization',         color: 'gold',   questionIds: [n1.id, n2.id, mo1.id, al1.id, al2.id, ay1.id] },
     { name: 'Conceptual',           color: 'teal',   questionIds: [cv2.id, ba2.id, io1.id, ak1.id, oh1.id, ca1.id] },
     { name: 'Dynamic (Calculated)', color: 'purple', questionIds: [n4.id, e4.id, cv3.id, mo3.id, ak3.id] },
-  ]});
+  ];
+
+  const createdTags = await Promise.all(tagDefs.map(t => prisma.questionTag.create({ data: t })));
+
+  // Back-populate tagIds on each question so tag lookups work both ways
+  const questionTagMap = {};
+  createdTags.forEach(tag => {
+    tag.questionIds.forEach(qId => {
+      if (!questionTagMap[qId]) questionTagMap[qId] = [];
+      questionTagMap[qId].push(tag.id);
+    });
+  });
+  await Promise.all(
+    Object.entries(questionTagMap).map(([qId, tagIds]) =>
+      prisma.question.update({ where: { id: qId }, data: { tagIds } })
+    )
+  );
+
+  // ─── Teacher 2 — Physical Chemistry ────────────────────────────────────────
+
+  const teacher2 = await prisma.teacher.create({
+    data: { name: 'James Okafor', email: TEACHER2_EMAIL, password: hashed },
+  });
+  const tid2 = teacher2.id;
+
+  const pchem = await prisma.course.create({ data: { name: 'Physical Chemistry', teacherId: tid2 } });
+
+  const pCh1 = await prisma.chapter.create({
+    data: { courseId: pchem.id, name: 'Thermodynamics', description: 'Laws of thermodynamics and entropy', orderIndex: 0 },
+  });
+
+  const thermo1 = await prisma.section.create({
+    data: { chapterId: pCh1.id, name: 'Laws of Thermodynamics', description: 'Zeroth, first, second, and third laws', orderIndex: 0, questionIds: [] },
+  });
+  const pt1 = await mkMC(tid2, thermo1.id,
+    'Which law of thermodynamics states that energy cannot be created or destroyed?', 1,
+    'First Law', ['Zeroth Law', 'Second Law', 'Third Law'],
+    'The First Law is the law of conservation of energy.',
+    'First Law: ΔU = q + w. Energy is conserved, only transformed.');
+  const pt2 = await mkFIB(tid2, thermo1.id,
+    'The ___ Law of thermodynamics defines temperature. The ___ Law states entropy of the universe always increases.', 2,
+    [['Zeroth', 'First', 'Second'], ['Second', 'First', 'Third']],
+    'Zeroth Law defines thermal equilibrium and temperature. Second Law: ΔS_universe ≥ 0.',
+    'Zeroth = temperature. First = energy. Second = entropy. Third = absolute zero.');
+  await prisma.section.update({ where: { id: thermo1.id }, data: { questionIds: [pt1.id, pt2.id] } });
+
+  const pchemClass = await prisma.courseClass.create({
+    data: { courseId: pchem.id, sectionNumber: '001', meetingTimes: 'M W 1:00pm', code: 'PCHEM001' },
+  });
+
+  // Enroll a small cohort in Physical Chemistry
+  const pchemStudents = [charlie, diana, ethan, hannah, isaac];
+  await prisma.studentEnrollment.createMany({ data: pchemStudents.map(s => ({
+    studentId: s.id, courseClassId: pchemClass.id, streak: 0, lifetimePoints: 0, currentPoints: 0,
+  }))});
+  await prisma.studentCourse.createMany({ data: pchemStudents.map(s => ({
+    studentId: s.id, courseId: pchem.id, streak: 0, lifetimePoints: 0, currentPoints: 0,
+  }))});
 
   // ── Teacher JWT ────────────────────────────────────────────────────────────
 
   const token = jwt.sign({ sub: teacher.id, role: 'TEACHER' }, process.env.JWT_SECRET, { expiresIn: '24h' });
+  const token2 = jwt.sign({ sub: teacher2.id, role: 'TEACHER' }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
   console.log('\n╔══════════════════════════════════════════════════════════════╗');
   console.log('║                     SEED COMPLETE                          ║');
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
   console.log('  Credentials (all passwords: password123)');
   console.log('  ────────────────────────────────────────────────────────────');
-  console.log(`  Teacher : ${TEACHER_EMAIL}`);
+  console.log(`  Teacher 1: ${TEACHER_EMAIL}`);
+  console.log(`  Teacher 2: ${TEACHER2_EMAIL}`);
   console.log('  Students: alice@seed.dev  ethan@seed.dev  priya@seed.dev');
   console.log('            bob@seed.dev    fiona@seed.dev  quinn@seed.dev');
   console.log('            charlie@seed.dev george@seed.dev rachel@seed.dev');
@@ -879,16 +940,19 @@ async function seed() {
   console.log('            (+ 10 more, all @seed.dev)\n');
   console.log('  Classes');
   console.log('  ────────────────────────────────────────────────────────────');
-  console.log('  GCHEM001  Gen Chem I §001  M/W/F 10am   15 students');
-  console.log('  GCHEM002  Gen Chem I §002  T/Th 2pm      7 students');
-  console.log('  OCHEM001  Org Chem §001    T/Th 9am      9 students\n');
+  console.log('  GCHEM001  Gen Chem I §001  M/W/F 10am   15 students  (teacher@seed.dev)');
+  console.log('  GCHEM002  Gen Chem I §002  T/Th 2pm      7 students  (teacher@seed.dev)');
+  console.log('  OCHEM001  Org Chem §001    T/Th 9am      9 students  (teacher@seed.dev)');
+  console.log('  PCHEM001  Phys Chem §001   M/W 1pm       5 students  (teacher2@seed.dev)\n');
   console.log('  Content');
   console.log('  ────────────────────────────────────────────────────────────');
-  console.log('  Gen Chem I  — 3 chapters, 7 sections, 23 questions (MC+FIB+DYNAMIC)');
-  console.log('  Org Chem    — 2 chapters, 5 sections, 13 questions (MC+FIB+DYNAMIC)\n');
-  console.log('  Teacher JWT (valid 24h)');
+  console.log('  Gen Chem I   — 3 chapters, 7 sections, 23 questions (MC+FIB+DYNAMIC)');
+  console.log('  Org Chem     — 2 chapters, 5 sections, 13 questions (MC+FIB+DYNAMIC)');
+  console.log('  Phys Chem    — 1 chapter,  1 section,   2 questions (MC+FIB)\n');
+  console.log('  Teacher JWTs (valid 24h)');
   console.log('  ────────────────────────────────────────────────────────────');
-  console.log(`  ${token}\n`);
+  console.log(`  Teacher 1: ${token}`);
+  console.log(`  Teacher 2: ${token2}\n`);
 }
 
 // ─── Streak Badges ─────────────────────────────────────────────────────────────
