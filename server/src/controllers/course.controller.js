@@ -306,6 +306,27 @@ async function approveJoinClass(req, res) {
   res.status(201).json(enrollment);
 }
 
+async function enrollByCode(req, res) {
+  const { code } = req.body;
+  const studentId = req.user.sub;
+
+  if (!code || !code.trim()) return res.status(400).json({ error: 'code is required' });
+
+  const courseClass = await prisma.courseClass.findUnique({ where: { code: code.trim().toUpperCase() } });
+  if (!courseClass) return res.status(404).json({ error: 'Class not found' });
+
+  const alreadyEnrolled = await prisma.studentEnrollment.findUnique({
+    where: { studentId_courseClassId: { studentId, courseClassId: courseClass.id } },
+  });
+  if (alreadyEnrolled) return res.status(409).json({ error: 'Already enrolled in this class' });
+
+  const enrollment = await prisma.studentEnrollment.create({
+    data: { studentId, courseClassId: courseClass.id },
+  });
+
+  res.status(201).json(enrollment);
+}
+
 async function getClassChapterStats(req, res) {
   const { courseId, classId } = req.params;
 
@@ -445,4 +466,4 @@ async function getChapterClassStats(req, res) {
   res.json({ total, sections });
 }
 
-module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, getClassChapterStats, getChapterClassStats };
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, enrollByCode, getClassChapterStats, getChapterClassStats };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
-  Pressable, Animated,
+  Pressable, Animated, TextInput, Alert,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,9 +45,10 @@ function PathConnector({ fromIndex, toIndex }) {
 // ─── ClassSheet ───────────────────────────────────────────────────────────────
 // Renders as an absolute-positioned dropdown anchored just below the header.
 // Always mounted so exit animation plays — use pointerEvents to block interaction when hidden.
-function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose, topOffset }) {
-  const slideAnim = useRef(new Animated.Value(-300)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
+function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose, onJoinAnother, topOffset }) {
+  const slideAnim  = useRef(new Animated.Value(-300)).current;
+  const fadeAnim   = useRef(new Animated.Value(0)).current;
+  const panelFade  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -57,6 +58,11 @@ function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose, to
         useNativeDriver: true,
       }),
       Animated.timing(fadeAnim, {
+        toValue: visible ? 1 : 0,
+        duration: visible ? 200 : 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(panelFade, {
         toValue: visible ? 1 : 0,
         duration: visible ? 200 : 150,
         useNativeDriver: true,
@@ -77,7 +83,7 @@ function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose, to
       {/* Dropdown panel — slides down from the header edge */}
       <Animated.View
         pointerEvents={visible ? 'box-none' : 'none'}
-        style={[cs.sheet, { top: topOffset, transform: [{ translateY: slideAnim }], zIndex: 11 }]}
+        style={[cs.sheet, { top: topOffset, opacity: panelFade, transform: [{ translateY: slideAnim }], zIndex: 11 }]}
       >
         <Text style={cs.sheetTitle}>My Classes</Text>
         <View style={cs.divider} />
@@ -108,6 +114,11 @@ function ClassSheet({ visible, enrollments, activeClassId, onSwitch, onClose, to
             </Pressable>
           );
         })}
+        <View style={cs.divider} />
+        <Pressable style={cs.joinRow} onPress={onJoinAnother}>
+          <Ionicons name="add-circle-outline" size={18} color={colors.purple600} />
+          <Text style={cs.joinLabel}>Join another class</Text>
+        </Pressable>
         <View style={{ height: 8 }} />
       </Animated.View>
     </>
@@ -132,6 +143,9 @@ export default function HomeScreen({ navigation, route }) {
   const [refreshing,      setRefreshing]      = useState(false);
   const [sheetSection,    setSheetSection]    = useState(null);
   const [coursesCache,    setCoursesCache]    = useState([]);
+  const [joinSheetOpen,   setJoinSheetOpen]   = useState(false);
+  const [joinCode,        setJoinCode]        = useState('');
+  const [joining,         setJoining]         = useState(false);
 
   const loadChapters = useCallback(async (cid) => {
     if (!cid) return;
@@ -216,6 +230,23 @@ export default function HomeScreen({ navigation, route }) {
   };
 
   const canSwitchClass = allEnrollments.length > 1;
+  const isUnenrolled   = !loading && allEnrollments.length === 0;
+
+  const handleJoinByCode = async () => {
+    if (!joinCode.trim()) return;
+    setJoining(true);
+    try {
+      await api.post('/courses/enroll-by-code', { code: joinCode.trim() }, token);
+      setJoinCode('');
+      setJoinSheetOpen(false);
+      setClassDrawerOpen(false);
+      await load();
+    } catch (e) {
+      Alert.alert('Could not join', e.message ?? 'Invalid class code. Please try again.');
+    } finally {
+      setJoining(false);
+    }
+  };
 
   return (
     <ScreenSurface>
@@ -247,6 +278,31 @@ export default function HomeScreen({ navigation, route }) {
         </View>
       </Pressable>
 
+      {isUnenrolled && (
+        <View style={styles.unenrolledContainer}>
+          <Ionicons name="school-outline" size={48} color={colors.purple300} />
+          <Text style={styles.unenrolledTitle}>Join a class</Text>
+          <Text style={styles.unenrolledSub}>Enter the class code your teacher shared with you.</Text>
+          <TextInput
+            style={styles.codeInput}
+            value={joinCode}
+            onChangeText={setJoinCode}
+            placeholder="e.g. AB12CD34"
+            placeholderTextColor={colors.neutral400}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          <ShadowButton
+            label={joining ? 'Joining…' : 'Join class'}
+            preset="primary"
+            onPress={handleJoinByCode}
+            disabled={joining || !joinCode.trim()}
+            style={{ marginTop: 8, alignSelf: 'stretch' }}
+          />
+        </View>
+      )}
+
+      {!isUnenrolled && (
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -297,6 +353,7 @@ export default function HomeScreen({ navigation, route }) {
           </View>
         )}
       </ScrollView>
+      )}
 
       <BottomSheet
         visible={!!sheetSection}
@@ -326,8 +383,33 @@ export default function HomeScreen({ navigation, route }) {
         activeClassId={activeClassId}
         onSwitch={switchClass}
         onClose={() => setClassDrawerOpen(false)}
+        onJoinAnother={() => { setClassDrawerOpen(false); setJoinSheetOpen(true); }}
         topOffset={headerHeight}
       />
+
+      <BottomSheet
+        visible={joinSheetOpen}
+        onClose={() => { setJoinSheetOpen(false); setJoinCode(''); }}
+        title="Join a class"
+      >
+        <View style={{ gap: 12, paddingTop: 4 }}>
+          <TextInput
+            style={styles.codeInput}
+            value={joinCode}
+            onChangeText={setJoinCode}
+            placeholder="e.g. AB12CD34"
+            placeholderTextColor={colors.neutral400}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+          <ShadowButton
+            label={joining ? 'Joining…' : 'Join class'}
+            preset="primary"
+            onPress={handleJoinByCode}
+            disabled={joining || !joinCode.trim()}
+          />
+        </View>
+      </BottomSheet>
     </ScreenSurface>
   );
 }
@@ -386,6 +468,37 @@ const styles = StyleSheet.create({
     ...typeScale.small,
     color: colors.purple600,
     fontFamily: 'Nunito_700Bold',
+  },
+  unenrolledContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: screenPadding.horizontal,
+    gap: 12,
+  },
+  unenrolledTitle: {
+    ...typeScale.h1,
+    color: colors.neutral900,
+    marginTop: 8,
+  },
+  unenrolledSub: {
+    ...typeScale.body,
+    color: colors.neutral600,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  codeInput: {
+    borderWidth: 1.5,
+    borderColor: colors.neutral200,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 15,
+    color: colors.neutral900,
+    backgroundColor: '#FFF',
+    alignSelf: 'stretch',
+    letterSpacing: 2,
   },
 });
 
@@ -466,5 +579,17 @@ const cs = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     flexShrink: 0,
+  },
+  joinRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+  },
+  joinLabel: {
+    ...typeScale.body,
+    color: colors.purple600,
+    fontFamily: 'Nunito_700Bold',
   },
 });
