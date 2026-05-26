@@ -384,9 +384,17 @@ export default function QuestionBankScreen({ navigation, route }) {
             <Ionicons name="chevron-back" size={20} color={colors.neutral900} />
           </Pressable>
           {!pickMode && (
-            <Pressable onPress={() => setSheet(true)} style={({ pressed }) => [styles.squareBtn, pressed && { opacity: 0.7 }]}>
-              <Ionicons name="ellipsis-horizontal" size={20} color={colors.neutral900} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={() => navigation.navigate('QuestionEditor', { courseId })}
+                style={({ pressed }) => [styles.squareBtn, styles.squareBtnPrimary, pressed && { opacity: 0.85 }]}
+              >
+                <Ionicons name="add" size={22} color="#fff" />
+              </Pressable>
+              <Pressable onPress={() => setSheet(true)} style={({ pressed }) => [styles.squareBtn, pressed && { opacity: 0.7 }]}>
+                <Ionicons name="ellipsis-horizontal" size={20} color={colors.neutral900} />
+              </Pressable>
+            </View>
           )}
         </View>
         <Text style={styles.title}>{pickMode ? 'Add to Section' : 'Question Bank'}</Text>
@@ -534,6 +542,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
+  },
+  squareBtnPrimary: {
+    backgroundColor: colors.purple600,
+    borderColor: colors.purple600,
   },
   title: { fontFamily: 'Nunito_900Black', fontSize: 26, color: colors.neutral900, lineHeight: 30 },
   subtitle: { fontFamily: 'Outfit_500Medium', fontSize: 12, color: colors.neutral600, marginTop: 3 },
