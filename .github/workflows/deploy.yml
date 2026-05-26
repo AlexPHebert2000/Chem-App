@@ -83,5 +83,5 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/Chem-App
-            git pull origin deploy
-            docker compose up -d --build
+            git fetch origin deploy && git reset --hard origin/deploy
+            docker compose up -d --build server
