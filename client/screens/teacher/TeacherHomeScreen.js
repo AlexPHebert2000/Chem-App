@@ -790,6 +790,7 @@ export default function TeacherHomeScreen({ navigation }) {
                     sectionNumber: section.sectionNumber,
                     code: section.code,
                     enrollmentCount: section.enrollmentCount,
+                    teachers: section.teachers ?? [],
                   })}
                   onStatPress={(statType) => openStatSheet(section, statType)}
                 />

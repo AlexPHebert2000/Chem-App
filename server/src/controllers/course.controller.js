@@ -204,7 +204,8 @@ async function getCourseClasses(req, res) {
 
   const todayUTC = new Date(new Date().toISOString().slice(0, 10));
 
-  const [activeTodayCounts, sectionsCompletedCounts] = await Promise.all([
+  const allTeacherIds = [...new Set(classes.flatMap(c => c.teacherIds ?? []))];
+  const [activeTodayCounts, sectionsCompletedCounts, teacherList] = await Promise.all([
     Promise.all(classes.map(c =>
       prisma.session.groupBy({
         by: ['studentId'],
@@ -225,7 +226,12 @@ async function getCourseClasses(req, res) {
         return completed.length;
       })
     )),
+    allTeacherIds.length
+      ? prisma.teacher.findMany({ where: { id: { in: allTeacherIds } }, select: { id: true, name: true, email: true } })
+      : Promise.resolve([]),
   ]);
+
+  const teacherMap = Object.fromEntries(teacherList.map(t => [t.id, t]));
 
   res.json(classes.map((c, i) => ({
     id: c.id,
@@ -237,6 +243,7 @@ async function getCourseClasses(req, res) {
     enrollmentCount: c._count.enrollments,
     activeToday: activeTodayCounts[i],
     sectionsCompleted: sectionsCompletedCounts[i],
+    teachers: (c.teacherIds ?? []).map(id => teacherMap[id]).filter(Boolean),
   })));
 }
 
@@ -280,6 +287,34 @@ async function getClassStudents(req, res) {
     streak: e.streak ?? 0,
     currentPoints: e.currentPoints ?? 0,
   })));
+}
+
+async function addTeacherToClass(req, res) {
+  const { courseId, classId } = req.params;
+  const { email } = req.body;
+
+  if (!email?.trim()) return res.status(400).json({ error: 'email is required' });
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'Forbidden' });
+
+  const teacher = await prisma.teacher.findUnique({ where: { email: email.trim().toLowerCase() } });
+  if (!teacher) return res.status(404).json({ error: 'No teacher found with that email' });
+
+  const courseClass = await prisma.courseClass.findFirst({ where: { id: classId, courseId } });
+  if (!courseClass) return res.status(404).json({ error: 'Class not found' });
+
+  if ((courseClass.teacherIds ?? []).includes(teacher.id)) {
+    return res.status(409).json({ error: 'Teacher already added to this class' });
+  }
+
+  await prisma.courseClass.update({
+    where: { id: classId },
+    data: { teacherIds: { push: teacher.id } },
+  });
+
+  return res.json({ id: teacher.id, name: teacher.name, email: teacher.email });
 }
 
 async function patchCourseClass(req, res) {
@@ -537,4 +572,4 @@ async function getChapterClassStats(req, res) {
   res.json({ total, sections });
 }
 
-module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, enrollByCode, getClassStudents, getClassChapterStats, getChapterClassStats };
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, addTeacherToClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, enrollByCode, getClassStudents, getClassChapterStats, getChapterClassStats };

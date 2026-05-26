@@ -177,6 +177,7 @@ model StudentCourse {
 model CourseClass {
   id            String             @id @default(auto()) @map("_id") @db.ObjectId
   courseId      String             @db.ObjectId
+  teacherIds    String[]           @db.ObjectId
   sectionNumber String
   meetingTimes  String
   code          String             @unique

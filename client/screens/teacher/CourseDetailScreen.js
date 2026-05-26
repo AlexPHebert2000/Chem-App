@@ -294,6 +294,7 @@ export default function CourseDetailScreen({ navigation, route }) {
     sectionNumber,
     code,
     enrollmentCount,
+    teachers: initialTeachers = [],
   } = route.params ?? {};
 
   const isSectionMode = mode === 'section';
@@ -303,9 +304,15 @@ export default function CourseDetailScreen({ navigation, route }) {
   const [totalEnrolled, setTotalEnrolled] = useState(enrollmentCount ?? 0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [sheet, setSheet] = useState(null); // 'options' | 'addChapter' | null
+  const [sheet, setSheet] = useState(null); // 'options' | 'addChapter' | 'teachers' | null
   const [codeCopied, setCodeCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // Co-teacher state
+  const [teachers, setTeachers] = useState(initialTeachers);
+  const [teacherEmail, setTeacherEmail] = useState('');
+  const [addingTeacher, setAddingTeacher] = useState(false);
+  const [teacherError, setTeacherError] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -378,6 +385,26 @@ export default function CourseDetailScreen({ navigation, route }) {
       Alert.alert('Export failed', e.message ?? 'Could not export class report.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  // ── Add co-teacher ──────────────────────────────────────────────────────────
+  const addTeacher = async () => {
+    if (!teacherEmail.trim()) return;
+    setAddingTeacher(true);
+    setTeacherError('');
+    try {
+      const t = await api.post(
+        `/courses/${courseId}/classes/${courseClassId}/teachers`,
+        { email: teacherEmail.trim() },
+        token,
+      );
+      setTeachers(prev => [...prev, t]);
+      setTeacherEmail('');
+    } catch (e) {
+      setTeacherError(e.message ?? 'Something went wrong');
+    } finally {
+      setAddingTeacher(false);
     }
   };
 
@@ -485,6 +512,12 @@ export default function CourseDetailScreen({ navigation, route }) {
               onPress={() => { copyCode(); setSheet(null); }}
             />
             <OptionRow
+              icon="people-outline"
+              label="Co-teachers"
+              sub={teachers.length ? `${teachers.length} co-teacher${teachers.length !== 1 ? 's' : ''}` : 'Add teachers by email'}
+              onPress={() => setSheet('teachers')}
+            />
+            <OptionRow
               icon="download-outline"
               label={exporting ? 'Exporting…' : 'Export class report'}
               sub="CSV of student progress"
@@ -508,6 +541,56 @@ export default function CourseDetailScreen({ navigation, route }) {
             onPress={() => setSheet('addChapter')}
           />
         )}
+      </Sheet>
+
+      {/* Co-teachers sheet */}
+      <Sheet
+        visible={sheet === 'teachers'}
+        onClose={() => { setTeacherEmail(''); setTeacherError(''); setSheet(null); }}
+        title="Co-teachers"
+      >
+        <Text style={styles.sheetInfo}>
+          Co-teachers can view this section's stats and student roster.
+        </Text>
+        {teachers.length > 0 && (
+          <View style={styles.teacherList}>
+            {teachers.map((t, i) => (
+              <View key={t.id} style={[styles.teacherRow, i > 0 && styles.teacherRowBorder]}>
+                <View style={styles.teacherAvatar}>
+                  <Text style={styles.teacherAvatarText}>
+                    {t.name.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.teacherName} numberOfLines={1}>{t.name}</Text>
+                  <Text style={styles.teacherEmail} numberOfLines={1}>{t.email}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+        <FormField
+          label="ADD BY EMAIL"
+          value={teacherEmail}
+          onChangeText={setTeacherEmail}
+          placeholder="colleague@school.edu"
+          autoFocus={false}
+        />
+        {!!teacherError && <Text style={styles.errorText}>{teacherError}</Text>}
+        <Pressable
+          onPress={addTeacher}
+          disabled={!teacherEmail.trim() || addingTeacher}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            (!teacherEmail.trim() || addingTeacher) && styles.submitBtnDisabled,
+            pressed && styles.submitBtnPressed,
+          ]}
+        >
+          {addingTeacher
+            ? <ActivityIndicator size="small" color={colors.neutral900} />
+            : <Text style={styles.submitLabel}>Add co-teacher</Text>
+          }
+        </Pressable>
       </Sheet>
 
       {/* Add chapter sheet (course mode) */}
@@ -584,6 +667,25 @@ const styles = StyleSheet.create({
 
   sheetInfo: { fontFamily: 'Outfit_500Medium', fontSize: 13, color: colors.neutral600, marginBottom: 14, lineHeight: 18 },
   errorText: { fontFamily: 'Outfit_500Medium', fontSize: 12, color: colors.coral600, marginBottom: 8 },
+
+  teacherList: {
+    borderWidth: 1.5, borderColor: colors.neutral200,
+    borderRadius: radius.md, marginBottom: 14, overflow: 'hidden',
+  },
+  teacherRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12,
+    backgroundColor: '#fff',
+  },
+  teacherRowBorder: { borderTopWidth: 1, borderTopColor: colors.neutral100 },
+  teacherAvatar: {
+    width: 36, height: 36, borderRadius: 18, flexShrink: 0,
+    backgroundColor: colors.teal50, alignItems: 'center', justifyContent: 'center',
+  },
+  teacherAvatarText: {
+    fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: colors.teal600,
+  },
+  teacherName: { fontFamily: 'Nunito_700Bold', fontSize: 14, color: colors.neutral900 },
+  teacherEmail: { fontFamily: 'Outfit_500Medium', fontSize: 11.5, color: colors.neutral600, marginTop: 1 },
 
   submitBtn: {
     backgroundColor: colors.purple400, borderRadius: radius.md,
