@@ -174,13 +174,18 @@ function scoreBarColor(score) {
   return colors.coral400;
 }
 
-function CompletedStat({ completed, total }) {
+function CompletedStat({ completed, total, onPress }) {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const El = onPress ? Pressable : View;
   return (
-    <View style={st.box}>
+    <El
+      style={({ pressed } = {}) => [st.box, onPress && pressed && { opacity: 0.75 }]}
+      onPress={onPress}
+    >
       <View style={st.labelRow}>
         <Ionicons name="people-outline" size={11} color={colors.purple600} />
         <Text style={st.labelText}>COMPLETED</Text>
+        {!!onPress && <Ionicons name="chevron-forward" size={9} color={colors.purple400} style={{ marginLeft: 'auto' }} />}
       </View>
       <View style={st.valRow}>
         <Text style={st.bigNum}>{completed}</Text>
@@ -189,7 +194,7 @@ function CompletedStat({ completed, total }) {
       <View style={st.track}>
         <View style={[st.fill, { width: `${pct}%`, backgroundColor: pct === 100 ? colors.teal400 : colors.purple400 }]} />
       </View>
-    </View>
+    </El>
   );
 }
 
@@ -267,7 +272,7 @@ const qr = StyleSheet.create({
 
 // ─── SectionCard ───────────────────────────────────────────────────────────────
 
-function SectionCard({ section, orderIndex, expanded, onToggle, questions, loadingQ, stats, totalEnrolled, sectionMode, onAddFromBank, onExport, exportingThis }) {
+function SectionCard({ section, orderIndex, expanded, onToggle, questions, loadingQ, stats, totalEnrolled, sectionMode, onAddFromBank, onExport, exportingThis, onCompletedPress }) {
   const qCount = section._count?.questions ?? 0;
   const chevronAnim = useRef(new Animated.Value(0)).current;
 
@@ -309,7 +314,11 @@ function SectionCard({ section, orderIndex, expanded, onToggle, questions, loadi
         <View style={sc.drawer}>
           {sectionMode && (
             <View style={sc.statsRow}>
-              <CompletedStat completed={stats?.completedCount ?? 0} total={totalEnrolled} />
+              <CompletedStat
+                completed={stats?.completedCount ?? 0}
+                total={totalEnrolled}
+                onPress={onCompletedPress}
+              />
               <ScoreStat score={stats?.avgScore ?? null} />
             </View>
           )}
@@ -495,6 +504,28 @@ export default function ChapterDetailScreen({ navigation, route }) {
   const [sheet, setSheet]           = useState(null); // 'options' | 'addSection' | null
   const [exporting, setExporting]   = useState(null); // chapterId | sectionId | null
 
+  // Completed-by sheet
+  const [completedSheet, setCompletedSheet] = useState(null); // { sectionName } | null
+  const [completedStudents, setCompletedStudents] = useState([]);
+  const [loadingCompleted, setLoadingCompleted] = useState(false);
+
+  const openCompletedSheet = useCallback(async (sectionId, sectionName) => {
+    setCompletedSheet({ sectionName });
+    setCompletedStudents([]);
+    setLoadingCompleted(true);
+    try {
+      const data = await api.get(
+        `/courses/${courseId}/classes/${courseClassId}/sections/${sectionId}/completions`,
+        token,
+      );
+      setCompletedStudents(data ?? []);
+    } catch (e) {
+      console.warn('openCompletedSheet error:', e.message);
+    } finally {
+      setLoadingCompleted(false);
+    }
+  }, [courseId, courseClassId, token]);
+
   const load = useCallback(async () => {
     try {
       const [sectionList, statsData] = await Promise.all([
@@ -669,6 +700,7 @@ export default function ChapterDetailScreen({ navigation, route }) {
                 })}
                 onExport={() => exportSection(sec.id, sec.name)}
                 exportingThis={exporting === sec.id}
+                onCompletedPress={isSectionMode ? () => openCompletedSheet(sec.id, sec.name) : undefined}
               />
             ))}
           </View>
@@ -728,6 +760,41 @@ export default function ChapterDetailScreen({ navigation, route }) {
         onAdd={addSection}
         nextNum={sections.length + 1}
       />
+
+      {/* Completed-by sheet */}
+      <Sheet
+        visible={!!completedSheet}
+        onClose={() => setCompletedSheet(null)}
+        title={completedSheet ? `Completed — ${completedSheet.sectionName}` : ''}
+      >
+        {loadingCompleted ? (
+          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+            <ActivityIndicator color={colors.purple400} />
+          </View>
+        ) : completedStudents.length === 0 ? (
+          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+            <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 13, color: colors.neutral600 }}>
+              No students have completed this section yet.
+            </Text>
+          </View>
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+            {completedStudents.map((s, i) => (
+              <View key={s.id} style={[cpl.row, i > 0 && cpl.rowBorder]}>
+                <View style={cpl.avatar}>
+                  <Text style={cpl.avatarText}>
+                    {s.name.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={cpl.name} numberOfLines={1}>{s.name}</Text>
+                <View style={cpl.scorePill}>
+                  <Text style={cpl.scoreText}>{s.score}%</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </Sheet>
     </View>
   );
 }
@@ -772,4 +839,20 @@ const styles = StyleSheet.create({
   empty: { paddingTop: 40, alignItems: 'center' },
   emptyText: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: colors.neutral600 },
   sheetHint: { fontFamily: 'Outfit_500Medium', fontSize: 13, color: colors.neutral600, marginBottom: 14 },
+});
+
+const cpl = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  rowBorder: { borderTopWidth: 1, borderTopColor: colors.neutral100 },
+  avatar: {
+    width: 36, height: 36, borderRadius: 18, flexShrink: 0,
+    backgroundColor: colors.purple50, alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 13, color: colors.purple600 },
+  name: { flex: 1, fontFamily: 'Nunito_700Bold', fontSize: 14, color: colors.neutral900 },
+  scorePill: {
+    backgroundColor: colors.teal50, borderWidth: 1.5, borderColor: colors.teal400,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3,
+  },
+  scoreText: { fontFamily: 'Nunito_800ExtraBold', fontSize: 12, color: colors.teal600 },
 });

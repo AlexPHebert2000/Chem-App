@@ -475,6 +475,33 @@ async function getClassChapterStats(req, res) {
   res.json({ total, chapters: chapterStats });
 }
 
+async function getSectionCompletions(req, res) {
+  const { courseId, classId, sectionId } = req.params;
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  if (course.teacherId !== req.user.sub) return res.status(403).json({ error: 'Forbidden' });
+
+  const enrollments = await prisma.studentEnrollment.findMany({
+    where: { courseClassId: classId },
+    select: { studentId: true },
+  });
+  const studentIds = enrollments.map(e => e.studentId);
+
+  const completions = await prisma.studentSection.findMany({
+    where: { sectionId, studentId: { in: studentIds }, completedAt: { not: null } },
+    include: { student: { select: { id: true, name: true } } },
+    orderBy: { completedAt: 'asc' },
+  });
+
+  return res.json(completions.map(c => ({
+    id: c.student.id,
+    name: c.student.name,
+    score: c.score,
+    completedAt: c.completedAt,
+  })));
+}
+
 async function getChapterClassStats(req, res) {
   const { courseId, classId, chapterId } = req.params;
 
@@ -572,4 +599,4 @@ async function getChapterClassStats(req, res) {
   res.json({ total, sections });
 }
 
-module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, addTeacherToClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, enrollByCode, getClassStudents, getClassChapterStats, getChapterClassStats };
+module.exports = { getTeacherCourses, createCourse, cloneCourse, requestJoin, approveJoin, getPendingJoinRequests, createCourseClass, getCourseClasses, patchCourseClass, addTeacherToClass, requestJoinClass, getPendingClassJoinRequests, approveJoinClass, enrollByCode, getClassStudents, getClassChapterStats, getChapterClassStats, getSectionCompletions };

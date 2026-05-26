@@ -96,7 +96,6 @@ export default function ClassCard({ courseClass, courseName, accentIndex = 0, on
             iconColor={colors.purple600}
             value={courseClass.sectionsCompleted ?? 0}
             label="sections done"
-            onPress={onStatPress ? (e) => { e?.stopPropagation?.(); onStatPress('sections-done'); } : undefined}
           />
         </View>
       </View>
