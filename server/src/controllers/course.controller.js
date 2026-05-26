@@ -436,7 +436,7 @@ async function getChapterClassStats(req, res) {
     const questionIds = sec.questionIds ?? [];
     let questions = [];
     if (questionIds.length > 0) {
-      const [distinctRows, avgRows] = await Promise.all([
+      const [distinctRows, avgRows, questionDefs] = await Promise.all([
         prisma.questionAttempt.groupBy({
           by: ['questionId', 'studentId'],
           where: { questionId: { in: questionIds }, studentId: { in: studentIds } },
@@ -446,12 +446,26 @@ async function getChapterClassStats(req, res) {
           where: { questionId: { in: questionIds }, studentId: { in: studentIds } },
           _avg: { score: true },
         }),
+        prisma.question.findMany({
+          where: { id: { in: questionIds } },
+          select: { id: true, type: true, choices: { select: { blankIndex: true } } },
+        }),
       ]);
+
+      const maxScoreMap = {};
+      questionDefs.forEach(q => {
+        maxScoreMap[q.id] = (q.type === 'MULTIPLE_CHOICE' || q.type === 'DYNAMIC')
+          ? 1
+          : new Set(q.choices.map(c => c.blankIndex)).size || 1;
+      });
 
       const answeredCountMap = {};
       distinctRows.forEach(r => { answeredCountMap[r.questionId] = (answeredCountMap[r.questionId] ?? 0) + 1; });
       const accuracyMap = {};
-      avgRows.forEach(r => { accuracyMap[r.questionId] = Math.round((r._avg.score ?? 0) * 100); });
+      avgRows.forEach(r => {
+        const max = maxScoreMap[r.questionId] ?? 1;
+        accuracyMap[r.questionId] = Math.min(100, Math.round(((r._avg.score ?? 0) / max) * 100));
+      });
 
       questions = questionIds.map(qId => ({
         questionId: qId,
