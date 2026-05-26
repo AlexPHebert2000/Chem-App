@@ -1,10 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-25T17:02:10.692Z
-> Files: 11 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-25T18:24:52.659Z
+> Files: 15 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
+- `can-you-update-and-glimmering-dragon.md` — Plan: Repair the Test Suite (~1571 tok)
 
 ## ./
 
@@ -81,7 +82,7 @@
 ## server/
 
 - `.dockerignore` — /__tests__ (~12 tok)
-- `Dockerfile` — Docker container definition (~41 tok)
+- `Dockerfile` — Docker container definition (~52 tok)
 
 ## server/prisma/
 
@@ -106,6 +107,9 @@
 
 ## server/src/routes/__tests__/
 
+- `dynamic-question.routes.test.js` — request: token, mockChain, mockChain (~2966 tok)
+- `question.routes.test.js` — API routes: GET, POST (18 endpoints) (~8776 tok)
+- `study.routes.test.js` — API routes: POST (14 endpoints) (~1900 tok)
 
 ## server/src/services/
 

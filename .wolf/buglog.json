@@ -3280,6 +3280,22 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-22T16:34:59.351Z"
+    },
+    {
+      "id": "bug-205",
+      "timestamp": "2026-05-25T17:59:04.720Z",
+      "error_message": "Significant refactor of ",
+      "file": "server/src/routes/__tests__/question.routes.test.js",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 30→45 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-25T17:59:04.720Z"
     }
   ]
 }
