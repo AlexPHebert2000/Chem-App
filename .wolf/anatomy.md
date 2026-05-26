@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-25T18:24:52.659Z
-> Files: 15 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-26T18:35:37.566Z
+> Files: 16 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
@@ -9,6 +9,7 @@
 
 ## ./
 
+- `.gitignore` — Git ignore rules (~94 tok)
 - `DESIGN_BRIEF.md` — ChemU — Design Brief (~2286 tok)
 - `docker-compose.yml` — Docker Compose services (~277 tok)
 - `README.md` — Project documentation (~780 tok)
