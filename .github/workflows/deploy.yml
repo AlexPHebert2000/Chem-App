@@ -85,4 +85,3 @@ jobs:
             cd ~/Chem-App
             git fetch origin deploy && git reset --hard origin/deploy
             docker compose up -d --build server
-            
