@@ -127,7 +127,7 @@ const or = StyleSheet.create({
 
 // ─── Stars ─────────────────────────────────────────────────────────────────────
 
-function Stars({ n, max = 3 }) {
+function Stars({ n, max = 5 }) {
   return (
     <View style={{ flexDirection: 'row', gap: 1, alignItems: 'center' }}>
       {Array.from({ length: max }).map((_, i) => (

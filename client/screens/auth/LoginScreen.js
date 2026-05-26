@@ -100,6 +100,7 @@ export default function LoginScreen({ navigation }) {
               placeholder="••••••••"
               placeholderTextColor={colors.neutral400}
               secureTextEntry={!showPassword}
+              autoCapitalize="none"
               autoComplete="password"
             />
             <Pressable onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>

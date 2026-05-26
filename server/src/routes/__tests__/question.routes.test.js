@@ -697,4 +697,14 @@ describe('POST /api/questions/:questionId/attempt — FILL_IN_BLANK submission',
       data: expect.objectContaining({ score: 1 }),
     }));
   });
+
+  test('201 with score 2 when answer has extra spaces (non metal → nonmetal)', async () => {
+    mockChain(FIB_QUESTION);
+    const fibAttempt = { ...ATTEMPT, score: 2 };
+    prisma.questionAttempt.create.mockResolvedValue(fibAttempt);
+    // blank 0 correct='6', blank 1 correct='c' — submit with spaces stripped
+    const res = await request(app).post(attemptUrl(FIB_QUESTION.id)).set(auth()).send({ sessionId: SESSION.id, fibAnswers: [' 6 ', ' C '] });
+    expect(res.status).toBe(201);
+    expect(res.body.isCorrect).toBe(true);
+  });
 });

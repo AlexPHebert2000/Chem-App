@@ -116,6 +116,7 @@ export default function SignupScreen({ navigation }) {
               placeholder="Min. 8 characters"
               placeholderTextColor={colors.neutral400}
               secureTextEntry={!showPassword}
+              autoCapitalize="none"
               autoComplete="new-password"
             />
             <Pressable onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>

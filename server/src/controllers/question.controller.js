@@ -74,7 +74,7 @@ function buildChoices(type, choices) {
 
   return choices.map(c => {
     const raw = c.content.trim();
-    const content = (type === 'FILL_IN_BLANK' && !isNumericAnswer(raw)) ? raw.toLowerCase() : raw;
+    const content = (type === 'FILL_IN_BLANK' && !isNumericAnswer(raw)) ? raw.replace(/\s+/g, '').toLowerCase() : raw;
     return { content, isCorrect: c.isCorrect === true, blankIndex: c.blankIndex };
   });
 }
@@ -348,7 +348,7 @@ async function attemptQuestion(req, res) {
     const blankResults = [];
     for (let i = 0; i < fibAnswers.length; i++) {
       const raw = String(fibAnswers[i]).trim();
-      const submitted = isNumericAnswer(raw) ? raw : raw.toLowerCase();
+      const submitted = isNumericAnswer(raw) ? raw : raw.replace(/\s+/g, '').toLowerCase();
       const correct = correctByBlank[i];
       const ok = submitted === correct;
       if (ok) score++;
