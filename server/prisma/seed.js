@@ -887,6 +887,12 @@ async function seed() {
   });
   const tid2 = teacher2.id;
 
+  // Shared section: James Okafor co-teaches Gen Chem §001 with Sarah Chen
+  await prisma.courseClass.update({
+    where: { id: gchemClass1.id },
+    data: { teacherIds: [tid2] },
+  });
+
   const pchem = await prisma.course.create({ data: { name: 'Physical Chemistry', teacherId: tid2 } });
 
   const pCh1 = await prisma.chapter.create({
@@ -940,7 +946,7 @@ async function seed() {
   console.log('            (+ 10 more, all @seed.dev)\n');
   console.log('  Classes');
   console.log('  ────────────────────────────────────────────────────────────');
-  console.log('  GCHEM001  Gen Chem I §001  M/W/F 10am   15 students  (teacher@seed.dev)');
+  console.log('  GCHEM001  Gen Chem I §001  M/W/F 10am   15 students  (teacher@seed.dev + teacher2@seed.dev co-teacher)');
   console.log('  GCHEM002  Gen Chem I §002  T/Th 2pm      7 students  (teacher@seed.dev)');
   console.log('  OCHEM001  Org Chem §001    T/Th 9am      9 students  (teacher@seed.dev)');
   console.log('  PCHEM001  Phys Chem §001   M/W 1pm       5 students  (teacher2@seed.dev)\n');
