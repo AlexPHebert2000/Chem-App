@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { colors, radius } from '../../theme';
+import DynamicContent from '../../components/base/DynamicContent';
 
 // ─── Sheet ─────────────────────────────────────────────────────────────────────
 
@@ -236,7 +237,7 @@ function QuestionCard({ question, onPress, pickMode, selected, alreadyAdded }) {
         )}
       </View>
 
-      <Text style={qc.text} numberOfLines={3}>{question.content}</Text>
+      <DynamicContent content={question.content} numberOfLines={3} style={qc.text} />
 
       {tags.length > 0 && (
         <View style={qc.tagsRow}>

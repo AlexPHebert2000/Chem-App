@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { doExport } from '../../lib/exportCsv';
 import { colors, radius } from '../../theme';
+import DynamicContent from '../../components/base/DynamicContent';
 
 // ─── Sheet ─────────────────────────────────────────────────────────────────────
 
@@ -242,7 +243,7 @@ const st = StyleSheet.create({
 function QuestionRow({ question, qStats, sectionMode, isLast, total }) {
   return (
     <View style={[qr.row, !isLast && qr.rowBorder]}>
-      <Text style={qr.text} numberOfLines={2}>{question.content}</Text>
+      <DynamicContent content={question.content} numberOfLines={2} style={qr.text} />
       <View style={qr.meta}>
         <TypeChip type={question.type} />
         <Stars n={question.difficulty ?? 1} />

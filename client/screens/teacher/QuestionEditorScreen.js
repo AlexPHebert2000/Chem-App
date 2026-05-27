@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -7,7 +7,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
-import { ScreenSurface, ShadowButton } from '../../components/base';
+import { ScreenSurface, ShadowButton, SlotPickerSheet, SlotConfigOverlay } from '../../components/base';
+import { parseDynamic } from '../../components/base/DynamicContent';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -260,6 +261,65 @@ function TagSection({ selectedIds, onAdd, onRemove, availableTags }) {
   );
 }
 
+// ─── Slot chip strip (dynamic question editor) ───────────────────────────────
+
+function SlotStrip({ content, onChipPress }) {
+  const slots = parseDynamic(content).filter(s => s.type === 'slot');
+  if (!slots.length) return null;
+  return (
+    <View style={strip.container}>
+      <Text style={strip.label}>SLOTS</Text>
+      <View style={strip.row}>
+        {slots.map((slot, i) => (
+          <Pressable key={i} onPress={() => onChipPress(slot.expr)}
+            style={({ pressed }) => [strip.chip, pressed && strip.chipPressed]}>
+            <Ionicons name="flask-outline" size={11} color={colors.purple600} />
+            <Text style={strip.chipText}>{slot.label}</Text>
+            <Ionicons name="pencil-outline" size={10} color={colors.purple400} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const strip = StyleSheet.create({
+  container: {
+    backgroundColor: colors.purple50,
+    borderWidth: 1.5,
+    borderColor: colors.purple100,
+    borderRadius: radius.md,
+    padding: 10,
+  },
+  label: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: colors.purple400,
+    marginBottom: 8,
+  },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: colors.purple200,
+    borderRadius: radius.full,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  chipPressed: {
+    backgroundColor: colors.purple100,
+  },
+  chipText: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 12,
+    color: colors.purple800,
+  },
+});
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 const BLANK_MC = [
@@ -297,6 +357,12 @@ export default function QuestionEditorScreen({ navigation, route }) {
   const [selectedTagIds, setSelectedTagIds] = useState([]);
 
   const [saving, setSaving] = useState(false);
+
+  // Dynamic slot insertion
+  const contentSelectionRef = useRef({ start: 0, end: 0 });
+  const [slotPickerVisible, setSlotPickerVisible] = useState(false);
+  const [slotConfigVisible, setSlotConfigVisible] = useState(false);
+  const [slotConfigExpr, setSlotConfigExpr] = useState('');
 
   // Load available tags
   useEffect(() => {
@@ -343,6 +409,20 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
   const addTag = id => setSelectedTagIds(prev => prev.includes(id) ? prev : [...prev, id]);
   const removeTag = id => setSelectedTagIds(prev => prev.filter(x => x !== id));
+
+  const insertSlot = expr => {
+    const pos = contentSelectionRef.current.start;
+    setContent(prev => prev.slice(0, pos) + expr + prev.slice(pos));
+  };
+
+  const openSlotConfig = expr => {
+    setSlotConfigExpr(expr);
+    setSlotConfigVisible(true);
+  };
+
+  const applySlotConfig = newExpr => {
+    setContent(prev => prev.replace(slotConfigExpr, newExpr));
+  };
 
   const buildChoices = () => {
     if (type === 'FILL_IN_BLANK') {
@@ -411,6 +491,18 @@ export default function QuestionEditorScreen({ navigation, route }) {
         <View style={{ width: 40 }} />
       </View>
 
+      <SlotPickerSheet
+        visible={slotPickerVisible}
+        onClose={() => setSlotPickerVisible(false)}
+        onSelect={insertSlot}
+      />
+      <SlotConfigOverlay
+        visible={slotConfigVisible}
+        expr={slotConfigExpr}
+        onClose={() => setSlotConfigVisible(false)}
+        onConfirm={applySlotConfig}
+      />
+
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
 
         {/* TYPE */}
@@ -418,12 +510,23 @@ export default function QuestionEditorScreen({ navigation, route }) {
         <TypeSelector value={type} onChange={setType} />
 
         {/* QUESTION */}
-        <FieldLabel label="QUESTION" />
+        {type === 'DYNAMIC' ? (
+          <View style={styles.fieldLabelRow}>
+            <Text style={styles.fieldLabel}>QUESTION</Text>
+            <Pressable onPress={() => setSlotPickerVisible(true)} style={styles.addSlotBtn}>
+              <Ionicons name="add" size={13} color={colors.purple600} />
+              <Text style={styles.addSlotText}>Add slot</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <FieldLabel label="QUESTION" />
+        )}
         <AccentArea
           accent="purple"
           value={content}
           onChangeText={setContent}
           rows={type === 'DYNAMIC' ? 4 : 3}
+          onSelectionChange={e => { contentSelectionRef.current = e.nativeEvent.selection; }}
           placeholder={
             type === 'MULTIPLE_CHOICE' ? 'e.g. What is the atomic number of Magnesium?'
             : type === 'FILL_IN_BLANK' ? 'Use ___ for blanks. e.g. The pH of pure water is ___.'
@@ -431,6 +534,9 @@ export default function QuestionEditorScreen({ navigation, route }) {
           }
           style={type === 'DYNAMIC' ? { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' } : null}
         />
+
+        {/* DYNAMIC: slot chip strip */}
+        {type === 'DYNAMIC' && <SlotStrip content={content} onChipPress={openSlotConfig} />}
 
         {/* DYNAMIC: template syntax */}
         {type === 'DYNAMIC' && <TemplateSyntaxCard />}
@@ -776,6 +882,24 @@ const styles = StyleSheet.create({
 
   // Dynamic
   dynRow: { flexDirection: 'row', gap: 12 },
+  addSlotBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.purple50,
+    borderWidth: 1.5,
+    borderColor: colors.purple200,
+    borderRadius: radius.full,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginLeft: 'auto',
+  },
+  addSlotText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: colors.purple600,
+  },
 
   // Template syntax card
   syntaxCard: {
