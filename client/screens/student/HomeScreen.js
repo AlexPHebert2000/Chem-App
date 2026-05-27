@@ -170,7 +170,6 @@ export default function HomeScreen({ navigation, route }) {
       setCoursesCache(courses ?? []);
 
       const enrollments = me.enrollments ?? [];
-      console.log('[HomeScreen] enrollments from /students/me:', enrollments.length, enrollments.map(e => e.courseClassId));
       // Attach course name to each enrollment for the drawer
       const enriched = enrollments.map(e => ({
         ...e,
