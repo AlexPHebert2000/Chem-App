@@ -11,7 +11,13 @@ function parseExpr(expr) {
   const el = inner.match(/^el\((\d+),(\d+)\)\.(\w+)$/);
   if (el) return { type: 'el', minZ: el[1], maxZ: el[2], prop: el[3] };
   const num = inner.match(/^num\((-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\)$/);
-  if (num) return { type: 'num', min: num[1], max: num[2] };
+  if (num) {
+    const decimals = Math.max(
+      (num[1].split('.')[1] || '').length,
+      (num[2].split('.')[1] || '').length,
+    );
+    return { type: 'num', min: num[1], max: num[2], decimals };
+  }
   const comp = inner.match(/^compound\((\w+)\)\.(\w+)$/);
   if (comp) return { type: 'compound', cat: comp[1], prop: comp[2] };
   if (inner === 'NA') return { type: 'const' };
@@ -20,7 +26,10 @@ function parseExpr(expr) {
 
 function buildExpr(config) {
   if (config.type === 'el') return `[el(${config.minZ},${config.maxZ}).${config.prop}]`;
-  if (config.type === 'num') return `[num(${config.min},${config.max})]`;
+  if (config.type === 'num') {
+    const fmt = v => Number(v).toFixed(config.decimals);
+    return `[num(${fmt(config.min)},${fmt(config.max)})]`;
+  }
   if (config.type === 'compound') return `[compound(${config.cat}).${config.prop}]`;
   if (config.type === 'const') return '[NA]';
   return `[${config.raw}]`;
@@ -36,6 +45,12 @@ const EL_PROPS = [
 ];
 const COMP_CATS  = ['acids', 'bases', 'salts', 'oxides'];
 const COMP_PROPS = ['formula', 'name'];
+const PRECISION_OPTS = [
+  { value: 0, label: 'Int' },
+  { value: 1, label: '×.0' },
+  { value: 2, label: '×.00' },
+  { value: 3, label: '×.000' },
+];
 
 function OptionRow({ options, value, onSelect, getLabel }) {
   return (
@@ -131,10 +146,16 @@ export default function SlotConfigOverlay({ visible, expr, onClose, onConfirm })
 
         {config.type === 'num' && (
           <>
+            <SectionLabel text="PRECISION" />
+            <OptionRow
+              options={PRECISION_OPTS}
+              value={config.decimals}
+              onSelect={v => update({ decimals: v })}
+            />
             <SectionLabel text="NUMBER RANGE" />
             <RangeRow
               minLabel="Min" maxLabel="Max"
-              minValue={config.min} maxValue={config.max}
+              minValue={String(config.min)} maxValue={String(config.max)}
               onMinChange={v => update({ min: v })}
               onMaxChange={v => update({ max: v })}
             />

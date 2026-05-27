@@ -3296,6 +3296,489 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-25T17:59:04.720Z"
+    },
+    {
+      "id": "bug-206",
+      "timestamp": "2026-05-26T20:12:58.310Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/course.controller.js",
+      "root_cause": "No early return/throw for edge case: !course",
+      "fix": "Added guard clause: if (!course)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:12:58.310Z"
+    },
+    {
+      "id": "bug-207",
+      "timestamp": "2026-05-26T20:13:33.497Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "client/screens/teacher/ChapterDetailScreen.js",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:13:33.497Z"
+    },
+    {
+      "id": "bug-208",
+      "timestamp": "2026-05-26T20:13:55.396Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/teacher/ChapterDetailScreen.js",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 18→23 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:13:55.396Z"
+    },
+    {
+      "id": "bug-209",
+      "timestamp": "2026-05-26T20:16:10.633Z",
+      "error_message": "Wrong reference: Section should be Class",
+      "file": "client/components/ClassCard.js",
+      "root_cause": "Used \"Section\" instead of \"Class\"",
+      "fix": "Changed Section → Class",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:16:10.633Z"
+    },
+    {
+      "id": "bug-210",
+      "timestamp": "2026-05-26T20:16:41.027Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/CourseDetailScreen.js",
+      "root_cause": "Had 'Manage this section and its students.'",
+      "fix": "Changed to 'Manage this class and its students.'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-26T20:16:50.772Z"
+    },
+    {
+      "id": "bug-211",
+      "timestamp": "2026-05-26T20:22:46.437Z",
+      "error_message": "Wrong reference: View should be ScreenSurface",
+      "file": "client/screens/student/StudentClassScreen.js",
+      "root_cause": "Used \"View\" instead of \"ScreenSurface\"",
+      "fix": "Changed View → ScreenSurface",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:22:46.437Z"
+    },
+    {
+      "id": "bug-212",
+      "timestamp": "2026-05-26T20:42:01.793Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/components/base/ScreenSurface.js",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 38→19 lines (16 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:42:01.793Z"
+    },
+    {
+      "id": "bug-213",
+      "timestamp": "2026-05-26T20:42:13.694Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/student/ProfileScreen.js",
+      "root_cause": "Had '../../context/AuthContext'",
+      "fix": "Changed to 'react-native-safe-area-context'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:42:13.694Z"
+    },
+    {
+      "id": "bug-214",
+      "timestamp": "2026-05-26T20:42:31.764Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/student/HomeScreen.js",
+      "root_cause": "Had '../../context/AuthContext'",
+      "fix": "Changed to 'react-native-safe-area-context'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:42:31.764Z"
+    },
+    {
+      "id": "bug-215",
+      "timestamp": "2026-05-26T20:44:11.622Z",
+      "error_message": "Wrong reference: AtomOrbit should be paddingTop",
+      "file": "client/screens/student/StudentClassScreen.js",
+      "root_cause": "Used \"AtomOrbit\" instead of \"paddingTop\"",
+      "fix": "Changed AtomOrbit → paddingTop",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:44:11.622Z"
+    },
+    {
+      "id": "bug-216",
+      "timestamp": "2026-05-26T20:46:41.201Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/ChapterDetailScreen.js",
+      "root_cause": "Had '@react-navigation/native'",
+      "fix": "Changed to 'expo-status-bar'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:46:41.201Z"
+    },
+    {
+      "id": "bug-217",
+      "timestamp": "2026-05-26T20:47:30.193Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/QuestionBankScreen.js",
+      "root_cause": "Had '#fff'",
+      "fix": "Changed to \"dark\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-26T20:47:30.193Z"
+    },
+    {
+      "id": "bug-218",
+      "timestamp": "2026-05-27T01:23:10.180Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/student/SettingsScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T01:23:10.180Z"
+    },
+    {
+      "id": "bug-219",
+      "timestamp": "2026-05-27T01:23:27.279Z",
+      "error_message": "Missing guard clause",
+      "file": "server/src/controllers/export.controller.js",
+      "root_cause": "No early return/throw for edge case: xp >= 5000",
+      "fix": "Added guard clause: if (xp >= 5000)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T01:23:27.279Z"
+    },
+    {
+      "id": "bug-220",
+      "timestamp": "2026-05-27T01:23:32.244Z",
+      "error_message": "Null/undefined access in ",
+      "file": "server/src/controllers/export.controller.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: const xpByStudentId = new Map();; for (const e of enrollments) {",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-27T01:23:42.215Z"
+    },
+    {
+      "id": "bug-221",
+      "timestamp": "2026-05-27T18:08:56.999Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/student/ProfileScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T18:08:56.999Z"
+    },
+    {
+      "id": "bug-222",
+      "timestamp": "2026-05-27T18:09:05.670Z",
+      "error_message": "Significant refactor of ",
+      "file": "client/screens/student/ProfileScreen.js",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 15→24 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T18:09:05.670Z"
+    },
+    {
+      "id": "bug-223",
+      "timestamp": "2026-05-27T11:58:00.000Z",
+      "error_message": "Leaderboard position shows — instead of rank on ProfileScreen; leaderboard rows never highlighted",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "getCourseLeaderboard and getCourseClassLeaderboard never included isYou in the response; ProfileScreen.findIndex(r => r.isYou) always returned -1",
+      "fix": "Added isYou: e.studentId === userId to both leaderboard response maps",
+      "tags": [
+        "leaderboard",
+        "profile",
+        "missing-field"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T11:58:00.000Z"
+    },
+    {
+      "id": "bug-224",
+      "timestamp": "2026-05-27T18:23:35.491Z",
+      "error_message": "Missing await",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T18:23:35.491Z"
+    },
+    {
+      "id": "bug-225",
+      "timestamp": "2026-05-27T18:23:42.503Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/student/ProfileScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T18:23:42.503Z"
+    },
+    {
+      "id": "bug-224",
+      "timestamp": "2026-05-27T12:10:00.000Z",
+      "error_message": "Leaderboard position (rank stat pill) not showing on ProfileScreen",
+      "file": "server/src/controllers/student.controller.js",
+      "root_cause": "Rank required a separate leaderboard fetch + isYou field that was unreliable. Root fix: compute rank directly in /students/me using a count of students with more currentPoints in the same class.",
+      "fix": "Added rank computation per enrollment in getStudentMe (prisma.studentEnrollment.count where currentPoints > mine + 1). ProfileScreen now reads enrollment.rank directly instead of leaderboard.findIndex.",
+      "tags": [
+        "leaderboard",
+        "rank",
+        "profile",
+        "students/me"
+      ],
+      "related_bugs": [
+        "bug-223"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T12:10:00.000Z"
+    },
+    {
+      "id": "bug-227",
+      "timestamp": "2026-05-27T19:00:34.271Z",
+      "error_message": "Missing guard clause",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "No early return/throw for edge case: !slots.length",
+      "fix": "Added guard clause: if (!slots.length)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:00:34.271Z"
+    },
+    {
+      "id": "bug-228",
+      "timestamp": "2026-05-27T19:01:31.525Z",
+      "error_message": "Wrong reference: purple700 should be purple800",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "Used \"purple700\" instead of \"purple800\"",
+      "fix": "Changed purple700 → purple800",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:01:31.525Z"
+    },
+    {
+      "id": "bug-229",
+      "timestamp": "2026-05-27T19:01:42.090Z",
+      "error_message": "Wrong reference: neutral700 should be neutral800",
+      "file": "client/components/base/SlotConfigOverlay.js",
+      "root_cause": "Used \"neutral700\" instead of \"neutral800\"",
+      "fix": "Changed neutral700 → neutral800",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:01:42.090Z"
+    },
+    {
+      "id": "bug-230",
+      "timestamp": "2026-05-27T19:07:44.505Z",
+      "error_message": "Significant refactor of ",
+      "file": "notes/sessions/2026-05-27.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 15→39 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:07:44.505Z"
+    },
+    {
+      "id": "bug-231",
+      "timestamp": "2026-05-27T19:19:22.224Z",
+      "error_message": "Incorrect value in code",
+      "file": "../../Users/alexp/.claude/plans/read-the-todays-session-compressed-hippo.md",
+      "root_cause": "Had `DynamicContent`",
+      "fix": "Changed to `num`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:19:22.224Z"
+    },
+    {
+      "id": "bug-232",
+      "timestamp": "2026-05-27T19:23:06.974Z",
+      "error_message": "Wrong return value",
+      "file": "client/components/base/SlotConfigOverlay.js",
+      "root_cause": "Was returning: { type: 'num', min: num[1], max: num[2] };",
+      "fix": "Now returns: { type: 'num', min: num[1], max: num[2], decimals ",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-27T19:23:11.685Z"
+    },
+    {
+      "id": "bug-233",
+      "timestamp": "2026-05-27T19:23:30.366Z",
+      "error_message": "Wrong return value",
+      "file": "client/components/base/DynamicContent.js",
+      "root_cause": "Was returning: `${num[1]}–${num[2]}`;",
+      "fix": "Now returns: `${parseFloat(num[1])}–${parseFloat(num[2])}${prec",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:23:30.366Z"
+    },
+    {
+      "id": "bug-234",
+      "timestamp": "2026-05-27T19:24:45.368Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: contentRef.current?.focus();",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-05-27T19:24:54.744Z"
+    },
+    {
+      "id": "bug-235",
+      "timestamp": "2026-05-27T19:25:08.581Z",
+      "error_message": "Incorrect value in code",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "Had \"handled\"",
+      "fix": "Changed to \"height\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:25:08.581Z"
     }
   ]
 }

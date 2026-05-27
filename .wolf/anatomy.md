@@ -1,18 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-26T18:35:37.566Z
-> Files: 16 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-05-27T19:25:41.773Z
+> Files: 27 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
-- `can-you-update-and-glimmering-dragon.md` — Plan: Repair the Test Suite (~1571 tok)
+- `read-the-todays-session-compressed-hippo.md` — Phase 2: Sticky Keyboard Toolbar (Strategy B) (~2061 tok)
+- `read-todays-session-notes-sleepy-sundae.md` — Plan: Dynamic Question Chip Editor (~2281 tok)
 
 ## ./
 
-- `.gitignore` — Git ignore rules (~94 tok)
-- `DESIGN_BRIEF.md` — ChemU — Design Brief (~2286 tok)
-- `docker-compose.yml` — Docker Compose services (~277 tok)
-- `README.md` — Project documentation (~780 tok)
 
 ## .claude/
 
@@ -22,21 +19,26 @@
 
 ## .github/workflows/
 
-- `deploy.yml` — CI: Deploy (~662 tok)
 
 ## client/
 
-- `app.json` (~210 tok)
-- `eas.json` (~45 tok)
+- `App.js` — Declares App (~324 tok)
 
 ## client/.expo/
 
 
 ## client/components/
 
+- `ClassCard.js` — ACCENT: MicroStat, ClassCard (~1859 tok)
 
 ## client/components/base/
 
+- `DynamicContent.js` — Parses [bracket] slot tokens from a question content string. (~776 tok)
+- `index.js` (~254 tok)
+- `ScreenSurface.js` — Declares ScreenSurface (~144 tok)
+- `SlotConfigOverlay.js` — parseExpr: buildExpr, OptionRow, SectionLabel, RangeRow, SlotConfigOverlay (~2847 tok)
+- `SlotPickerSheet.js` — PRESETS: SlotPickerSheet (~1272 tok)
+- `SlotToolbar.js` — QUICK_PICKS: SlotToolbar (~713 tok)
 
 ## client/context/
 
@@ -49,15 +51,24 @@
 
 ## client/screens/auth/
 
-- `LoginScreen.js` — Declares LoginScreen (~2235 tok)
-- `SignupScreen.js` — Declares SignupScreen (~2131 tok)
+- `LoginScreen.js` — Declares LoginScreen (~2239 tok)
+- `SignupScreen.js` — Declares SignupScreen (~2205 tok)
 
 ## client/screens/student/
 
-- `SettingsScreen.js` — API routes: GET, PATCH (5 endpoints) (~8987 tok)
+- `HomeScreen.js` — API routes: GET, POST (4 endpoints) (~5888 tok)
+- `ProfileScreen.js` — initials: resolveBadgeTheme, badgeDesc, DonutChart + 8 more (~8462 tok)
+- `SectionScreen.js` — API routes: GET, POST (6 endpoints) (~4083 tok)
+- `SettingsScreen.js` — API routes: GET, PATCH (5 endpoints) (~9986 tok)
+- `StudentClassScreen.js` — API routes: GET (3 endpoints) (~4542 tok)
 
 ## client/screens/teacher/
 
+- `ChapterDetailScreen.js` — Sheet: OptionRow, Stars, TypeChip + 5 more (~10380 tok)
+- `CourseDetailScreen.js` — Sheet: OptionRow, FormField, StatCell, ChapterCard (~8262 tok)
+- `QuestionBankScreen.js` — Sheet: OptionRow, Stars, TypeChip, FilterChip, QuestionCard (~7230 tok)
+- `QuestionEditorScreen.js` — FieldLabel: AccentInput, AccentArea, accentColor + 9 more (~9986 tok)
+- `TeacherHomeScreen.js` — API routes: GET, POST (3 endpoints) (~11102 tok)
 
 ## client/theme/
 
@@ -79,11 +90,10 @@
 
 ## notes/sessions/
 
+- `2026-05-27.md` — Session Notes May 27 (~652 tok)
 
 ## server/
 
-- `.dockerignore` — /__tests__ (~12 tok)
-- `Dockerfile` — Docker container definition (~52 tok)
 
 ## server/prisma/
 
@@ -93,6 +103,9 @@
 
 ## server/src/controllers/
 
+- `course.controller.js` — crypto: generateCode, getTeacherCourses, createCourse + 9 more (~6589 tok)
+- `export.controller.js` — prisma: csvEscape, rowToCsv, formatDuration + 4 more (~5082 tok)
+- `student.controller.js` — prisma: getStudentCourses, getStudentCourseProgress, getStudentSectionQuestions + 9 more (~3423 tok)
 
 ## server/src/lib/
 
@@ -105,12 +118,10 @@
 
 ## server/src/routes/
 
+- `course.routes.js` — API routes: GET, POST, PATCH (28 endpoints) (~1185 tok)
 
 ## server/src/routes/__tests__/
 
-- `dynamic-question.routes.test.js` — request: token, mockChain, mockChain (~2966 tok)
-- `question.routes.test.js` — API routes: GET, POST (18 endpoints) (~8776 tok)
-- `study.routes.test.js` — API routes: POST (14 endpoints) (~1900 tok)
 
 ## server/src/services/
 

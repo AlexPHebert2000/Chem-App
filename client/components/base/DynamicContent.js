@@ -30,7 +30,14 @@ export function labelForInner(inner) {
     return `El ${propMap[el[3]] ?? el[3]} (${el[1]}–${el[2]})`;
   }
   const num = inner.match(/^num\((-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\)$/);
-  if (num) return `${num[1]}–${num[2]}`;
+  if (num) {
+    const decimals = Math.max(
+      (num[1].split('.')[1] || '').length,
+      (num[2].split('.')[1] || '').length,
+    );
+    const precHint = decimals > 0 ? ` ×.${'0'.repeat(decimals)}` : '';
+    return `${parseFloat(num[1])}–${parseFloat(num[2])}${precHint}`;
+  }
   const comp = inner.match(/^compound\((\w+)\)\.\w+$/);
   if (comp) {
     const cat = comp[1];

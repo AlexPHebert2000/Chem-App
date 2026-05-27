@@ -12,3 +12,4 @@ export { default as TodoPlaceholder } from './TodoPlaceholder';
 export { default as DynamicContent, parseDynamic, labelForInner } from './DynamicContent';
 export { default as SlotPickerSheet } from './SlotPickerSheet';
 export { default as SlotConfigOverlay } from './SlotConfigOverlay';
+export { default as SlotToolbar } from './SlotToolbar';

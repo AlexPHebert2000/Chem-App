@@ -3,11 +3,11 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, ScrollView, StyleSheet,
-  Pressable, Alert, Platform,
+  Pressable, Alert, Platform, InputAccessoryView, KeyboardAvoidingView,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
-import { ScreenSurface, ShadowButton, SlotPickerSheet, SlotConfigOverlay } from '../../components/base';
+import { ScreenSurface, ShadowButton, SlotPickerSheet, SlotConfigOverlay, SlotToolbar } from '../../components/base';
 import { parseDynamic } from '../../components/base/DynamicContent';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,21 +39,25 @@ function AccentInput({ accent = 'purple', style, ...props }) {
   );
 }
 
-function AccentArea({ accent = 'purple', rows = 3, style, ...props }) {
+const AccentArea = React.forwardRef(function AccentArea(
+  { accent = 'purple', rows = 3, style, onFocus, onBlur, ...props },
+  ref,
+) {
   const [focused, setFocused] = useState(false);
   const borderColor = focused ? accentColor(accent) : colors.neutral200;
   return (
     <TextInput
+      ref={ref}
       {...props}
       style={[styles.textArea, { borderColor, minHeight: rows * 22 + 24 }, style]}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onFocus={e => { setFocused(true); onFocus?.(e); }}
+      onBlur={e => { setFocused(false); onBlur?.(e); }}
       placeholderTextColor={colors.neutral400}
       multiline
       textAlignVertical="top"
     />
   );
-}
+});
 
 function accentColor(accent) {
   if (accent === 'teal') return colors.teal400;
@@ -360,6 +364,8 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
   // Dynamic slot insertion
   const contentSelectionRef = useRef({ start: 0, end: 0 });
+  const contentRef = useRef(null);
+  const [isContentFocused, setIsContentFocused] = useState(false);
   const [slotPickerVisible, setSlotPickerVisible] = useState(false);
   const [slotConfigVisible, setSlotConfigVisible] = useState(false);
   const [slotConfigExpr, setSlotConfigExpr] = useState('');
@@ -413,6 +419,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
   const insertSlot = expr => {
     const pos = contentSelectionRef.current.start;
     setContent(prev => prev.slice(0, pos) + expr + prev.slice(pos));
+    contentRef.current?.focus();
   };
 
   const openSlotConfig = expr => {
@@ -503,6 +510,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
         onConfirm={applySlotConfig}
       />
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="height">
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
 
         {/* TYPE */}
@@ -522,11 +530,15 @@ export default function QuestionEditorScreen({ navigation, route }) {
           <FieldLabel label="QUESTION" />
         )}
         <AccentArea
+          ref={contentRef}
           accent="purple"
           value={content}
           onChangeText={setContent}
           rows={type === 'DYNAMIC' ? 4 : 3}
           onSelectionChange={e => { contentSelectionRef.current = e.nativeEvent.selection; }}
+          onFocus={() => setIsContentFocused(true)}
+          onBlur={() => setIsContentFocused(false)}
+          inputAccessoryViewID={type === 'DYNAMIC' ? 'slot-toolbar' : undefined}
           placeholder={
             type === 'MULTIPLE_CHOICE' ? 'e.g. What is the atomic number of Magnesium?'
             : type === 'FILL_IN_BLANK' ? 'Use ___ for blanks. e.g. The pH of pure water is ___.'
@@ -659,6 +671,22 @@ export default function QuestionEditorScreen({ navigation, route }) {
           style={{ marginTop: 20 }}
         />
       </ScrollView>
+      {Platform.OS === 'android' && type === 'DYNAMIC' && isContentFocused && (
+        <SlotToolbar
+          onQuickInsert={insertSlot}
+          onMorePress={() => setSlotPickerVisible(true)}
+        />
+      )}
+      </KeyboardAvoidingView>
+
+      {Platform.OS === 'ios' && type === 'DYNAMIC' && (
+        <InputAccessoryView nativeID="slot-toolbar">
+          <SlotToolbar
+            onQuickInsert={insertSlot}
+            onMorePress={() => setSlotPickerVisible(true)}
+          />
+        </InputAccessoryView>
+      )}
     </ScreenSurface>
   );
 }
