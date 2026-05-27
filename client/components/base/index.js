@@ -13,3 +13,4 @@ export { default as DynamicContent, parseDynamic, labelForInner } from './Dynami
 export { default as SlotPickerSheet } from './SlotPickerSheet';
 export { default as SlotConfigOverlay } from './SlotConfigOverlay';
 export { default as SlotToolbar } from './SlotToolbar';
+export { default as AnswerSlotToolbar } from './AnswerSlotToolbar';

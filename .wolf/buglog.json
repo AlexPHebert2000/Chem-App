@@ -3779,6 +3779,54 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-05-27T19:25:08.581Z"
+    },
+    {
+      "id": "bug-236",
+      "timestamp": "2026-05-27T19:58:54.687Z",
+      "error_message": "Significant refactor of ",
+      "file": "notes/sessions/2026-05-27.md",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 16→3 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T19:58:54.687Z"
+    },
+    {
+      "id": "bug-237",
+      "timestamp": "2026-05-27T20:12:07.375Z",
+      "error_message": "Null/undefined access in ",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T20:12:07.375Z"
+    },
+    {
+      "id": "bug-238",
+      "timestamp": "2026-05-27T20:12:55.065Z",
+      "error_message": "Missing guard clause",
+      "file": "client/screens/teacher/QuestionEditorScreen.js",
+      "root_cause": "No early return/throw for edge case: inner.startsWith('el('",
+      "fix": "Added guard clause: if (inner.startsWith('el(')",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "js"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-05-27T20:12:55.065Z"
     }
   ]
 }

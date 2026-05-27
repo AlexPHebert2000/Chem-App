@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
-import { ScreenSurface, ShadowButton, SlotPickerSheet, SlotConfigOverlay, SlotToolbar } from '../../components/base';
+import { ScreenSurface, ShadowButton, SlotPickerSheet, SlotConfigOverlay, SlotToolbar, AnswerSlotToolbar } from '../../components/base';
 import { parseDynamic } from '../../components/base/DynamicContent';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,19 +25,23 @@ function FieldLabel({ label, hint }) {
 
 // ─── Accent text input (border changes on focus) ──────────────────────────────
 
-function AccentInput({ accent = 'purple', style, ...props }) {
+const AccentInput = React.forwardRef(function AccentInput(
+  { accent = 'purple', style, onFocus, onBlur, ...props },
+  ref,
+) {
   const [focused, setFocused] = useState(false);
   const borderColor = focused ? accentColor(accent) : colors.neutral200;
   return (
     <TextInput
+      ref={ref}
       {...props}
       style={[styles.input, { borderColor }, style]}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onFocus={e => { setFocused(true); onFocus?.(e); }}
+      onBlur={e => { setFocused(false); onBlur?.(e); }}
       placeholderTextColor={colors.neutral400}
     />
   );
-}
+});
 
 const AccentArea = React.forwardRef(function AccentArea(
   { accent = 'purple', rows = 3, style, onFocus, onBlur, ...props },
@@ -277,6 +281,9 @@ function SlotStrip({ content, onChipPress }) {
         {slots.map((slot, i) => (
           <Pressable key={i} onPress={() => onChipPress(slot.expr)}
             style={({ pressed }) => [strip.chip, pressed && strip.chipPressed]}>
+            <View style={strip.badge}>
+              <Text style={strip.badgeText}>{i + 1}</Text>
+            </View>
             <Ionicons name="flask-outline" size={11} color={colors.purple600} />
             <Text style={strip.chipText}>{slot.label}</Text>
             <Ionicons name="pencil-outline" size={10} color={colors.purple400} />
@@ -321,6 +328,125 @@ const strip = StyleSheet.create({
     fontFamily: 'Nunito_700Bold',
     fontSize: 12,
     color: colors.purple800,
+  },
+  badge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.purple600,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 9,
+    color: '#FFF',
+    lineHeight: 16,
+  },
+});
+
+// ─── Answer reference panel (below answer expression input) ──────────────────
+
+function buildAnswerRefs(content) {
+  return parseDynamic(content)
+    .filter(s => s.type === 'slot')
+    .map((slot, i) => {
+      const N = i + 1;
+      const inner = slot.inner;
+      let refs;
+      if (inner.startsWith('el('))            refs = [`[${N}.name]`, `[${N}.symbol]`, `[${N}.number]`, `[${N}.mass]`];
+      else if (inner.startsWith('num('))       refs = [`[${N}]`];
+      else if (inner.startsWith('compound(')) refs = [`[${N}.formula]`, `[${N}.name]`];
+      else if (inner === 'NA')                 refs = ['[NA]'];
+      else                                     refs = [`[${N}]`];
+      return { slotNumber: N, label: slot.label, refs };
+    });
+}
+
+function AnswerReferencePanel({ slots, onInsert }) {
+  if (!slots.length) return null;
+  return (
+    <View style={answerPanel.container}>
+      <Text style={answerPanel.label}>ANSWER REFS</Text>
+      {slots.map(slot => (
+        <View key={slot.slotNumber} style={answerPanel.slotRow}>
+          <View style={answerPanel.slotBadge}>
+            <Text style={answerPanel.slotBadgeText}>{slot.slotNumber}</Text>
+          </View>
+          <Text style={answerPanel.slotLabel}>{slot.label}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, paddingHorizontal: 2 }}
+            keyboardShouldPersistTaps="always">
+            {slot.refs.map(ref => (
+              <Pressable key={ref} onPress={() => onInsert(ref)}
+                style={({ pressed }) => [answerPanel.chip, pressed && answerPanel.chipPressed]}>
+                <Text style={answerPanel.chipText}>{ref}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const answerPanel = StyleSheet.create({
+  container: {
+    backgroundColor: colors.teal50,
+    borderWidth: 1.5,
+    borderColor: colors.teal400,
+    borderRadius: radius.md,
+    padding: 10,
+  },
+  label: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: colors.teal600,
+    marginBottom: 8,
+  },
+  slotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  slotBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.teal600,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  slotBadgeText: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 9,
+    color: '#FFF',
+    lineHeight: 16,
+  },
+  slotLabel: {
+    fontFamily: 'Nunito_600SemiBold',
+    fontSize: 11,
+    color: colors.teal600,
+    flexShrink: 0,
+  },
+  chip: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: colors.teal400,
+    borderRadius: radius.full,
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+  },
+  chipPressed: {
+    backgroundColor: '#B2EBE5',
+  },
+  chipText: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 11,
+    color: colors.teal600,
   },
 });
 
@@ -369,6 +495,11 @@ export default function QuestionEditorScreen({ navigation, route }) {
   const [slotPickerVisible, setSlotPickerVisible] = useState(false);
   const [slotConfigVisible, setSlotConfigVisible] = useState(false);
   const [slotConfigExpr, setSlotConfigExpr] = useState('');
+
+  // Answer expression slot references
+  const answerExprSelectionRef = useRef({ start: 0, end: 0 });
+  const answerExprRef = useRef(null);
+  const [isAnswerExprFocused, setIsAnswerExprFocused] = useState(false);
 
   // Load available tags
   useEffect(() => {
@@ -420,6 +551,12 @@ export default function QuestionEditorScreen({ navigation, route }) {
     const pos = contentSelectionRef.current.start;
     setContent(prev => prev.slice(0, pos) + expr + prev.slice(pos));
     contentRef.current?.focus();
+  };
+
+  const insertAnswerRef = refText => {
+    const pos = answerExprSelectionRef.current.start;
+    setAnswerExpression(prev => prev.slice(0, pos) + refText + prev.slice(pos));
+    answerExprRef.current?.focus();
   };
 
   const openSlotConfig = expr => {
@@ -485,6 +622,8 @@ export default function QuestionEditorScreen({ navigation, route }) {
       setSaving(false);
     }
   };
+
+  const answerRefs = buildAnswerRefs(content);
 
   return (
     <ScreenSurface>
@@ -601,12 +740,20 @@ export default function QuestionEditorScreen({ navigation, route }) {
           <>
             <FieldLabel label="ANSWER EXPRESSION" />
             <AccentInput
+              ref={answerExprRef}
               accent="purple"
               value={answerExpression}
               onChangeText={setAnswerExpression}
-              placeholder="e.g. 1.number or 1.mass or 1+2"
+              onSelectionChange={e => { answerExprSelectionRef.current = e.nativeEvent.selection; }}
+              onFocus={() => setIsAnswerExprFocused(true)}
+              onBlur={() => setIsAnswerExprFocused(false)}
+              inputAccessoryViewID={Platform.OS === 'ios' ? 'answer-expr-toolbar' : undefined}
+              placeholder="e.g. [1.number] or [1.mass] or [1]+[2]"
               style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}
             />
+            {answerRefs.length > 0 && (
+              <AnswerReferencePanel slots={answerRefs} onInsert={insertAnswerRef} />
+            )}
             <View style={styles.dynRow}>
               <View style={{ flex: 1 }}>
                 <FieldLabel label="ANSWER UNIT" hint="optional, e.g. g" />
@@ -671,11 +818,18 @@ export default function QuestionEditorScreen({ navigation, route }) {
           style={{ marginTop: 20 }}
         />
       </ScrollView>
-      {Platform.OS === 'android' && type === 'DYNAMIC' && isContentFocused && (
-        <SlotToolbar
-          onQuickInsert={insertSlot}
-          onMorePress={() => setSlotPickerVisible(true)}
-        />
+      {Platform.OS === 'android' && type === 'DYNAMIC' && (
+        <>
+          {isContentFocused && (
+            <SlotToolbar
+              onQuickInsert={insertSlot}
+              onMorePress={() => setSlotPickerVisible(true)}
+            />
+          )}
+          {isAnswerExprFocused && (
+            <AnswerSlotToolbar slots={answerRefs} onInsert={insertAnswerRef} />
+          )}
+        </>
       )}
       </KeyboardAvoidingView>
 
@@ -685,6 +839,11 @@ export default function QuestionEditorScreen({ navigation, route }) {
             onQuickInsert={insertSlot}
             onMorePress={() => setSlotPickerVisible(true)}
           />
+        </InputAccessoryView>
+      )}
+      {Platform.OS === 'ios' && type === 'DYNAMIC' && (
+        <InputAccessoryView nativeID="answer-expr-toolbar">
+          <AnswerSlotToolbar slots={answerRefs} onInsert={insertAnswerRef} />
         </InputAccessoryView>
       )}
     </ScreenSurface>
