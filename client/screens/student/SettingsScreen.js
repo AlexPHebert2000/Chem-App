@@ -61,6 +61,72 @@ function SegControl({ value, options, onChange }) {
   );
 }
 
+// ─── XpProgressBar ───────────────────────────────────────────────────────────
+const XP_TIERS = [
+  { threshold: 1000, bonus: 1 },
+  { threshold: 2500, bonus: 2 },
+  { threshold: 5000, bonus: 4 },
+];
+
+function XpProgressBar({ totalXp }) {
+  let prevThreshold = 0;
+  let nextTier = null;
+  for (const tier of XP_TIERS) {
+    if (totalXp < tier.threshold) {
+      nextTier = { ...tier, prev: prevThreshold };
+      break;
+    }
+    prevThreshold = tier.threshold;
+  }
+
+  const isMaxed = !nextTier;
+  const pct = isMaxed
+    ? 1
+    : Math.min(1, (totalXp - nextTier.prev) / (nextTier.threshold - nextTier.prev));
+
+  return (
+    <View style={xpBarStyles.wrap}>
+      <View style={xpBarStyles.labelRow}>
+        <Text style={xpBarStyles.xpLabel}>
+          {totalXp.toLocaleString()}{!isMaxed ? ` / ${nextTier.threshold.toLocaleString()} XP` : ' XP'}
+        </Text>
+        <Text style={xpBarStyles.bonusLabel}>
+          {isMaxed ? 'Max reward — +4 pts' : `+${nextTier.bonus} exam ${nextTier.bonus === 1 ? 'point' : 'points'}`}
+        </Text>
+      </View>
+      <View style={xpBarStyles.track}>
+        <View style={[xpBarStyles.fill, { width: `${Math.round(pct * 100)}%` }]} />
+      </View>
+    </View>
+  );
+}
+
+const xpBarStyles = StyleSheet.create({
+  wrap: { marginTop: 10, gap: 4 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  xpLabel: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 11,
+    color: colors.neutral600,
+  },
+  bonusLabel: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 11,
+    color: colors.gold800,
+  },
+  track: {
+    height: 7,
+    backgroundColor: colors.neutral100,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    backgroundColor: colors.gold400,
+    borderRadius: 999,
+  },
+});
+
 // ─── SettingsCard ─────────────────────────────────────────────────────────────
 function SettingsCard({ title, accent, children }) {
   return (
@@ -133,6 +199,7 @@ export default function SettingsScreen({ navigation }) {
   // learning (student only)
   const [weeklyGoal, setWeeklyGoal]     = useState(60);
   const [originalGoal, setOriginalGoal] = useState(60);
+  const [totalXp, setTotalXp]           = useState(0);
 
   const [theme, setTheme]       = useState('light');
   const [textSize, setTextSize] = useState('regular');
@@ -167,6 +234,8 @@ export default function SettingsScreen({ navigation }) {
           const sec = enr.courseClass?.sectionNumber;
           setClassName(sec ? `Section ${sec}` : '');
         }
+        const xp = (me.enrollments ?? []).reduce((sum, e) => sum + (e.currentPoints ?? 0), 0);
+        setTotalXp(xp);
         const goal = me.weeklyMinuteGoal ?? 60;
         setWeeklyGoal(goal);
         setOriginalGoal(goal);
@@ -282,20 +351,23 @@ export default function SettingsScreen({ navigation }) {
 
         {/* ── Profile card (overlaps hero) ── */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{inits}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={styles.avatarWrap}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{inits}</Text>
+              </View>
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.profileName} numberOfLines={1}>{name || '—'}</Text>
+              <Text style={styles.profileEmail} numberOfLines={1}>{email || '—'}</Text>
+              {className ? (
+                <View style={styles.classRow}>
+                  <Text style={styles.classRowText}>🏆 {className}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.profileName} numberOfLines={1}>{name || '—'}</Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>{email || '—'}</Text>
-            {className ? (
-              <View style={styles.classRow}>
-                <Text style={styles.classRowText}>🏆 {className}</Text>
-              </View>
-            ) : null}
-          </View>
+          {isStudent && <XpProgressBar totalXp={totalXp} />}
         </View>
 
         {/* ── Sections ── */}
@@ -342,6 +414,37 @@ export default function SettingsScreen({ navigation }) {
               <Row emoji="🔥" iconBg={colors.teal50} label="Haptic feedback"
                 sublabel="Vibrations on taps and streaks"
                 right={<Toggle value={false} onChange={() => {}}/>} disabled last/>
+            </SettingsCard>
+          )}
+
+          {/* REWARDS — students only */}
+          {isStudent && (
+            <SettingsCard title="Rewards" accent={colors.gold600}>
+              <Row
+                emoji="⚡"
+                iconBg={colors.gold50}
+                label="Total XP"
+                sublabel={`${totalXp.toLocaleString()} points earned`}
+              />
+              <Row
+                emoji={totalXp >= 1000 ? '🏅' : '🔒'}
+                iconBg={totalXp >= 1000 ? colors.gold50 : colors.neutral100}
+                label="+1 Exam Point"
+                sublabel="Reach 1,000 XP"
+              />
+              <Row
+                emoji={totalXp >= 2500 ? '🏅' : '🔒'}
+                iconBg={totalXp >= 2500 ? colors.gold50 : colors.neutral100}
+                label="+2 Exam Points"
+                sublabel="Reach 2,500 XP"
+              />
+              <Row
+                emoji={totalXp >= 5000 ? '🏅' : '🔒'}
+                iconBg={totalXp >= 5000 ? colors.gold50 : colors.neutral100}
+                label="+4 Exam Points"
+                sublabel="Reach 5,000 XP"
+                last
+              />
             </SettingsCard>
           )}
 
@@ -573,9 +676,6 @@ const styles = StyleSheet.create({
     borderColor: colors.neutral100,
     padding: 14,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     shadowColor: colors.purple800,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,

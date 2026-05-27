@@ -231,6 +231,7 @@ async function getCourseLeaderboard(req, res) {
     currentPoints: e.currentPoints,
     lifetimePoints: e.lifetimePoints,
     streak: liveStreak(e),
+    isYou: e.studentId === userId,
   })));
 }
 
@@ -286,6 +287,7 @@ async function getCourseClassLeaderboard(req, res) {
     currentPoints: e.currentPoints,
     lifetimePoints: e.lifetimePoints,
     streak: liveStreak(e),
+    isYou: e.studentId === userId,
   })));
 }
 
@@ -313,7 +315,16 @@ async function getStudentMe(req, res) {
   });
 
   if (!student) return res.status(404).json({ error: 'Student not found' });
-  res.json(student);
+
+  const enrollmentsWithRank = await Promise.all(
+    student.enrollments.map(async (e) => {
+      const ahead = await prisma.studentEnrollment.count({
+        where: { courseClassId: e.courseClassId, currentPoints: { gt: e.currentPoints } },
+      });
+      return { ...e, rank: ahead + 1 };
+    })
+  );
+  res.json({ ...student, enrollments: enrollmentsWithRank });
 }
 
 async function setWeeklyGoal(req, res) {

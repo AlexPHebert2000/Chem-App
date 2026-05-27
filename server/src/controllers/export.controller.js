@@ -12,6 +12,8 @@ const HEADERS = [
   'Correct Answer Rate (%)',
   'Avg Attempts Per Question',
   'Last Active',
+  'Total XP',
+  'Exam Bonus Points',
 ];
 
 function csvEscape(value) {
@@ -31,6 +33,13 @@ function formatDuration(totalMs) {
   const hours = Math.floor(totalMin / 60);
   const mins = totalMin % 60;
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+}
+
+function xpToExamBonus(xp) {
+  if (xp >= 5000) return 4;
+  if (xp >= 2500) return 2;
+  if (xp >= 1000) return 1;
+  return 0;
 }
 
 function mean(values) {
@@ -186,6 +195,7 @@ async function exportStudentsCsv(req, res) {
         lastActive = new Date(latest.startedAt).toLocaleDateString('en-US');
       }
 
+      const xp = enrollment.currentPoints ?? 0;
       lines.push(rowToCsv([
         student.name,
         student.email,
@@ -198,6 +208,8 @@ async function exportStudentsCsv(req, res) {
         correctRate,
         avgAttemptsPerQuestion,
         lastActive,
+        String(xp),
+        String(xpToExamBonus(xp)),
       ]));
     }
 
@@ -368,13 +380,17 @@ async function exportSectionCsv(req, res) {
   const questionIds = section.questions.map(q => q.id);
 
   let students = [];
+  const xpByStudentId = new Map();
   if (courseClassId) {
     const enrollments = await prisma.studentEnrollment.findMany({
       where: { courseClassId },
       include: { student: { select: { id: true, name: true, email: true } } },
       orderBy: { student: { name: 'asc' } },
     });
-    students = enrollments.map(e => e.student);
+    for (const e of enrollments) {
+      students.push(e.student);
+      xpByStudentId.set(e.studentId, e.currentPoints ?? 0);
+    }
   } else {
     const ss = await prisma.studentSection.findMany({
       where: { sectionId },
@@ -385,6 +401,14 @@ async function exportSectionCsv(req, res) {
       if (!seen.has(s.studentId)) { seen.add(s.studentId); students.push(s.student); }
     }
     students.sort((a, b) => a.name.localeCompare(b.name));
+    const courseId = section.chapter.courseId;
+    if (courseId) {
+      const studentIds = students.map(s => s.id);
+      const courseEnrollments = studentIds.length > 0
+        ? await prisma.studentCourse.findMany({ where: { courseId, studentId: { in: studentIds } }, select: { studentId: true, currentPoints: true } })
+        : [];
+      for (const e of courseEnrollments) xpByStudentId.set(e.studentId, e.currentPoints ?? 0);
+    }
   }
 
   const studentIds = students.map(s => s.id);
@@ -421,13 +445,14 @@ async function exportSectionCsv(req, res) {
   lines.push('');
 
   lines.push(rowToCsv(['STUDENT RESULTS']));
-  lines.push(rowToCsv(['Student Name', 'Email', 'Completed', 'Score (%)', 'Attempts']));
+  lines.push(rowToCsv(['Student Name', 'Email', 'Completed', 'Score (%)', 'Attempts', 'Total XP', 'Exam Bonus Points']));
   for (const student of students) {
     const ss = studentSectionMap.get(student.id);
     const completed = ss ? 'Yes' : 'No';
     const score = ss != null ? `${ss.score}%` : '';
     const attemptCount = String(studentAttemptCount.get(student.id) ?? 0);
-    lines.push(rowToCsv([student.name, student.email, completed, score, attemptCount]));
+    const xp = xpByStudentId.get(student.id) ?? 0;
+    lines.push(rowToCsv([student.name, student.email, completed, score, attemptCount, String(xp), String(xpToExamBonus(xp))]));
   }
 
   lines.push('');

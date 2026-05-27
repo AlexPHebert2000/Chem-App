@@ -362,7 +362,7 @@ export default function ProfileScreen({ navigation }) {
     : student?.enrollments?.[0];
   const streak       = enrollment?.streak ?? 0;
   const weeklyXp     = weekly?.xpEarned ?? 0;
-  const myRank       = leaderboard.findIndex(r => r.isYou) + 1 || null;
+  const myRank       = enrollment?.rank ?? null;
   const inits        = initials(student?.name ?? user?.name ?? '');
   const currentXp    = enrollment?.currentPoints ?? 0;
   const lifetimeXp   = enrollment?.lifetimePoints ?? 0;
@@ -371,6 +371,22 @@ export default function ProfileScreen({ navigation }) {
   const sectionLabel = enrollment?.courseClass?.sectionNumber
     ? `Section ${enrollment.courseClass.sectionNumber}`
     : 'Your class';
+
+  const totalXp = (student?.enrollments ?? []).reduce((sum, e) => sum + (e.currentPoints ?? 0), 0);
+
+  const XP_TIERS = [
+    { threshold: 1000, bonus: 1 },
+    { threshold: 2500, bonus: 2 },
+    { threshold: 5000, bonus: 4 },
+  ];
+  let xpPrev = 0;
+  let xpNextTier = null;
+  for (const t of XP_TIERS) {
+    if (totalXp < t.threshold) { xpNextTier = { ...t, prev: xpPrev }; break; }
+    xpPrev = t.threshold;
+  }
+  const xpMaxed   = !xpNextTier;
+  const xpBarPct  = xpMaxed ? 1 : Math.min(1, (totalXp - xpNextTier.prev) / (xpNextTier.threshold - xpNextTier.prev));
 
   const earnedBadges   = badges.filter(b => b.dateAchieved);
   const progressBadges = badges.filter(b => !b.dateAchieved && b.badge?.criteriaAmount);
@@ -424,21 +440,30 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.activeTitle} numberOfLines={1}>
                 {student?.activeTitle ?? 'Chemistry Student'}
               </Text>
-              <View style={styles.xpRow}>
-                <Text style={styles.xpText}>
-                  {currentXp.toLocaleString()} / {lifetimeXp.toLocaleString()} XP
-                </Text>
-                <Text style={styles.xpNextText}>
-                  {'  ·  '}Lifetime: {lifetimeXp.toLocaleString()}
-                </Text>
-              </View>
-              <View style={styles.xpBarTrack}>
-                <LinearGradient
-                  colors={[colors.gold200, colors.gold400]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={[styles.xpBarFill, { width: `${Math.min(100, (currentXp / Math.max(lifetimeXp, 1)) * 100)}%` }]}
-                />
-              </View>
+              {xpMaxed ? (
+                <View style={styles.xpRow}>
+                  <Text style={styles.xpText}>{totalXp.toLocaleString()} XP</Text>
+                  <Text style={styles.xpNextText}>{'  ·  🎉 +4 exam points earned!'}</Text>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.xpRow}>
+                    <Text style={styles.xpText}>
+                      {totalXp.toLocaleString()} / {xpNextTier.threshold.toLocaleString()} XP
+                    </Text>
+                    <Text style={styles.xpNextText}>
+                      {'  ·  '}+{xpNextTier.bonus} exam {xpNextTier.bonus === 1 ? 'point' : 'points'}
+                    </Text>
+                  </View>
+                  <View style={styles.xpBarTrack}>
+                    <LinearGradient
+                      colors={[colors.gold200, colors.gold400]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={[styles.xpBarFill, { width: `${Math.round(xpBarPct * 100)}%` }]}
+                    />
+                  </View>
+                </>
+              )}
             </View>
           </View>
 
