@@ -1,14 +1,14 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-05-27T20:22:36.986Z
-> Files: 5 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-05T23:01:13.525Z
+> Files: 1 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../Users/alexp/.claude/plans/
 
-- `read-todays-session-notes-ticklish-pike.md` — Plan: Answer Expression Slot Reference UX (~2348 tok)
 
 ## ./
 
+- `SETUP.md` — ChemU — Deployment & Setup Guide (~2563 tok)
 
 ## .claude/
 
@@ -30,8 +30,6 @@
 
 ## client/components/base/
 
-- `AnswerSlotToolbar.js` — Declares AnswerSlotToolbar (~514 tok)
-- `index.js` (~273 tok)
 
 ## client/context/
 
@@ -50,7 +48,6 @@
 
 ## client/screens/teacher/
 
-- `QuestionEditorScreen.js` — Dynamic question editor: SlotStrip (numbered), AnswerReferencePanel, AnswerSlotToolbar wiring, AccentInput forwardRef (~13000 tok)
 
 ## client/theme/
 
@@ -72,7 +69,6 @@
 
 ## notes/sessions/
 
-- `2026-05-27.md` — Session Notes May 27 (~1357 tok)
 
 ## server/
 
