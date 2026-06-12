@@ -1,6 +1,7 @@
 mongo-keyfile
 client/.idea/
 .env
+server/.env.production
 notes
 
 # Claude — ignore local settings only
