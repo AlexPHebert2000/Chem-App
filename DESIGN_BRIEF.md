@@ -179,7 +179,25 @@ In order of user impact:
 
 ---
 
-## 9. Tone and Personality
+## 9. Implementation Status
+
+The items in section 8 are in various states of completion. This table reflects the state of the codebase as of the handoff (June 2026) so the new team knows what is done versus what is still on the backlog.
+
+| Priority | Screen / Feature | Status | Notes |
+|----------|-----------------|--------|-------|
+| 1 | Login / Signup branding | **Backlog** | Forms are functional but have no visual brand identity (no logo, no color wash, no chemistry theme). |
+| 2 | Student Dashboard hero area | **Backlog** | No streak display, no XP summary header. Plain course list only. |
+| 3 | Question flow feedback | **Partial** | Color-coded banners implemented. Celebratory animation and smoother question transitions not done. |
+| 4 | Section Complete end-screen | **Backlog** | Screen exists but is undersized — no XP total, no streak update, no strong CTA. |
+| 5 | Teacher Dashboard efficiency | **Backlog** | Flat list layout; primary actions (Create Course, Question Bank) not pinned or visually prioritized. |
+| 6 | ScreenHeader breadcrumb | **Backlog** | Header component exists but shows no parent context. Users lose their place after 3–4 taps deep. |
+| — | Theme token normalization | **Partial** | Most screens use theme tokens. Hardcoded `#fff` and inconsistent modal opacity remain in a few components. |
+
+**The answer expression slot UX** (numbered chips, reference panel, keyboard toolbar) was the most recent feature shipped and is complete.
+
+---
+
+## 10. Tone and Personality
 
 The app should feel:
 - **Encouraging** — Students are doing hard work. Celebrate small wins.
@@ -194,6 +212,6 @@ Avoid:
 
 ---
 
-## 10. Reference Points
+## 11. Reference Points
 
 The existing design already has good bones. The improvements should feel like the same design system, turned up — not a redesign from scratch. The chunky shadow button, the purple/teal/coral semantic colors, and the Nunito headline font are all worth keeping. The gaps are primarily in: missing brand moments, missing progress visualization, and missing emotional feedback at key milestones.

@@ -10,7 +10,8 @@
 2. [Server & Database (AWS EC2)](#server--database-aws-ec2)
 3. [Client (React Native / Expo)](#client-react-native--expo)
 4. [CI/CD Pipeline (GitHub Actions)](#cicd-pipeline-github-actions)
-5. [Environment Variables Reference](#environment-variables-reference)
+5. [Rollback Procedure](#rollback-procedure)
+6. [Environment Variables Reference](#environment-variables-reference)
 
 ---
 
@@ -292,6 +293,48 @@ JWT_SECRET=ci-test-secret
 JWT_EXPIRES_IN=15m
 PORT=3000
 ```
+
+---
+
+## Rollback Procedure
+
+If a deployment causes an outage, you have two options:
+
+### Option 1 — Revert on `main` (preferred)
+
+This triggers the full CI pipeline and re-deploys cleanly:
+
+```bash
+# On your local machine
+git revert HEAD          # creates a new commit undoing the bad one
+git push origin main     # CI runs tests → deploys on pass
+```
+
+### Option 2 — Manual rollback on EC2
+
+Use this when you need to recover immediately without waiting for CI:
+
+```bash
+# SSH into the EC2 instance
+ssh -i chemu-deploy ubuntu@<EC2_HOST>
+
+cd ~/Chem-App
+
+# Find the last known-good commit hash
+git log --oneline -10
+
+# Reset to the previous good state
+git reset --hard <previous-commit-hash>
+
+# Rebuild and restart only the server container
+docker compose up -d --build server
+
+# Verify recovery
+curl http://localhost:3000/health
+# Expected: {"status":"ok"}
+```
+
+> **Note:** MongoDB data lives in the `mongo_data` Docker volume and is unaffected by either rollback option. If the issue is a bad database migration, contact the team before reverting — data changes may need to be handled separately.
 
 ---
 
