@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
-  Pressable, Animated, TextInput, Alert,
+  Pressable, Animated, TextInput
 } from 'react-native';
+import { alertLib } from '../../lib/alertLib';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -244,7 +245,7 @@ export default function HomeScreen({ navigation, route }) {
       setClassDrawerOpen(false);
       await load();
     } catch (e) {
-      Alert.alert('Could not join', e.message ?? 'Invalid class code. Please try again.');
+      alertLib('Could not join', e.message ?? 'Invalid class code. Please try again.');
     } finally {
       setJoining(false);
     }

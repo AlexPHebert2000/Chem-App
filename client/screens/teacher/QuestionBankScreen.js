@@ -3,8 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
   Modal, Animated, KeyboardAvoidingView, Platform, RefreshControl,
-  ActivityIndicator, Alert,
+  ActivityIndicator
 } from 'react-native';
+import { alertLib } from '../../lib/alertLib';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
@@ -353,7 +354,7 @@ export default function QuestionBankScreen({ navigation, route }) {
       ));
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'Could not add questions.');
+      alertLib('Error', e.message ?? 'Could not add questions.');
       setAdding(false);
     }
   };

@@ -3,8 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   Pressable, ActivityIndicator, TouchableOpacity,
-  Modal, Animated, Dimensions, TextInput, KeyboardAvoidingView, Platform, Alert,
+  Modal, Animated, Dimensions, TextInput, KeyboardAvoidingView, Platform
 } from 'react-native';
+import { alertLib } from '../../lib/alertLib';
 import Svg, { Ellipse, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -691,11 +692,11 @@ export default function TeacherHomeScreen({ navigation }) {
             UTI: 'public.comma-separated-values-text',
           });
         } else {
-          Alert.alert('Export saved', `Report saved to:\n${path}`);
+          alertLib('Export saved', `Report saved to:\n${path}`);
         }
       }
     } catch (e) {
-      Alert.alert('Export failed', e.message ?? 'Could not export report. Please try again.');
+      alertLib('Export failed', e.message ?? 'Could not export report. Please try again.');
     } finally {
       setExporting(false);
     }

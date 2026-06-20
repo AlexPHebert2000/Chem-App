@@ -3,8 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Modal, Animated,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator
 } from 'react-native';
+import { alertLib } from '../../lib/alertLib';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -606,7 +607,7 @@ export default function ChapterDetailScreen({ navigation, route }) {
       const safeName = (chapterName ?? 'chapter').replace(/[^a-z0-9]/gi, '-').toLowerCase();
       await doExport(`/chapters/${chapterId}/export${qs}`, token, `chapter-${safeName}-${date}.csv`);
     } catch (e) {
-      Alert.alert('Export failed', e.message ?? 'Could not export chapter report.');
+      alertLib('Export failed', e.message ?? 'Could not export chapter report.');
     } finally {
       setExporting(null);
     }
@@ -621,7 +622,7 @@ export default function ChapterDetailScreen({ navigation, route }) {
       const safeName = (sectionName ?? 'section').replace(/[^a-z0-9]/gi, '-').toLowerCase();
       await doExport(`/sections/${sectionId}/export${qs}`, token, `section-${safeName}-${date}.csv`);
     } catch (e) {
-      Alert.alert('Export failed', e.message ?? 'Could not export section report.');
+      alertLib('Export failed', e.message ?? 'Could not export section report.');
     } finally {
       setExporting(null);
     }

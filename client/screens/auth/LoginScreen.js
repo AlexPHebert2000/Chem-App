@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert, Switch, Image,
+  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Switch, Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { alertLib } from '../../lib/alertLib';
 import { ShadowButton, ScreenSurface } from '../../components/base';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,22 +19,22 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
-
+  const [onAlert, setAlert] = useState(true);
   const handleLogin = async () => {
     if (!email.trim() || !password) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
+      alertLib('Missing fields', 'Please enter your email and password.');
       return;
     }
     setLoading(true);
     try {
       await login(role, email.trim().toLowerCase(), password, stayLoggedIn);
     } catch (e) {
-      Alert.alert('Login failed', e.message ?? 'Invalid email or password.');
+     alertLib('Log in failed', e.message ?? 'Please enter your email and password');
     } finally {
       setLoading(false);
     }
   };
-
+  console.log(onAlert);
   return (
     <ScreenSurface>
       <StatusBar style="dark" />
@@ -142,9 +143,11 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.footerLink}> Sign up</Text>
           </Pressable>
         </View>
+
       </ScrollView>
     </ScreenSurface>
   );
+
 }
 
 const styles = StyleSheet.create({

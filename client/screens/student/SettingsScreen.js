@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Modal, Animated,
-  Switch, TextInput, KeyboardAvoidingView, Platform, Alert,
+  Switch, TextInput, KeyboardAvoidingView, Platform
 } from 'react-native';
+import { alertLib } from '../../lib/alertLib';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Ellipse } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
@@ -270,7 +271,7 @@ export default function SettingsScreen({ navigation }) {
 
   const handleSaveName = async () => {
     const trimmed = newName.trim();
-    if (!trimmed) { Alert.alert('Error', 'Name cannot be blank.'); return; }
+    if (!trimmed) { alertLib('Error', 'Name cannot be blank.'); return; }
     setSavingModal(true);
     try {
       const updated = await api.patch('/auth/me', { name: trimmed }, token);
@@ -279,7 +280,7 @@ export default function SettingsScreen({ navigation }) {
       setEditModal(null);
       showToast('Name updated');
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'Could not update name.');
+      alertLib('Error', e.message ?? 'Could not update name.');
     } finally {
       setSavingModal(false);
     }
@@ -294,16 +295,16 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const handleSavePassword = async () => {
-    if (!currentPassword) { Alert.alert('Error', 'Enter your current password.'); return; }
-    if (newPassword.length < 8) { Alert.alert('Error', 'New password must be at least 8 characters.'); return; }
-    if (newPassword !== confirmPassword) { Alert.alert('Error', 'New passwords do not match.'); return; }
+    if (!currentPassword) { alertLib('Error', 'Enter your current password.'); return; }
+    if (newPassword.length < 8) { alertLib('Error', 'New password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { alertLib('Error', 'New passwords do not match.'); return; }
     setSavingModal(true);
     try {
       await api.patch('/auth/me', { currentPassword, newPassword }, token);
       setEditModal(null);
       showToast('Password changed');
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'Could not change password.');
+      alertLib('Error', e.message ?? 'Could not change password.');
     } finally {
       setSavingModal(false);
     }

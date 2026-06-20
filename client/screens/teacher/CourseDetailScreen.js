@@ -3,8 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, Pressable,
   TouchableOpacity, Modal, Animated, TextInput, KeyboardAvoidingView,
-  Platform, Clipboard, ActivityIndicator, Alert,
+  Platform, Clipboard, ActivityIndicator
 } from 'react-native';
+import { alertLib } from '../../lib/alertLib';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
@@ -383,7 +384,7 @@ export default function CourseDetailScreen({ navigation, route }) {
       const date = new Date().toISOString().slice(0, 10);
       await doExport('/courses/export', token, `class-report-${date}.csv`);
     } catch (e) {
-      Alert.alert('Export failed', e.message ?? 'Could not export class report.');
+      alertLib('Export failed', e.message ?? 'Could not export class report.');
     } finally {
       setExporting(false);
     }

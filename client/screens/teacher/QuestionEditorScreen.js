@@ -3,8 +3,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, ScrollView, StyleSheet,
-  Pressable, Alert, Platform, InputAccessoryView, KeyboardAvoidingView,
+  Pressable, Platform, InputAccessoryView, KeyboardAvoidingView,
 } from 'react-native';
+import { alertLib } from '../../lib/alertLib';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { ScreenSurface, ShadowButton, SlotPickerSheet, SlotConfigOverlay, SlotToolbar, AnswerSlotToolbar } from '../../components/base';
@@ -576,18 +577,18 @@ export default function QuestionEditorScreen({ navigation, route }) {
   };
 
   const validate = () => {
-    if (!content.trim()) { Alert.alert('Missing', 'Question text is required.'); return false; }
-    if (!correctExplanation.trim()) { Alert.alert('Missing', 'Correct explanation is required.'); return false; }
-    if (!incorrectExplanation.trim()) { Alert.alert('Missing', 'Incorrect explanation is required.'); return false; }
+    if (!content.trim()) { alertLib('Missing', 'Question text is required.'); return false; }
+    if (!correctExplanation.trim()) { alertLib('Missing', 'Correct explanation is required.'); return false; }
+    if (!incorrectExplanation.trim()) { alertLib('Missing', 'Incorrect explanation is required.'); return false; }
     if (type === 'MULTIPLE_CHOICE') {
-      if (!mcOptions.some(o => o.isCorrect)) { Alert.alert('Missing', 'Mark at least one correct answer.'); return false; }
-      if (!mcOptions.some(o => o.content?.trim())) { Alert.alert('Missing', 'Add at least one answer option.'); return false; }
+      if (!mcOptions.some(o => o.isCorrect)) { alertLib('Missing', 'Mark at least one correct answer.'); return false; }
+      if (!mcOptions.some(o => o.content?.trim())) { alertLib('Missing', 'Add at least one answer option.'); return false; }
     }
     if (type === 'FILL_IN_BLANK' && !fibAnswers.some(a => a.trim())) {
-      Alert.alert('Missing', 'At least one blank answer is required.'); return false;
+      alertLib('Missing', 'At least one blank answer is required.'); return false;
     }
     if (type === 'DYNAMIC' && !answerExpression.trim()) {
-      Alert.alert('Missing', 'Answer expression is required for dynamic questions.'); return false;
+      alertLib('Missing', 'Answer expression is required for dynamic questions.'); return false;
     }
     return true;
   };
@@ -617,7 +618,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
       }
       navigation.goBack();
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'Could not save question.');
+      alertLib('Error', e.message ?? 'Could not save question.');
     } finally {
       setSaving(false);
     }

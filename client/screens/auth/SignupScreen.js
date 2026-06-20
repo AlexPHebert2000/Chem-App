@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Alert,
+  View, Text, TextInput, Pressable, StyleSheet, ScrollView,
 } from 'react-native';
+
+import { alertLib } from '../../lib/alertLib';
 import { useAuth } from '../../context/AuthContext';
 import { ShadowButton, ScreenSurface } from '../../components/base';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
@@ -21,18 +23,18 @@ export default function SignupScreen({ navigation }) {
 
   const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password) {
-      Alert.alert('Missing fields', 'Please fill in all fields.');
+      alertLib('Missing fields', 'Please fill in all fields.');
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Weak password', 'Password must be at least 8 characters.');
+      alertLib('Weak password', 'Password must be at least 8 characters.');
       return;
     }
     setLoading(true);
     try {
       await signup(role, name.trim(), email.trim().toLowerCase(), password);
     } catch (e) {
-      Alert.alert('Sign up failed', e.message ?? 'Something went wrong. Please try again.');
+      alertLib('Sign up failed', e.message ?? 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
