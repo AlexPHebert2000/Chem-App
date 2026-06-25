@@ -19,7 +19,7 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [onAlert, setAlert] = useState(true);
+  
   const handleLogin = async () => {
     if (!email.trim() || !password) {
       alertLib('Missing fields', 'Please enter your email and password.');
@@ -34,7 +34,7 @@ export default function LoginScreen({ navigation }) {
       setLoading(false);
     }
   };
-  console.log(onAlert);
+  
   return (
     <ScreenSurface>
       <StatusBar style="dark" />
