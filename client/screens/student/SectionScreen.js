@@ -89,6 +89,7 @@ export default function SectionScreen({ navigation, route }) {
       setCorrectAnswers(res.correctAnswers ?? []);
       setBlankResults(res.blankResults ?? []);
       setExplanation(res.explanation ?? null);
+      console.log(res.explanation);
     } catch (e) {
       console.warn('attempt submit error:', e.message);
       setResult('wrong');
@@ -126,13 +127,14 @@ export default function SectionScreen({ navigation, route }) {
       setDone(true);
     }
   };
-
+  
   const feedbackMessage = result === 'correct'
     ? `+${xp} XP${explanation ? ` — ${explanation}` : ''}`
     : isFib && correctAnswers.length
-      ? `Correct: ${correctAnswers.join(' / ')}`
-      : correctChoice ? `Correct answer: ${correctChoice.content}` : (explanation ?? null);
-
+      ? `Correct: ${correctAnswers.join(' / ')}\nExplanation: ${(explanation ?? null)}`
+      : correctChoice ? explanation != null
+        ?`Correct answer: ${correctChoice.content}\nExplanation: ${(explanation ?? null)}` : (explanation ?? null)
+	: correctChoice ? `Correct answer: ${correctChoice.content}` : (explanation ?? null);
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
