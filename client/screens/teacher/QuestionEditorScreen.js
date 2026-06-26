@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, ScrollView, StyleSheet,
+  View, Text, TextInput, ScrollView, StyleSheet, Switch,
   Pressable, Platform, InputAccessoryView, KeyboardAvoidingView,
+  FlatList, Image
 } from 'react-native';
 import { alertLib } from '../../lib/alertLib';
 import { useAuth } from '../../context/AuthContext';
@@ -12,7 +13,7 @@ import { ScreenSurface, ShadowButton, SlotPickerSheet, SlotConfigOverlay, SlotTo
 import { parseDynamic } from '../../components/base/DynamicContent';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
-
+import { FIXED_IMAGES } from "../../assets/fixedAssets/index";
 // ─── Field label ─────────────────────────────────────────────────────────────
 
 function FieldLabel({ label, hint }) {
@@ -205,6 +206,100 @@ function TemplateSyntaxCard() {
       )}
     </View>
   );
+}
+
+// --- Fixed Image Selector -----------------------------------------------------
+
+function FixedPictureOption(){
+ const [hasStaticPic, setIfStaticPic] = useState(false);
+ const [staticPicID, setStaticPicID] = useState(-1);
+
+ if((hasStaticPic == false) && (staticPicID != -1)) setStaticPicID(-1);
+
+ const picSel = StyleSheet.create({
+  stayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+  },
+  stayLabel: {
+    ...typeScale.body,
+    color: colors.neutral600,
+  },
+  imgWrap: {
+  width: '10%',
+  aspectRatio: 1,   // square box
+  justifyContent: "center",
+  alignItems: "center",
+ },
+  img: {
+    width: 200,
+    height: 200,
+    marginLeft: 100,
+    paddingRight:10
+  },
+  list:{
+   height: 300
+  },
+  witch:{
+   marginLeft:10,
+  },
+  te:{
+   paddingLeft: 200,
+   marginLeft: 500
+  },
+  item:{
+   height: 200
+  }
+ });
+
+ function ListItem({name, id, source}){
+  const checked = staticPicID === id;
+  return(
+   <View style={picSel.item, picSel.stayRow}>
+    {<Switch
+     style={picSel.witch}
+     value={checked}
+     onValueChange={(next) => {setStaticPicID(next?id:-1)}}
+     trackColor={{ false: colors.neutral200, true: colors.purple400 }}
+     thumbColor="#FFF"
+    />}
+    <View style={picSel.imgWrap}>
+     <Image source={source} style={picSel.img} resizeMode="contain"/>
+    </View>
+    <Text style={picSel.stayLabel}>{name}</Text>
+   </View>
+  );
+ }
+
+ return (
+  <View>
+   <View style={picSel.stayRow}>
+    <Switch
+     value={hasStaticPic}
+     onValueChange={setIfStaticPic}
+     trackColor={{ false: colors.neutral200, true: colors.purple400 }}
+     thumbColor="#FFF"
+    />
+    <Text style={picSel.stayLabel}>Use a Fixed Image</Text>
+   </View>
+   {hasStaticPic && <View>
+     <FlatList
+      scrollEnabled={true}
+      style={picSel.list}
+      data={FIXED_IMAGES}
+      renderItem={({item}) => <ListItem
+        name={item.name}
+	id={item.id}
+	source={item.source}
+       />
+      }
+      keyExtractor={(item) => item.id}
+     />
+   </View>}
+  </View>
+ );
 }
 
 // ─── Difficulty picker ────────────────────────────────────────────────────────
@@ -778,6 +873,10 @@ export default function QuestionEditorScreen({ navigation, route }) {
             </View>
           </>
         )}
+
+	{/*Picture Options*/}
+	<FieldLabel label="Picture Options"/>
+	<FixedPictureOption/>
 
         {/* EXPLANATIONS */}
         <FieldLabel label="CORRECT ANSWER EXPLANATION" />
