@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, ScrollView, StyleSheet, Pressable, ActivityIndicator
+  View, Text, TextInput, ScrollView, StyleSheet, Pressable, ActivityIndicator,
+  Image, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
@@ -14,6 +15,7 @@ import FeedbackBar from '../../components/FeedbackBar';
 import PeriodicTableOverlay from '../../components/PeriodicTableOverlay';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { getSourceByName, getDescByName } from '../../assets/fixedAssets/index';
 
 export default function SectionScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -36,6 +38,7 @@ export default function SectionScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState(null);
   const sessionRef = useRef(null);
+  const [isEnlarged, setEnlarged] = useState(false);
 
   useEffect(() => {
     api.get(`/sections/${sectionId}/questions`, token)
@@ -65,6 +68,7 @@ export default function SectionScreen({ navigation, route }) {
   const correctChoice = mcChoices.find(c => correctChoiceIds.includes(c.id));
   const xp = q ? (q.difficulty ?? 1) * 10 : 0;
   const progress = questions.length > 0 ? currentIndex / questions.length : 0;
+  const fixedImage = q?(q.fixedImage ?? ""):"";
   const canCheck = isFib
     ? fibInputs.length === blankCount && blankCount > 0 && fibInputs.every(v => v?.trim())
     : !!selected;
@@ -89,7 +93,6 @@ export default function SectionScreen({ navigation, route }) {
       setCorrectAnswers(res.correctAnswers ?? []);
       setBlankResults(res.blankResults ?? []);
       setExplanation(res.explanation ?? null);
-      console.log(res.explanation);
     } catch (e) {
       console.warn('attempt submit error:', e.message);
       setResult('wrong');
@@ -223,7 +226,33 @@ export default function SectionScreen({ navigation, route }) {
             </Pressable>
           }
         />
-
+        {/* Image (fixed) */}
+	{(fixedImage != "")?
+	<View style={styles.imgCol}>
+         <Pressable onPress={()=>setEnlarged(true)}>
+	  <Image style={styles.img}
+           source={getSourceByName(fixedImage)}
+	  />
+	 </Pressable>
+         <Modal visible={isEnlarged} onRequest={()=>setEnlarged(false)}>
+          <StatusBar style="dark" />
+          {/* Top bar: X + gradient progress bar */}
+          <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+           <Pressable onPress={() => setEnlarged(false)} style={styles.exitBtn}>
+            <Ionicons name="close" size={18} color={colors.neutral900} />
+           </Pressable>
+	  </View>
+	  <View style={styles.imgCol}>
+           <Image style={styles.fullImg}
+	    source={getSourceByName(fixedImage)}
+	   />
+	   <Text>{getDescByName(fixedImage)}</Text>
+	  </View>
+	 </Modal>
+	 <Text>PRESS TO ENLARGE</Text>
+	</View>
+	:<></>
+	}
         {/* Answer area — text inputs for FIB, option buttons for MC */}
         {isFib ? (
           <View style={styles.fibInputList}>
@@ -321,6 +350,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  imgCol:{
+   flexDirection: 'column',
+   alignItems: 'center',
+   gap: 8,
+  },
+  img:{
+   width: undefined,
+   height: 200,
+   aspectRatio: 1,
+   resizeMode: 'contain'
+  },
+  fullImg:{
+   width: undefined,
+   height: '50%',
+   aspectRatio: 1,
+   resizeMode: 'contain'
   },
   metaLabel: {
     fontFamily: 'Nunito_800ExtraBold',

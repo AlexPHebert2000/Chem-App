@@ -219,40 +219,41 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
   stayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     marginTop: 14,
   },
   stayLabel: {
-    ...typeScale.body,
+    flex: 1,
     color: colors.neutral600,
+    marginTop: 0,
+    marginLeft: 10,
   },
   imgWrap: {
   width: '10%',
   aspectRatio: 1,   // square box
   justifyContent: "center",
   alignItems: "center",
+  marginRight: 10.
  },
   img: {
     width: 200,
     height: 200,
     marginLeft: 100,
-    paddingRight:10
+    paddingRight:20
   },
   list:{
-   height: 300
-  },
-  witch:{
-   marginLeft:10,
-  },
-  te:{
-   paddingLeft: 200,
-   marginLeft: 500
+   marginLeft: 20,
+   minHeight: 300,
+   maxHeight: 400,
   },
   item:{
-   height: 200
+   minHeight: 200,
+   paddingVertical: 12,
+   paddingHorizontal: 10,
+  },
+  witch:{
+   marginLeft: 10
   }
  });
-
  function ListItem({name, source}){
   const checked = staticPicID === name;
   return(
@@ -271,7 +272,6 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
    </View>
   );
  }
-
  return (
   <View>
    <View style={picSel.stayRow}>
@@ -288,15 +288,14 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
    </View>
    {hasStaticPic && <View>
      <FlatList
-      scrollEnabled={true}
+      scrollEnabled={false}
+      nestedScrollEnabled
       style={picSel.list}
       data={FIXED_IMAGES}
       renderItem={({item}) => <ListItem
         name={item.name}
 	source={item.source}
-       />
-      }
-      keyExtractor={(item) => item.id}
+       />}
      />
    </View>}
   </View>
