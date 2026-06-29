@@ -3,6 +3,10 @@ client/.idea/
 .env
 server/.env.production
 notes
+pnpm-lock.yaml
+
+#vim swp files
+*.swp
 
 # Claude — ignore local settings only
 .claude/settings.local.json

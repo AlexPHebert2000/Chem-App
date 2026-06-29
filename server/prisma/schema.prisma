@@ -84,6 +84,7 @@ model Question {
   correctExplanation   String?
   incorrectExplanation String?
   difficulty           Int
+  fixedImage	       String?
   answerExpression     String?
   answerUnit           String?
   distractorCount      Int?

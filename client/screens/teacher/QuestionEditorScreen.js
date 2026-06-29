@@ -210,12 +210,11 @@ function TemplateSyntaxCard() {
 
 // --- Fixed Image Selector -----------------------------------------------------
 
-function FixedPictureOption(){
- const [hasStaticPic, setIfStaticPic] = useState(false);
- const [staticPicID, setStaticPicID] = useState(-1);
-
- if((hasStaticPic == false) && (staticPicID != -1)) setStaticPicID(-1);
-
+function FixedPictureOption({staticPicID, setStaticPicID}){
+ const [hasStaticPic, setIfStaticPic] = useState(staticPicID!="");
+ useEffect(()=>{
+  if(!hasStaticPic)setIfStaticPic(staticPicID!="");
+ },[staticPicID]);
  const picSel = StyleSheet.create({
   stayRow: {
     flexDirection: 'row',
@@ -254,14 +253,14 @@ function FixedPictureOption(){
   }
  });
 
- function ListItem({name, id, source}){
-  const checked = staticPicID === id;
+ function ListItem({name, source}){
+  const checked = staticPicID === name;
   return(
    <View style={picSel.item, picSel.stayRow}>
     {<Switch
      style={picSel.witch}
      value={checked}
-     onValueChange={(next) => {setStaticPicID(next?id:-1)}}
+     onValueChange={(next) => {setStaticPicID(next?name:"")}}
      trackColor={{ false: colors.neutral200, true: colors.purple400 }}
      thumbColor="#FFF"
     />}
@@ -278,7 +277,10 @@ function FixedPictureOption(){
    <View style={picSel.stayRow}>
     <Switch
      value={hasStaticPic}
-     onValueChange={setIfStaticPic}
+     onValueChange={(next)=>{
+      setIfStaticPic(next);
+      if(!next)setStaticPicID("");
+     }}
      trackColor={{ false: colors.neutral200, true: colors.purple400 }}
      thumbColor="#FFF"
     />
@@ -291,7 +293,6 @@ function FixedPictureOption(){
       data={FIXED_IMAGES}
       renderItem={({item}) => <ListItem
         name={item.name}
-	id={item.id}
 	source={item.source}
        />
       }
@@ -566,7 +567,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
   const [content, setContent] = useState('');
   const [correctExplanation, setCorrectExplanation] = useState('');
   const [incorrectExplanation, setIncorrectExplanation] = useState('');
-
+  const [fixedImageID, setFixedImageID] = useState("");
   // MC
   const [mcOptions, setMcOptions] = useState(BLANK_MC);
 
@@ -613,7 +614,8 @@ export default function QuestionEditorScreen({ navigation, route }) {
         setContent(q.content ?? '');
         setCorrectExplanation(q.correctExplanation ?? '');
         setIncorrectExplanation(q.incorrectExplanation ?? '');
-        setSelectedTagIds((q.tags ?? []).map(t => t.id));
+        setFixedImageID(q.fixedImage ?? "");
+	setSelectedTagIds((q.tags ?? []).map(t => t.id));
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'FILL_IN_BLANK') {
           if (q.choices?.length) {
             if (q.type === 'FILL_IN_BLANK') {
@@ -699,6 +701,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
         incorrectExplanation: incorrectExplanation.trim(),
         tagIds: selectedTagIds,
         choices: buildChoices(),
+        fixedImage: fixedImageID,
       };
       if (type === 'DYNAMIC') {
         body.answerExpression = answerExpression.trim();
@@ -876,7 +879,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
 	{/*Picture Options*/}
 	<FieldLabel label="Picture Options"/>
-	<FixedPictureOption/>
+	<FixedPictureOption staticPicID={fixedImageID} setStaticPicID={setFixedImageID}/>
 
         {/* EXPLANATIONS */}
         <FieldLabel label="CORRECT ANSWER EXPLANATION" />

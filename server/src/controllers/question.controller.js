@@ -131,7 +131,7 @@ async function getSectionQuestions(req, res) {
 
 async function createQuestion(req, res) {
   const teacherId = req.user.sub;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, answerUnit, distractorCount, tagIds } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, fixedImage, choices, answerExpression, answerUnit, distractorCount, tagIds } = req.body;
   const safeTagIds = Array.isArray(tagIds) ? tagIds : [];
   const errors = [];
 
@@ -162,6 +162,7 @@ async function createQuestion(req, res) {
         correctExplanation: correctExplanation.trim(),
         incorrectExplanation: incorrectExplanation.trim(),
         difficulty,
+	fixedImage: fixedImage,
         answerExpression: answerExpression.trim(),
         ...(answerUnit?.trim() && { answerUnit: answerUnit.trim() }),
         ...(distractorCount !== undefined && { distractorCount }),
@@ -190,6 +191,7 @@ async function createQuestion(req, res) {
       correctExplanation: correctExplanation.trim(),
       incorrectExplanation: incorrectExplanation.trim(),
       difficulty,
+      fixedImage: fixedImage,
       choices: { create: buildChoices(type, choices) },
     },
     include: { choices: true, tags: { select: { id: true, name: true, color: true } } },
@@ -205,7 +207,7 @@ async function createQuestion(req, res) {
 
 async function updateQuestion(req, res) {
   const { questionId } = req.params;
-  const { type, content, correctExplanation, incorrectExplanation, difficulty, choices, answerExpression, answerUnit, distractorCount, tagIds } = req.body;
+  const { type, content, correctExplanation, incorrectExplanation, difficulty, fixedImage, choices, answerExpression, answerUnit, distractorCount, tagIds } = req.body;
   const errors = [];
 
   if (!type || !QUESTION_TYPES.includes(type)) errors.push(`type must be one of: ${QUESTION_TYPES.join(', ')}`);
@@ -250,6 +252,7 @@ async function updateQuestion(req, res) {
       correctExplanation: correctExplanation.trim(),
       incorrectExplanation: incorrectExplanation.trim(),
       difficulty,
+      fixedImage: fixedImage,
       tagIds: newTagIds,
     };
 
