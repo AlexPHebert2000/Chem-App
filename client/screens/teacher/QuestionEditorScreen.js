@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, ScrollView, StyleSheet, Switch,
+  View, Text, TextInput, StyleSheet, Switch,
   Pressable, Platform, InputAccessoryView, KeyboardAvoidingView,
   FlatList, Image
 } from 'react-native';
+import { ScrollView} from 'react-native-gesture-handler';
 import { alertLib } from '../../lib/alertLib';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
@@ -219,7 +220,10 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
   stayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
+    marginTop: 8,
+  },
+  row:{
+   flexDirection: 'row',
   },
   stayLabel: {
     flex: 1,
@@ -228,36 +232,46 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
     marginLeft: 10,
   },
   imgWrap: {
-  width: '10%',
-  aspectRatio: 1,   // square box
-  justifyContent: "center",
-  alignItems: "center",
-  marginRight: 10.
- },
+   width: '10%',
+   aspectRatio: 1,   // square box
+   justifyContent: "center",
+   alignItems: "center",
+  },
   img: {
-    width: 200,
+    width:  200,
     height: 200,
-    marginLeft: 100,
-    paddingRight:20
+    marginLeft: '2%'
   },
   list:{
-   marginLeft: 20,
-   minHeight: 300,
-   maxHeight: 400,
+   marginTop: '5%',
+   width: '100%',
+   height: '100%',
   },
   item:{
-   minHeight: 200,
-   paddingVertical: 12,
-   paddingHorizontal: 10,
+   height: 110,
+   width: '100vw',
+   flexDirection: 'row',
+   alignItems: 'center',
+   marginTop: 10
+  },
+  text:{
+  marginLeft: '2%',
+  flexShrink: 1,
   },
   witch:{
-   marginLeft: 10
+   marginLeft: '2%',
+   justifyContent: 'center',
+   alignItems: 'center'
+  },
+  scrollV:{
+   height: '10%',
+   width: '100%',
   }
  });
  function ListItem({name, source}){
   const checked = staticPicID === name;
   return(
-   <View style={picSel.item, picSel.stayRow}>
+   <View style={picSel.item}>
     {<Switch
      style={picSel.witch}
      value={checked}
@@ -265,10 +279,8 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
      trackColor={{ false: colors.neutral200, true: colors.purple400 }}
      thumbColor="#FFF"
     />}
-    <View style={picSel.imgWrap}>
      <Image source={source} style={picSel.img} resizeMode="contain"/>
-    </View>
-    <Text style={picSel.stayLabel}>{name}</Text>
+    <Text style={picSel.text}>{name}</Text>
    </View>
   );
  }
@@ -286,10 +298,10 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
     />
     <Text style={picSel.stayLabel}>Use a Fixed Image</Text>
    </View>
-   {hasStaticPic && <View>
+   {hasStaticPic && <ScrollView style={picSel.scrollV} scrollEnabled={false} horizontal={true}>
      <FlatList
-      scrollEnabled={false}
-      nestedScrollEnabled
+      scrollEnabled={true}
+      nestedScrollEnabled={true}
       style={picSel.list}
       data={FIXED_IMAGES}
       renderItem={({item}) => <ListItem
@@ -297,7 +309,7 @@ function FixedPictureOption({staticPicID, setStaticPicID}){
 	source={item.source}
        />}
      />
-   </View>}
+   </ScrollView>}
   </View>
  );
 }
@@ -748,7 +760,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="height">
-      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.form} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
 
         {/* TYPE */}
         <FieldLabel label="TYPE" />
