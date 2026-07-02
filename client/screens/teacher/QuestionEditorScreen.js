@@ -15,6 +15,7 @@ import { parseDynamic } from '../../components/base/DynamicContent';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { FIXED_IMAGES } from "../../assets/fixedAssets/index";
+import { MathTextInput } from '../../components/MathInput';
 // ─── Field label ─────────────────────────────────────────────────────────────
 
 function FieldLabel({ label, hint }) {
@@ -53,7 +54,7 @@ const AccentArea = React.forwardRef(function AccentArea(
   const [focused, setFocused] = useState(false);
   const borderColor = focused ? accentColor(accent) : colors.neutral200;
   return (
-    <TextInput
+    <MathTextInput
       ref={ref}
       {...props}
       style={[styles.textArea, { borderColor, minHeight: rows * 22 + 24 }, style]}
@@ -108,7 +109,7 @@ function McOptionRow({ option, index, onChange, onRemove, canRemove }) {
         {option.isCorrect && <Ionicons name="checkmark" size={11} color="#fff" />}
       </Pressable>
       <Text style={styles.mcLetter}>{String.fromCharCode(65 + index)}</Text>
-      <TextInput
+      <MathTextInput
         style={styles.mcInput}
         value={option.content ?? ''}
         onChangeText={t => onChange({ ...option, content: t })}
@@ -149,6 +150,12 @@ function FibAnswerRow({ index, value, onChange, onRemove, canRemove }) {
 }
 
 // ─── Template syntax card (collapseable) ─────────────────────────────────────
+
+const INPUT_REFS = [
+ { code: '^', desc: 'switch to exponent mode (input twice to input a caret)' },
+ { code: '_', desc: 'switch to subscript mode (input twice to input an underscore)'},
+ { code: ' ', desc: 'switch to normal input mode (this is the spacebar/space button)'},
+]
 
 const SYNTAX_ROWS = [
   { code: '[el(1,18).name]',        desc: 'element name (Z 1–18)' },
@@ -203,6 +210,26 @@ function TemplateSyntaxCard() {
           </View>
           <Text style={styles.syntaxSubHead}>Comparison:</Text>
           {COMP_ROWS.map((r, i) => <SyntaxRow key={i} {...r} />)}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function FormatSyntaxCard(){
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={styles.syntaxCard}>
+      <Pressable onPress={() => setOpen(v => !v)} style={styles.syntaxHeader}>
+        <Text style={styles.syntaxTitle}>INPUT SYNTAX</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={colors.purple600} />
+      </Pressable>
+      {open && (
+        <View style={styles.syntaxBody}>
+          {INPUT_REFS.map((r, i) => <SyntaxRow key={i} {...r} />)}
+          <Text style={styles.syntaxSubHead}>
+            WHEN IN DOUBT HIT THE SPACEBAR
+          </Text>
         </View>
       )}
     </View>
@@ -798,6 +825,9 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
         {/* DYNAMIC: slot chip strip */}
         {type === 'DYNAMIC' && <SlotStrip content={content} onChipPress={openSlotConfig} />}
+
+	{/* Show syntax on text input*/}
+	<FormatSyntaxCard/>
 
         {/* DYNAMIC: template syntax */}
         {type === 'DYNAMIC' && <TemplateSyntaxCard />}
