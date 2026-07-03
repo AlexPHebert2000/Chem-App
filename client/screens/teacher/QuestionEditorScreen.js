@@ -36,7 +36,7 @@ const AccentInput = React.forwardRef(function AccentInput(
   const [focused, setFocused] = useState(false);
   const borderColor = focused ? accentColor(accent) : colors.neutral200;
   return (
-    <TextInput
+    <MathTextInput
       ref={ref}
       {...props}
       style={[styles.input, { borderColor }, style]}
