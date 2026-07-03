@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, ScrollView, StyleSheet, Pressable, ActivityIndicator,
-  Image, Modal,
+  Image, Modal, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
@@ -12,10 +12,56 @@ import { ScreenSurface, ShadowButton, ProgressBar } from '../../components/base'
 import QuestionCard from '../../components/QuestionCard';
 import AnswerOption from '../../components/AnswerOption';
 import FeedbackBar from '../../components/FeedbackBar';
+import { MathTextInput } from '../../components/MathInput';
 import PeriodicTableOverlay from '../../components/PeriodicTableOverlay';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { getSourceByName, getDescByName } from '../../assets/fixedAssets/index';
+
+
+
+// ─── Template syntax card (collapseable) ─────────────────────────────────────
+
+const INPUT_REFS = [
+ { code: '^', desc: 'switch to exponent mode (input twice to input a caret)' },
+ { code: '_', desc: 'switch to subscript mode (input twice to input an underscore)'},
+ { code: ' ', desc: 'switch to normal input mode (this is the spacebar/space button)'},
+]
+
+function CodeToken({ text }) {
+  return <View style={styles.codeToken}><Text style={styles.codeTokenText}>{text}</Text></View>;
+}
+
+function SyntaxRow({ code, desc }) {
+  return (
+    <View style={styles.syntaxRow}>
+      <CodeToken text={code} />
+      {desc ? <Text style={styles.syntaxDesc}>{desc}</Text> : null}
+    </View>
+  );
+}
+
+function FormatSyntaxCard(){
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={styles.syntaxCard}>
+      <Pressable onPress={() => setOpen(v => !v)} style={styles.syntaxHeader}>
+        <Text style={styles.syntaxTitle}>INPUT SYNTAX</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={colors.purple600} />
+      </Pressable>
+      {open && (
+        <View style={styles.syntaxBody}>
+          {INPUT_REFS.map((r, i) => <SyntaxRow key={i} {...r} />)}
+          <Text style={styles.syntaxSubHead}>
+            WHEN IN DOUBT HIT THE SPACEBAR
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// -------Section Screen-----------------------------------------------------------------------
 
 export default function SectionScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
@@ -242,26 +288,29 @@ export default function SectionScreen({ navigation, route }) {
             <Ionicons name="close" size={18} color={colors.neutral900} />
            </Pressable>
 	  </View>
+	  <ScrollView>
 	  <View style={styles.imgCol}>
            <Image style={styles.fullImg}
 	    source={getSourceByName(fixedImage)}
 	   />
 	   <Text>{getDescByName(fixedImage)}</Text>
-	  </View>
+	   </View>
+	  </ScrollView>
 	 </Modal>
 	 <Text>PRESS TO ENLARGE</Text>
 	</View>
 	:<></>
 	}
         {/* Answer area — text inputs for FIB, option buttons for MC */}
-        {isFib ? (
+        {isFib ? (<>
+	  <FormatSyntaxCard/>
           <View style={styles.fibInputList}>
             {Array.from({ length: blankCount }, (_, i) => (
               <View key={i} style={styles.fibInputRow}>
                 <View style={styles.blankPill}>
                   <Text style={styles.blankPillText}>BLANK {i + 1}</Text>
                 </View>
-                <TextInput
+                <MathTextInput
                   style={[
                     styles.fibInput,
                     checked && blankResults[i] === true && styles.fibInputCorrect,
@@ -278,6 +327,7 @@ export default function SectionScreen({ navigation, route }) {
               </View>
             ))}
           </View>
+	  </>
         ) : (
           <View style={styles.optionsList}>
             {mcChoices.map((choice, ci) => (
@@ -491,4 +541,54 @@ const styles = StyleSheet.create({
     ...typeScale.body,
     color: colors.neutral600,
   },
+
+  // Template syntax card
+  syntaxCard: {
+    backgroundColor: colors.purple50,
+    borderWidth: 1.5,
+    borderColor: colors.purple100,
+    borderRadius: radius.lg,
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  syntaxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  syntaxTitle: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.purple600,
+  },
+  syntaxBody: { paddingHorizontal: 12, paddingBottom: 12 },
+  syntaxRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 },
+  syntaxDesc: { fontFamily: 'Outfit_500Medium', fontSize: 11.5, color: colors.purple800 },
+  syntaxSubHead: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: colors.purple800,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  syntaxMono: { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontWeight: '500' },
+  tokenWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  codeToken: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: colors.purple100,
+    borderRadius: 5,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  codeTokenText: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 11.5,
+    color: colors.purple600,
+  },
+
 });
