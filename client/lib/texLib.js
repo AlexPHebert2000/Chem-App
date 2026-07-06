@@ -25,19 +25,21 @@ export function textParseServ(text){
  while(i < text.length){
   if(text[i] == "^"){
    i++;
-   while(text[i] != ")"){
+   while(text[i] != ")" && i < text.length){
     newText = newText + SUPER_MAP[text[i]];
     i++;
    }
+   if(i == text.length)return newText;
    i++;
    newText = newText + " ";
   }
   if(text[i] == "_"){
    i++;
-   while(text[i] != ")"){
+   while(text[i] != ")" && i < text.length){
     newText = newText + SUB_MAP[text[i]];
     i++;
    }
+   if(text.length == i)return newText;
    i++;
    newText = newText + " ";
   }
@@ -46,6 +48,7 @@ export function textParseServ(text){
   }
   i++;
  }
+ return newText;
 }
 
 export function textParseRev(text){
