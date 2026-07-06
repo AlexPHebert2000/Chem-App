@@ -17,7 +17,7 @@ import PeriodicTableOverlay from '../../components/PeriodicTableOverlay';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { getSourceByName, getDescByName } from '../../assets/fixedAssets/index';
-
+import { textParseServ, texParseRev } from '../../lib/texLib';
 
 
 // ─── Template syntax card (collapseable) ─────────────────────────────────────
@@ -108,8 +108,21 @@ export default function SectionScreen({ navigation, route }) {
   }, [courseId, token]);
 
   const q = questions[currentIndex];
+  console.log(q);
+  if(q != undefined){
+   if(q.content != undefined){
+    q.content = textParseServ(q.content);
+   }
+  }
   const isFib = q?.type === 'FILL_IN_BLANK';
   const mcChoices = q?.choices?.filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i) ?? [];
+  if(mcChoices){
+   let i = 0;
+   while(i < mcChoices.length){
+    mcChoices[i].content = textParseServ(mcChoices[i].content);
+    i++;
+   }
+  }
   const blankCount = isFib ? new Set((q.choices ?? []).map(c => c.blankIndex)).size : 0;
   const correctChoice = mcChoices.find(c => correctChoiceIds.includes(c.id));
   const xp = q ? (q.difficulty ?? 1) * 10 : 0;
@@ -131,7 +144,7 @@ export default function SectionScreen({ navigation, route }) {
     setChecked(true);
     try {
       const body = isFib
-        ? { sessionId, fibAnswers: fibInputs.map(v => v.trim()) }
+        ? { sessionId, fibAnswers: fibInputs.map(v => textParseRev(v).trim()) }
         : { sessionId, choiceIds: [selected.id] };
       const res = await api.post(`/questions/${q.id}/attempt`, body, token);
       setResult(res.isCorrect ? 'correct' : 'wrong');

@@ -17,7 +17,36 @@ const REV_SUB_MAP = {
  "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
  "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9"};
 
-
+export function textParseServ(text){
+ let i = 0;
+ let newText = "";
+ if(text == undefined)return "";
+ if(text?.length == undefined)return "";
+ while(i < text.length){
+  if(text[i] == "^"){
+   i++;
+   while(text[i] != ")"){
+    newText = newText + SUPER_MAP[text[i]];
+    i++;
+   }
+   i++;
+   newText = newText + " ";
+  }
+  if(text[i] == "_"){
+   i++;
+   while(text[i] != ")"){
+    newText = newText + SUB_MAP[text[i]];
+    i++;
+   }
+   i++;
+   newText = newText + " ";
+  }
+  if(i < text.length){
+   newText = newText + text[i];
+  }
+  i++;
+ }
+}
 
 export function textParseRev(text){
  let i = 0;
