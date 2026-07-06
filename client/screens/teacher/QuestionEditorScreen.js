@@ -709,8 +709,13 @@ export default function QuestionEditorScreen({ navigation, route }) {
     if (type === 'FILL_IN_BLANK') {
       return fibAnswers.map((a, i) => ({ content: textParseRev(a), blankIndex: i, isCorrect: true }));
     }
-    console.log(mcOptions);
-    return mcOptions;
+    let tmp = mcOptions;
+    let i = 0;
+    while(i < tmp.length){
+     tmp[i].content = textParseRev(tmp[i].content);
+     i++;
+    }
+    return tmp;
   };
 
   const validate = () => {
@@ -731,9 +736,6 @@ export default function QuestionEditorScreen({ navigation, route }) {
   };
 
   const save = async () => {
-    function convertWrittenToServer(text){
-     return text.replace(/(\d+)¹(\d+)²/g, (_, base, exp) => `${base}^(${exp})`);
-    };
     if (!validate()) return;
     setSaving(true);
     try {
@@ -747,11 +749,12 @@ export default function QuestionEditorScreen({ navigation, route }) {
         fixedImage: fixedImageID,
       };
       if (type === 'DYNAMIC') {
-        body.answerExpression = answerExpression.trim();
+        body.answerExpression = textParseRev(answerExpression).trim();
         if (answerUnit.trim()) body.answerUnit = answerUnit.trim();
         const dc = parseInt(distractorCount, 10);
         if (!isNaN(dc)) body.distractorCount = dc;
       }
+      //body is all corrected to be sent to the server
       if (isEdit) {
         await api.patch(`/questions/${questionId}`, body, token);
       } else {
