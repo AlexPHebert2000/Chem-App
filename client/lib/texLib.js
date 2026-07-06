@@ -2,21 +2,50 @@ import { replaceAt } from './string';
 
 const SUPER_MAP = {
  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
- "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
- "a": "ᵃ", "b": "ᵇ", "c": "ᶜ", "d": "ᵈ", "e": "ᵉ", "f": "ᶠ",
- "g": "ᵍ", "h": "ʰ", "i": "ⁱ", "j": "ʲ", "k": "ᵏ", "l": "ˡ",
- "m": "ᵐ", "n": "ⁿ", "o": "ᵒ", "p": "ᵖ", "r": "ʳ", "t": "ᵗ",
- "u": "ᵘ", "v": "ᵛ", "w": "ʷ", "x": "ˣ", "y": "ʸ", "z": "ᶻ",
- "+": "⁺", "-": "⁻", "=": "⁼", "(": "⁽", ")": "⁾"
-};
+ "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹"};
+
+const REV_SUPER_MAP = {
+ "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+ "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9"};
+
 
 const SUB_MAP = {
  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
- "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
- "a": "ₐ", "e": "ₑ", "h": "ₕ", "i": "ᵢ", "j": "ⱼ", "k": "ₖ",
- "l": "ₗ", "m": "ₘ", "n": "ₙ", "o": "ₒ", "p": "ₚ", "r": "ᵣ",
- "s": "ₛ", "t": "ₜ", "u": "ᵤ", "v": "ᵥ", "x": "ₓ"
-};
+ "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉"};
+
+const REV_SUB_MAP = {
+ "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
+ "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9"};
+
+
+
+export function textParseRev(text){
+ let i = 0;
+ let newText = "";
+ while(i < text.length){
+  if(REV_SUPER_MAP[text[i]]){
+   newText = newText + "^(";
+   while((i < text.length) && (REV_SUPER_MAP[text[i]])){
+    newText = newText + REV_SUPER_MAP[text[i]];
+    i++;
+   }
+   newText = newText + ")";
+  }
+  if(REV_SUB_MAP[text[i]]){
+   newText = newText + "_(";
+   while((i < text.length) && (REV_SUB_MAP[text[i]])){
+    newText = newText + REV_SUB_MAP[text[i]];
+    i++;
+   }
+   newText = newText + ")";
+  }
+  if(i < text.length){
+   newText = newText + text[i];
+  }
+  i++;
+ }
+ return newText;
+}
 
 export function textParseAndSet(oldText, newText, setText, textState, setTextState){
  let character = newText.charAt(newText.length-1);

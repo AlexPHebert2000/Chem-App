@@ -16,6 +16,7 @@ import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { FIXED_IMAGES } from "../../assets/fixedAssets/index";
 import { MathTextInput } from '../../components/MathInput';
+import { textParseRev } from '../../lib/texLib';
 // ─── Field label ─────────────────────────────────────────────────────────────
 
 function FieldLabel({ label, hint }) {
@@ -706,8 +707,9 @@ export default function QuestionEditorScreen({ navigation, route }) {
 
   const buildChoices = () => {
     if (type === 'FILL_IN_BLANK') {
-      return fibAnswers.map((a, i) => ({ content: a, blankIndex: i, isCorrect: true }));
+      return fibAnswers.map((a, i) => ({ content: textParseRev(a), blankIndex: i, isCorrect: true }));
     }
+    console.log(mcOptions);
     return mcOptions;
   };
 
@@ -729,12 +731,15 @@ export default function QuestionEditorScreen({ navigation, route }) {
   };
 
   const save = async () => {
+    function convertWrittenToServer(text){
+     return text.replace(/(\d+)¹(\d+)²/g, (_, base, exp) => `${base}^(${exp})`);
+    };
     if (!validate()) return;
     setSaving(true);
     try {
       const body = {
         type, difficulty,
-        content: content.trim(),
+        content: textParseRev(content).trim(),
         correctExplanation: correctExplanation.trim(),
         incorrectExplanation: incorrectExplanation.trim(),
         tagIds: selectedTagIds,
