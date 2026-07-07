@@ -24,7 +24,7 @@ export function textParseServ(text){
  if(text?.length == undefined)return "";
  while(i < text.length){
   if(text[i] == "^"){
-   i++;
+   i+=2;
    while(text[i] != ")" && i < text.length){
     newText = newText + SUPER_MAP[text[i]];
     i++;
