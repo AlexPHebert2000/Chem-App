@@ -16,7 +16,7 @@ import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { FIXED_IMAGES } from "../../assets/fixedAssets/index";
 import { MathTextInput } from '../../components/MathInput';
-import { textParseRev } from '../../lib/texLib';
+import { textParseRev, textParseServ } from '../../lib/texLib';
 // ─── Field label ─────────────────────────────────────────────────────────────
 
 function FieldLabel({ label, hint }) {
@@ -650,7 +650,14 @@ export default function QuestionEditorScreen({ navigation, route }) {
         if (!q) return;
         setType(q.type ?? 'MULTIPLE_CHOICE');
         setDifficulty(q.difficulty ?? 2);
-        setContent(q.content ?? '');
+	let con = q.content ?? '';
+	console.log("--------------QUESTION LOAD------------");
+	console.log(con);
+	if(con != ''){
+         setContent(textParseServ(con));
+	}else{
+         setContent('');
+	}
         setCorrectExplanation(q.correctExplanation ?? '');
         setIncorrectExplanation(q.incorrectExplanation ?? '');
         setFixedImageID(q.fixedImage ?? "");
@@ -659,8 +666,13 @@ export default function QuestionEditorScreen({ navigation, route }) {
           if (q.choices?.length) {
             if (q.type === 'FILL_IN_BLANK') {
               const sorted = [...q.choices].sort((a, b) => a.blankIndex - b.blankIndex);
-              setFibAnswers(sorted.map(c => c.content));
+              setFibAnswers(sorted.map(c => textParseServ(c.content)));
             } else {
+	      let i = 0;
+	      while(i < q.choices.length){
+	       q.choices[i].content = textParseServ(q.choices[i].content);
+               i++;
+	      }
               setMcOptions(q.choices);
             }
           }

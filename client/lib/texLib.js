@@ -35,9 +35,19 @@ export function textParseServ(text){
   }
   if(text[i] == "_"){
    i++;
-   while(text[i] != ")" && i < text.length){
-    newText = newText + SUB_MAP[text[i]];
+   if(text[i] != "_"){
+    while(text[i] != ")" && i < text.length){
+     newText = newText + SUB_MAP[text[i]];
+     i++;
+    }
+   } else {
+    newText = newText + "__";
     i++;
+    while(i < text.length && text[i] == "_"){
+     newText = newText + "_";
+     i++;
+    }
+    i--;
    }
    if(text.length == i)return newText;
    i++;
