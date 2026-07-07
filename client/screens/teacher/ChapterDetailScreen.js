@@ -14,6 +14,7 @@ import { api } from '../../lib/api';
 import { doExport } from '../../lib/exportCsv';
 import { colors, radius } from '../../theme';
 import DynamicContent from '../../components/base/DynamicContent';
+import { textParseServ } from '../../lib/texLib';
 
 // ─── Sheet ─────────────────────────────────────────────────────────────────────
 
@@ -244,7 +245,7 @@ const st = StyleSheet.create({
 function QuestionRow({ question, qStats, sectionMode, isLast, total }) {
   return (
     <View style={[qr.row, !isLast && qr.rowBorder]}>
-      <DynamicContent content={question.content} numberOfLines={2} style={qr.text} />
+      <DynamicContent content={textParseServ(question.content)} numberOfLines={2} style={qr.text} />
       <View style={qr.meta}>
         <TypeChip type={question.type} />
         <Stars n={question.difficulty ?? 1} />
