@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { colors, radius } from '../../theme';
 import DynamicContent from '../../components/base/DynamicContent';
+import { textParseServ } from '../../lib/texLib';
 
 // ─── Sheet ─────────────────────────────────────────────────────────────────────
 
@@ -238,7 +239,7 @@ function QuestionCard({ question, onPress, pickMode, selected, alreadyAdded }) {
         )}
       </View>
 
-      <DynamicContent content={question.content} numberOfLines={3} style={qc.text} />
+      <DynamicContent content={textParseServ(question.content)} numberOfLines={3} style={qc.text} />
 
       {tags.length > 0 && (
         <View style={qc.tagsRow}>
@@ -327,7 +328,8 @@ export default function QuestionBankScreen({ navigation, route }) {
     const seen = new Set();
     const result = [];
     questions.forEach(q => (q.tags ?? []).forEach(t => {
-      if (!seen.has(t.name)) { seen.add(t.name); result.push(t); }
+      if (!seen.has(t.name)) {
+       seen.add(t.name); result.push(t); }
     }));
     return result;
   }, [questions]);
