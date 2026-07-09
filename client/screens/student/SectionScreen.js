@@ -17,7 +17,7 @@ import PeriodicTableOverlay from '../../components/PeriodicTableOverlay';
 import { colors, typeScale, screenPadding, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { getSourceByName, getDescByName } from '../../assets/fixedAssets/index';
-import { textParseServ, texParseRev } from '../../lib/texLib';
+import { textParseServ, textParseRev } from '../../lib/texLib';
 
 
 // ─── Template syntax card (collapseable) ─────────────────────────────────────
@@ -108,7 +108,6 @@ export default function SectionScreen({ navigation, route }) {
   }, [courseId, token]);
 
   const q = questions[currentIndex];
-  console.log(q);
   if(q != undefined){
    if(q.content != undefined){
     q.content = textParseServ(q.content);
