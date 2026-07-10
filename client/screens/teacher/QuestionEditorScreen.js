@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { FIXED_IMAGES } from "../../assets/fixedAssets/index";
 import { MathTextInput } from '../../components/MathInput';
 import { textParseRev, textParseServ } from '../../lib/texLib';
+import MathButton from '../../components/MathButton';
+
 // ─── Field label ─────────────────────────────────────────────────────────────
 
 function FieldLabel({ label, hint }) {
@@ -632,6 +634,8 @@ export default function QuestionEditorScreen({ navigation, route }) {
   const [slotConfigVisible, setSlotConfigVisible] = useState(false);
   const [slotConfigExpr, setSlotConfigExpr] = useState('');
 
+  const [] = useState('');
+
   // Answer expression slot references
   const answerExprSelectionRef = useRef({ start: 0, end: 0 });
   const answerExprRef = useRef(null);
@@ -651,8 +655,6 @@ export default function QuestionEditorScreen({ navigation, route }) {
         setType(q.type ?? 'MULTIPLE_CHOICE');
         setDifficulty(q.difficulty ?? 2);
 	let con = q.content ?? '';
-	console.log("--------------QUESTION LOAD------------");
-	console.log(con);
 	if(con != ''){
          setContent(textParseServ(con));
 	}else{
@@ -711,6 +713,10 @@ export default function QuestionEditorScreen({ navigation, route }) {
   const openSlotConfig = expr => {
     setSlotConfigExpr(expr);
     setSlotConfigVisible(true);
+  };
+
+  const openPowConfig = expr => {
+
   };
 
   const applySlotConfig = newExpr => {
@@ -825,6 +831,8 @@ export default function QuestionEditorScreen({ navigation, route }) {
         ) : (
           <FieldLabel label="QUESTION" />
         )}
+        {((type === 'DYNAMIC') || (type == 'FILL_IN_BLANK')) && <MathButton/>}
+
         <AccentArea
           ref={contentRef}
           accent="purple"
@@ -844,6 +852,7 @@ export default function QuestionEditorScreen({ navigation, route }) {
         />
 
         {/* DYNAMIC: slot chip strip */}
+	{console.log(type)}
         {type === 'DYNAMIC' && <SlotStrip content={content} onChipPress={openSlotConfig} />}
 
 	{/* Show syntax on text input*/}
