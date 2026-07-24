@@ -82,4 +82,5 @@ export const api = {
   get:   (path, token)       => requestWithRefresh(path, { token }),
   post:  (path, body, token) => requestWithRefresh(path, { method: 'POST',  body, token }),
   patch: (path, body, token) => requestWithRefresh(path, { method: 'PATCH', body, token }),
+  delete: (path, token) => requestWithRefresh(path, {method: 'DELETE',token,}),
 };
