@@ -199,9 +199,10 @@ const fc = StyleSheet.create({
 
 // ─── QuestionCard ──────────────────────────────────────────────────────────────
 
-function QuestionCard({ question, onPress, pickMode, selected, alreadyAdded }) {
+function QuestionCard({ token, question, onPress, pickMode, selected, alreadyAdded }) {
   const usedIn = question.usedIn ?? 0;
   const tags = question.tags ?? [];
+  const [showDel, setDel] = useState(false);
   return (
     <Pressable
       onPress={alreadyAdded ? null : () => onPress(question)}
@@ -249,11 +250,114 @@ function QuestionCard({ question, onPress, pickMode, selected, alreadyAdded }) {
           ))}
         </View>
       )}
+
+        <Pressable style={styl.str} onPress={()=>setDel(true)}>
+         <Ionicons name="trash-outline" size="1rem"></Ionicons>
+        </Pressable>
+<Modal animationType='fade' transparent={false} visible={showDel} onRequestClose={()=>setDel(false)}>
+        <View style={styl.overlay}>
+          <View style={styl.card}>
+            <View style={styl.stack}>
+             <Text style={styles.title}>Remove From Question Bank?</Text>
+              <Text style={styl.idText}>{String(question.id)}</Text>
+              <Text style={styl.bodyText}>{question.content}</Text>
+            </View>
+            <Text style={styl.question}>Do you wish to remove this question from your question bank?</Text>
+            <View style={styl.actions}>
+              <Pressable style={[styl.btn, styl.cancel]} onPress={()=>setDel(false)}>
+                <Text style={styl.btnText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styl.btn, styl.delete]}
+                onPress={()=>{
+                  api.delete(`/questions/${question.id}`, token);
+                  setDel(false);
+                }}
+              >
+                <Text style={styl.btnText}>Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Pressable>
   );
 }
-
+const styl = StyleSheet.create({
+  str:{
+    fontSize: "7rem",
+    alignSelf: "flex-end",
+    alignItems: "flex-end",
+    justifyContent: "flex-end"
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "#fff", // since transparent={false}, this ensures it looks non-transparent
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  stack: {
+    alignItems: "center", // vertical stacking; you can switch to "flex-start" if desired
+    marginBottom: 10,
+  },
+  idText: {
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  bodyText: {
+    fontSize: 14,
+    color: "#333",
+    textAlign: "center",
+  },
+  question: {
+    marginTop: 8,
+    marginBottom: 16,
+    color: "#444",
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  cancel: {
+    backgroundColor: colors.purple400,
+  },
+  delete: {
+    backgroundColor: "#e53935",
+  },
+  btnText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+});
 const qc = StyleSheet.create({
+  str:{
+    alignSelf: "flex-end",
+    alignItems: "flex-end",
+    justifyContent: "flex-end"
+  },
   card: {
     backgroundColor: '#fff',
     borderWidth: 1.5, borderColor: colors.neutral200,
@@ -475,6 +579,7 @@ export default function QuestionBankScreen({ navigation, route }) {
           <View style={{ gap: 8 }}>
             {filtered.map(q => (
               <QuestionCard
+                token={token}
                 key={q.id}
                 question={q}
                 pickMode={pickMode}

@@ -496,6 +496,38 @@ async function attemptQuestion(req, res) {
   });
 }
 
+async function deleteQuestion(req, res){
+ const { questionId } = req.params;
+ const question = await prisma.question.findUnique({ where: { id: questionId } });
+ if (!question) return res.status(404).json({ error: 'Question not found' });
+ if (question.teacherId !== req.user.sub) return res.status(403).json({ error: 'You do not own this question' });
+ 
+ const teacherId = req.user.sub; // used to authorize ownership
+ const sections = await prisma.section.findMany({
+    where: { questionIds: { has: questionId } },
+    select: { id: true, questionIds: true },
+  });
+ await Promise.all(
+    sections.map((sec) => {
+      const next = (sec.questionIds ?? []).filter((id) => id !== questionId);
+      return prisma.section.update({
+        where: { id: sec.id },
+        data: { questionIds: next },
+      });
+    })
+  );
+ 
+ const delChoices = await prisma.choice.deleteMany({
+    where: { questionId: questionId },
+  });
+ const delQuestion = await prisma.question.delete({
+   where: {
+    id: `${question.id}`,
+   },
+  });
+ return res.json({ ok: true });
+}
+
 async function previewDynamicQuestion(req, res) {
   const { questionId } = req.params;
 
@@ -525,4 +557,4 @@ async function previewDynamicQuestion(req, res) {
   });
 }
 
-module.exports = { getTeacherQuestions, getOneQuestion, getSectionQuestions, createQuestion, updateQuestion, attemptQuestion, previewDynamicQuestion };
+module.exports = { deleteQuestion, getTeacherQuestions, getOneQuestion, getSectionQuestions, createQuestion,  updateQuestion, attemptQuestion, previewDynamicQuestion };
